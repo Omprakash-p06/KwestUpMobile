@@ -61,8 +61,8 @@ eas build --platform android --profile production
 - For EAS builds, you need to be logged in to your Expo account.
 - If you encounter issues, check the Expo documentation or open an issue in this repository.
 
-## License
-0BSD
-
 ## Developed by
-Omprakash Panda 
+Omprakash Panda
+
+## Repository
+[https://github.com/Omprakash-p06/QuestUpMobile](https://github.com/Omprakash-p06/QuestUpMobile) 

@@ -863,7 +863,7 @@ const App = () => {
         <Button
           mode="text"
           icon="github"
-          onPress={() => Linking.openURL('https://github.com/Omprakash-p06/QuestUp')}
+          onPress={() => Linking.openURL('https://github.com/Omprakash-p06/QuestUpMobile')}
           labelStyle={{ color: currentTheme.colors.primary, fontSize: 16 }}
           style={{ marginTop: 10 }}
         >
@@ -909,7 +909,7 @@ const App = () => {
           <Appbar.Action
             icon="github" // Using a standard icon from react-native-vector-icons
             color={currentTheme.colors.onPrimary}
-            onPress={() => Linking.openURL('https://github.com/Omprakash-p06/QuestUp')}
+            onPress={() => Linking.openURL('https://github.com/Omprakash-p06/QuestUpMobile')}
           />
         </Appbar.Header>
 
