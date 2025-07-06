@@ -4,6 +4,9 @@ import { Appbar, BottomNavigation, PaperProvider, MD3LightTheme, MD3DarkTheme, T
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import Modal from 'react-native-modal';
+import ConfettiCannon from 'react-native-confetti-cannon';
 
 // Configure Expo Notifications to handle notifications when the app is in the foreground
 Notifications.setNotificationHandler({
@@ -216,14 +219,14 @@ const App = () => {
             clearInterval(timerIntervalRef.current);
             setIsTimerRunning(false);
             setShowTimerLockout(false);
-            showConfirmation("Focus session complete! Great job!", () => {});
+            showConfirmation("🎉 Congratulations! You completed your focus session! 🥳", () => {});
             Notifications.scheduleNotificationAsync({
               content: {
                 title: "KwestUp Focus Timer",
-                body: "Your focus session is complete! Great job!",
+                body: "Your focus session is complete! Great job! 🎉🥳",
                 sound: 'default',
               },
-              trigger: null, // show immediately
+              trigger: null,
             });
             return 0;
           }
@@ -437,17 +440,31 @@ const App = () => {
               onSubmitEditing={addDailyTask}
               theme={{ colors: { primary: currentTheme.colors.primary, text: currentTheme.colors.onSurface, onSurfaceVariant: currentTheme.colors.onSurface } }}
             />
-            <TextInput
-              label="Time (HH:MM)"
-              value={newTaskTime}
-              onChangeText={setNewTaskTime}
-              style={styles.textInputTime}
+            <Button
+              icon="clock"
               mode="outlined"
-              placeholder="HH:MM"
-              keyboardType="numbers-and-punctuation" // For time input
-              theme={{ colors: { primary: currentTheme.colors.primary, text: currentTheme.colors.onSurface, onSurfaceVariant: currentTheme.colors.onSurface } }}
-            />
+              onPress={() => { setPickerMode('time'); setPickerTarget('daily'); setShowTimePicker(true); }}
+              style={styles.textInputTime}
+            >
+              {newTaskTime ? `⏰ ${newTaskTime}` : 'Pick Time'}
+            </Button>
           </View>
+          <Modal isVisible={showTimePicker && pickerTarget === 'daily'} onBackdropPress={() => setShowTimePicker(false)}>
+            <DateTimePicker
+              value={new Date()}
+              mode="time"
+              is24Hour={true}
+              display="spinner"
+              onChange={(event, selectedDate) => {
+                setShowTimePicker(false);
+                if (selectedDate) {
+                  const hours = selectedDate.getHours().toString().padStart(2, '0');
+                  const minutes = selectedDate.getMinutes().toString().padStart(2, '0');
+                  setNewTaskTime(`${hours}:${minutes}`);
+                }
+              }}
+            />
+          </Modal>
           <Button icon="plus" mode="contained" onPress={addDailyTask} style={styles.fullWidthButton}>
             Add Daily Task
           </Button>
@@ -558,18 +575,31 @@ const App = () => {
               mode="outlined"
               theme={{ colors: { primary: currentTheme.colors.primary, text: currentTheme.colors.onSurface, onSurfaceVariant: currentTheme.colors.onSurface } }}
             />
-            {/* Note: For a true date picker, you'd use a library like @react-native-community/datetimepicker */}
-            <TextInput
-              label="Date (YYYY-MM-DD)"
-              value={newBirthdayDate}
-              onChangeText={setNewBirthdayDate}
-              style={styles.textInputDate}
+            <Button
+              icon="calendar"
               mode="outlined"
-              placeholder="YYYY-MM-DD"
-              keyboardType="numbers-and-punctuation"
-              theme={{ colors: { primary: currentTheme.colors.primary, text: currentTheme.colors.onSurface, onSurfaceVariant: currentTheme.colors.onSurface } }}
-            />
+              onPress={() => { setPickerMode('date'); setPickerTarget('birthday'); setShowDatePicker(true); }}
+              style={styles.textInputDate}
+            >
+              {newBirthdayDate ? `🎂 ${newBirthdayDate}` : 'Pick Date'}
+            </Button>
           </View>
+          <Modal isVisible={showDatePicker && pickerTarget === 'birthday'} onBackdropPress={() => setShowDatePicker(false)}>
+            <DateTimePicker
+              value={new Date()}
+              mode="date"
+              display="calendar"
+              onChange={(event, selectedDate) => {
+                setShowDatePicker(false);
+                if (selectedDate) {
+                  const year = selectedDate.getFullYear();
+                  const month = (selectedDate.getMonth() + 1).toString().padStart(2, '0');
+                  const day = selectedDate.getDate().toString().padStart(2, '0');
+                  setNewBirthdayDate(`${year}-${month}-${day}`);
+                }
+              }}
+            />
+          </Modal>
           <Button icon="plus" mode="contained" onPress={addBirthday} style={styles.fullWidthButton}>
             Add Birthday
           </Button>
@@ -667,27 +697,55 @@ const App = () => {
             />
           </View>
           <View style={styles.inputRow}>
-            <TextInput
-              label="Date (YYYY-MM-DD)"
-              value={newTaskDate}
-              onChangeText={setNewTaskDate}
+            <Button
+              icon="calendar"
+              mode="outlined"
+              onPress={() => { setPickerMode('date'); setPickerTarget('task'); setShowDatePicker(true); }}
               style={styles.textInputDate}
+            >
+              {newTaskDate ? `📅 ${newTaskDate}` : 'Pick Date'}
+            </Button>
+            <Button
+              icon="clock"
               mode="outlined"
-              placeholder="YYYY-MM-DD"
-              keyboardType="numbers-and-punctuation"
-              theme={{ colors: { primary: currentTheme.colors.primary, text: currentTheme.colors.onSurface, onSurfaceVariant: currentTheme.colors.onSurface } }}
-            />
-            <TextInput
-              label="Time (HH:MM)"
-              value={newTaskTime}
-              onChangeText={setNewTaskTime}
+              onPress={() => { setPickerMode('time'); setPickerTarget('task'); setShowTimePicker(true); }}
               style={styles.textInputTime}
-              mode="outlined"
-              placeholder="HH:MM"
-              keyboardType="numbers-and-punctuation"
-              theme={{ colors: { primary: currentTheme.colors.primary, text: currentTheme.colors.onSurface, onSurfaceVariant: currentTheme.colors.onSurface } }}
-            />
+            >
+              {newTaskTime ? `⏰ ${newTaskTime}` : 'Pick Time'}
+            </Button>
           </View>
+          <Modal isVisible={showDatePicker && pickerTarget === 'task'} onBackdropPress={() => setShowDatePicker(false)}>
+            <DateTimePicker
+              value={new Date()}
+              mode="date"
+              display="calendar"
+              onChange={(event, selectedDate) => {
+                setShowDatePicker(false);
+                if (selectedDate) {
+                  const year = selectedDate.getFullYear();
+                  const month = (selectedDate.getMonth() + 1).toString().padStart(2, '0');
+                  const day = selectedDate.getDate().toString().padStart(2, '0');
+                  setNewTaskDate(`${year}-${month}-${day}`);
+                }
+              }}
+            />
+          </Modal>
+          <Modal isVisible={showTimePicker && pickerTarget === 'task'} onBackdropPress={() => setShowTimePicker(false)}>
+            <DateTimePicker
+              value={new Date()}
+              mode="time"
+              is24Hour={true}
+              display="spinner"
+              onChange={(event, selectedDate) => {
+                setShowTimePicker(false);
+                if (selectedDate) {
+                  const hours = selectedDate.getHours().toString().padStart(2, '0');
+                  const minutes = selectedDate.getMinutes().toString().padStart(2, '0');
+                  setNewTaskTime(`${hours}:${minutes}`);
+                }
+              }}
+            />
+          </Modal>
           <Button icon="plus" mode="contained" onPress={addTask} style={styles.fullWidthButton}>
             Add Task
           </Button>
@@ -892,6 +950,13 @@ const App = () => {
     about: AboutRoute, // Add the new About route
   });
 
+  // Add state for pickers and confetti in App component
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [pickerMode, setPickerMode] = useState('date');
+  const [pickerTarget, setPickerTarget] = useState(null);
+  const [confettiVisible, setConfettiVisible] = useState(false);
+
   return (
     <PaperProvider theme={currentTheme}>
       <View style={[styles.container, { backgroundColor: currentTheme.colors.background }]}>
@@ -963,6 +1028,10 @@ const App = () => {
           currentTheme={currentTheme}
           formatTime={formatTime}
         />
+
+        {confettiVisible && (
+          <ConfettiCannon count={150} origin={{x: -10, y: 0}} fadeOut={true} onAnimationEnd={() => setConfettiVisible(false)} />
+        )}
       </View>
     </PaperProvider>
   );

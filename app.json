@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "KwestUpMobile",
-    "slug": "KwestUpMobile",
+    "name": "KwestUpMobile Dev",
+    "slug": "KwestUpMobile-dev",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/app_icon.png",
@@ -16,21 +16,22 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.omprakashp06.kwestupmobile"
+      "bundleIdentifier": "com.omprakashp06.kwestupmobile.dev"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/app_icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.omprakashp06.kwestupmobile"
+      "package": "com.omprakashp06.kwestupmobile.dev"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "cli.appVersionSource": "node",
     "extra": {
       "eas": {
-        "projectId": "6bd7de46-2374-4b7f-8501-c1872f34208b"
+        "projectId": "b0a6f175-183b-41f2-ba42-a513dac208fd"
       }
     }
   }
