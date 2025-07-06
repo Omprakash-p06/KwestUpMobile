@@ -144,7 +144,7 @@ const App = () => {
   // --- Local Storage Management (AsyncStorage) ---
   const loadData = useCallback(async () => {
     try {
-      const storedData = await AsyncStorage.getItem('questup_data');
+      const storedData = await AsyncStorage.getItem('kwestup_data');
       if (storedData) {
         const parsedData = JSON.parse(storedData);
         setDailyTasks(parsedData.dailyTasks || []);
@@ -192,7 +192,7 @@ const App = () => {
       darkMode,
     };
     try {
-      await AsyncStorage.setItem('questup_data', JSON.stringify(dataToSave));
+      await AsyncStorage.setItem('kwestup_data', JSON.stringify(dataToSave));
     } catch (error) {
       console.error("Failed to save data to AsyncStorage:", error);
     }
@@ -219,7 +219,7 @@ const App = () => {
             showConfirmation("Focus session complete! Great job!", () => {});
             Notifications.scheduleNotificationAsync({
               content: {
-                title: "QuestUp Focus Timer",
+                title: "KwestUp Focus Timer",
                 body: "Your focus session is complete! Great job!",
                 sound: 'default',
               },
@@ -256,7 +256,7 @@ const App = () => {
     await Notifications.scheduleNotificationAsync({
       identifier: `daily-task-${task.id}`, // Unique ID for the notification
       content: {
-        title: "QuestUp Daily Reminder",
+        title: "KwestUp Daily Reminder",
         body: `It's time to do your daily task: "${task.name}"`,
         sound: 'default',
       },
@@ -284,7 +284,7 @@ const App = () => {
     await Notifications.scheduleNotificationAsync({
       identifier: `general-task-${task.id}`, // Unique ID for the notification
       content: {
-        title: "QuestUp Task Reminder",
+        title: "KwestUp Task Reminder",
         body: `It's time to do your task: "${task.name}"`,
         sound: 'default',
       },
@@ -305,7 +305,7 @@ const App = () => {
     await Notifications.scheduleNotificationAsync({
       identifier: `birthday-${birthday.id}`,
       content: {
-        title: "QuestUp Birthday Reminder! 🎉",
+        title: "KwestUp Birthday Reminder! 🎉",
         body: `Happy Birthday to ${birthday.name}!`,
         sound: 'default',
       },
@@ -321,7 +321,7 @@ const App = () => {
 
   // Effect to schedule/reschedule notifications when tasks/birthdays change
   useEffect(() => {
-    // Clear all existing QuestUp notifications to prevent duplicates or outdated ones
+    // Clear all existing KwestUp notifications to prevent duplicates or outdated ones
     Notifications.cancelAllScheduledNotificationsAsync();
 
     dailyTasks.forEach(task => scheduleDailyTaskNotification(task));
@@ -331,7 +331,7 @@ const App = () => {
     // For birthdays, also check for immediate notification on app open for today
     const todayMonthDay = new Date().toISOString().slice(5, 10); // MM-DD
     const checkAndNotifyBirthdaysImmediately = async () => {
-      const hasNotified = await AsyncStorage.getItem(`questup_birthday_notified_${todayMonthDay}`);
+              const hasNotified = await AsyncStorage.getItem(`kwestup_birthday_notified_${todayMonthDay}`);
       if (!hasNotified) {
         const todayBirthdays = birthdays.filter(b => b.date === todayMonthDay);
         if (todayBirthdays.length > 0) {
@@ -339,13 +339,13 @@ const App = () => {
           showConfirmation(
             `Happy Birthday to: ${names}! 🎉`,
             async () => {
-              await AsyncStorage.setItem(`questup_birthday_notified_${todayMonthDay}`, 'true');
+              await AsyncStorage.setItem(`kwestup_birthday_notified_${todayMonthDay}`, 'true');
             }
           );
           // Also trigger a system notification immediately
           Notifications.scheduleNotificationAsync({
             content: {
-              title: "QuestUp Birthday Reminder",
+              title: "KwestUp Birthday Reminder",
               body: `Happy Birthday to: ${names}! 🎉`,
               sound: 'default',
             },
@@ -853,9 +853,9 @@ const App = () => {
   const AboutRoute = () => {
     return (
       <View style={[styles.tabContent, { backgroundColor: currentTheme.colors.surface, alignItems: 'center', justifyContent: 'center' }]}>
-        <Text style={[styles.tabTitle, { color: currentTheme.colors.onSurface, marginBottom: 20 }]}>About QuestUp</Text>
+        <Text style={[styles.tabTitle, { color: currentTheme.colors.onSurface, marginBottom: 20 }]}>About KwestUp</Text>
         <Text style={[styles.aboutText, { color: currentTheme.colors.onSurface }]}>
-          QuestUp is designed to help you manage your daily tasks, remember important birthdays, track personal goals, and maintain focus with a dedicated study timer.
+          KwestUp is designed to help you manage your daily tasks, remember important birthdays, track personal goals, and maintain focus with a dedicated study timer.
         </Text>
         <Text style={[styles.aboutText, { color: currentTheme.colors.onSurface, marginTop: 20 }]}>
           Developed by: Omprakash Panda
@@ -863,7 +863,7 @@ const App = () => {
         <Button
           mode="text"
           icon="github"
-          onPress={() => Linking.openURL('https://github.com/Omprakash-p06/QuestUpMobile')}
+          onPress={() => Linking.openURL('https://github.com/Omprakash-p06/KwestUpMobile')}
           labelStyle={{ color: currentTheme.colors.primary, fontSize: 16 }}
           style={{ marginTop: 10 }}
         >
@@ -896,7 +896,7 @@ const App = () => {
     <PaperProvider theme={currentTheme}>
       <View style={[styles.container, { backgroundColor: currentTheme.colors.background }]}>
         <Appbar.Header style={[styles.appBar, { backgroundColor: currentTheme.colors.primary }]}>
-          <Appbar.Content title="QuestUp" titleStyle={[styles.appBarTitle, { color: currentTheme.colors.onPrimary }]} />
+          <Appbar.Content title="KwestUp" titleStyle={[styles.appBarTitle, { color: currentTheme.colors.onPrimary }]} />
           {/* Dark mode toggle */}
           <View style={styles.darkModeToggle}>
             <Switch
@@ -909,7 +909,7 @@ const App = () => {
           <Appbar.Action
             icon="github" // Using a standard icon from react-native-vector-icons
             color={currentTheme.colors.onPrimary}
-            onPress={() => Linking.openURL('https://github.com/Omprakash-p06/QuestUpMobile')}
+            onPress={() => Linking.openURL('https://github.com/Omprakash-p06/KwestUpMobile')}
           />
         </Appbar.Header>
 

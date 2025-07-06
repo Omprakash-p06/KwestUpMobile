@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "QuestUpMobile",
-    "slug": "QuestUpMobile",
+    "name": "KwestUpMobile",
+    "slug": "KwestUpMobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/app_icon.png",
@@ -16,14 +16,14 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.omprakashp06.questupmobile"
+      "bundleIdentifier": "com.omprakashp06.kwestupmobile"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/app_icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.omprakashp06.questupmobile"
+      "package": "com.omprakashp06.kwestupmobile"
     },
     "web": {
       "favicon": "./assets/favicon.png"

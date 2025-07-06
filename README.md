@@ -1,6 +1,6 @@
-# QuestUpMobile
+# KwestUpMobile
 
-QuestUpMobile is a productivity app built with React Native and Expo. It helps you manage daily tasks, remember birthdays, track goals, and stay focused with a study timer.
+KwestUpMobile is a productivity app built with React Native and Expo. It helps you manage daily tasks, remember birthdays, track goals, and stay focused with a study timer.
 
 ## Features
 - Daily task management with reminders
@@ -20,7 +20,7 @@ QuestUpMobile is a productivity app built with React Native and Expo. It helps y
 ### 1. Clone the repository
 ```
 git clone <your-repo-url>
-cd QuestUpMobile
+cd KwestUpMobile
 ```
 
 ### 2. Install dependencies
@@ -65,4 +65,4 @@ eas build --platform android --profile production
 Omprakash Panda
 
 ## Repository
-[https://github.com/Omprakash-p06/QuestUpMobile](https://github.com/Omprakash-p06/QuestUpMobile) 
+[https://github.com/Omprakash-p06/KwestUpMobile](https://github.com/Omprakash-p06/KwestUpMobile) 
