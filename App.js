@@ -35,7 +35,6 @@ console.log("Drawer created successfully")
 // FORCE UPDATE SYSTEM - COMPREHENSIVE VERSION TRACKING
 const BUILD_TIMESTAMP = new Date().getTime()
 const APP_VERSION = "v2.5.0-SIDE-PANEL-REDESIGN" // Updated version
-const CACHE_BUSTER = `${BUILD_TIMESTAMP}-${Math.random().toString(36).substr(2, 9)}`
 const STORAGE_VERSION = "v5.0" // Updated storage version
 
 // Debug Configuration
@@ -843,7 +842,7 @@ const App = () => {
     console.log("📊 LOADING APP DATA...")
 
     try {
-      const storageKey = `kwestup_data_${STORAGE_VERSION}_${CACHE_BUSTER.split("-")[0]}`
+      const storageKey = `kwestup_data_${STORAGE_VERSION}`
       const storedData = await AsyncStorage.getItem(storageKey)
 
       if (storedData) {
@@ -913,7 +912,7 @@ const App = () => {
     }
 
     try {
-      const storageKey = `kwestup_data_${STORAGE_VERSION}_${CACHE_BUSTER.split("-")[0]}`
+      const storageKey = `kwestup_data_${STORAGE_VERSION}`
       await AsyncStorage.setItem(storageKey, JSON.stringify(dataToSave))
       console.log("💾 Data saved successfully to:", storageKey)
     } catch (error) {

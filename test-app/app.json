@@ -1,38 +1,29 @@
 {
   "expo": {
-    "name": "KwestUpMobile",
-    "slug": "kwestupmobile",
+    "name": "test-app",
+    "slug": "test-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./AppIcons(1)/playstore.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./AppIcons(1)/playstore.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.omprakashp06.kwestupmobile"
+      "edgeToEdgeEnabled": true
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    },
-    "sdkVersion": "53.0.0",
-    "extra": {
-      "eas": {
-        "projectId": "9b029b06-5b07-4a1d-9999-a543a3ef1614"
-      }
-    },
-    "owner": "omprakash-p06"
+    }
   }
 }
