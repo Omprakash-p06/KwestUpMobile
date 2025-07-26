@@ -427,26 +427,48 @@ const colorPalette = [
 ];
 
 const TaskEditModal = ({ visible, onClose, task, onSave, theme }) => {
-  const [title, setTitle] = useState(task?.title || task?.name || '');
-  const [description, setDescription] = useState(task?.description || '');
-  const [subtasks, setSubtasks] = useState(task?.subtasks || []);
-  const [color, setColor] = useState(task?.color || colorPalette[0]);
-  const [important, setImportant] = useState(!!task?.important);
-  const [dueDate, setDueDate] = useState(task?.dueDate ? new Date(task.dueDate) : null);
-  const [dueDateText, setDueDateText] = useState(task?.dueDate ? new Date(task.dueDate).toLocaleString() : '');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [subtasks, setSubtasks] = useState([]);
+  const [color, setColor] = useState(colorPalette[0]);
+  const [important, setImportant] = useState(false);
+  const [dueDate, setDueDate] = useState(null);
+  const [dueDateText, setDueDateText] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [pickerMode, setPickerMode] = useState('date');
   const [tempDate, setTempDate] = useState(null);
 
+  // Reset modal state when opening for a new task or closing
   useEffect(() => {
-    setTitle(task?.title || task?.name || '');
-    setDescription(task?.description || '');
-    setSubtasks(task?.subtasks || []);
-    setColor(task?.color || colorPalette[0]);
-    setImportant(!!task?.important);
-    setDueDate(task?.dueDate ? new Date(task.dueDate) : null);
-    setDueDateText(task?.dueDate ? new Date(task.dueDate).toLocaleString() : '');
-  }, [task]);
+    if (visible) {
+      if (task) {
+        setTitle(task?.title || task?.name || '');
+        setDescription(task?.description || '');
+        setSubtasks(task?.subtasks ? [...task.subtasks] : []);
+        setColor(task?.color || colorPalette[0]);
+        setImportant(!!task?.important);
+        setDueDate(task?.dueDate ? new Date(task.dueDate) : null);
+        setDueDateText(task?.dueDate ? new Date(task.dueDate).toLocaleString() : '');
+      } else {
+        setTitle('');
+        setDescription('');
+        setSubtasks([]);
+        setColor(colorPalette[0]);
+        setImportant(false);
+        setDueDate(null);
+        setDueDateText('');
+      }
+    } else {
+      // Optionally reset state when modal closes
+      setTitle('');
+      setDescription('');
+      setSubtasks([]);
+      setColor(colorPalette[0]);
+      setImportant(false);
+      setDueDate(null);
+      setDueDateText('');
+    }
+  }, [visible, task]);
 
   const handleSubtaskToggle = (idx) => {
     setSubtasks((prev) => prev.map((st, i) => i === idx ? { ...st, completed: !st.completed } : st));
@@ -456,6 +478,9 @@ const TaskEditModal = ({ visible, onClose, task, onSave, theme }) => {
   };
   const handleAddSubtask = () => {
     setSubtasks((prev) => [...prev, { text: '', completed: false }]);
+  };
+  const handleDeleteSubtask = (idx) => {
+    setSubtasks((prev) => prev.filter((_, i) => i !== idx));
   };
   const handleSave = () => {
     let finalDueDate = dueDate;
@@ -490,7 +515,11 @@ const TaskEditModal = ({ visible, onClose, task, onSave, theme }) => {
   return (
     <RNModal visible={visible} animationType="slide" transparent>
       <View style={{ flex: 1, backgroundColor: '#0008', justifyContent: 'center', alignItems: 'center' }}>
-        <View style={{ backgroundColor: theme.cardBackground, borderRadius: 16, padding: 24, width: '90%' }}>
+        <ScrollView
+          style={{ maxHeight: '90%', width: '90%' }}
+          contentContainerStyle={{ backgroundColor: theme.cardBackground, borderRadius: 16, padding: 24 }}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={{ color: theme.text, fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>Edit Task</Text>
           <TextInput
             value={title}
@@ -536,7 +565,7 @@ const TaskEditModal = ({ visible, onClose, task, onSave, theme }) => {
             <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
               <TouchableOpacity onPress={() => handleSubtaskToggle(idx)} style={{ marginRight: 8 }}>
                 <MaterialCommunityIcons name={st.completed ? 'checkbox-marked' : 'checkbox-blank-outline'} size={22} color={theme.primary} />
-            </TouchableOpacity>
+              </TouchableOpacity>
               <TextInput
                 value={st.text}
                 onChangeText={text => handleSubtaskChange(idx, text)}
@@ -544,11 +573,15 @@ const TaskEditModal = ({ visible, onClose, task, onSave, theme }) => {
                 style={{ flex: 1, borderBottomWidth: 1, borderColor: theme.border, color: theme.text, padding: 4 }}
                 placeholderTextColor={theme.secondaryText}
               />
-          </View>
+              {/* Delete subtask button */}
+              <TouchableOpacity onPress={() => handleDeleteSubtask(idx)} style={{ marginLeft: 8 }}>
+                <MaterialCommunityIcons name="delete" size={20} color={theme.error || '#F44336'} />
+              </TouchableOpacity>
+            </View>
           ))}
           <TouchableOpacity onPress={handleAddSubtask} style={{ marginVertical: 8 }}>
             <Text style={{ color: theme.primary, fontWeight: 'bold' }}>+ Add Subtask</Text>
-            </TouchableOpacity>
+          </TouchableOpacity>
           {/* Color selection */}
           <Text style={{ color: theme.text, fontWeight: '600', marginTop: 16, marginBottom: 4 }}>Card Color</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>
@@ -575,9 +608,9 @@ const TaskEditModal = ({ visible, onClose, task, onSave, theme }) => {
           <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16 }}>
             <CustomButton title="Cancel" onPress={onClose} outline color={theme.primary} style={{ marginRight: 8 }} />
             <CustomButton title="Save" onPress={handleSave} color={theme.primary} />
-              </View>
-              </View>
-              </View>
+          </View>
+        </ScrollView>
+      </View>
     </RNModal>
   );
 };
@@ -797,13 +830,13 @@ const App = () => {
   const [searchQuery, setSearchQuery] = useState("")
 
   const [isInitialized, setIsInitialized] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
   // Define currentTheme with fallback to prevent undefined errors
   const currentTheme = themes[selectedThemeName]?.[themeMode] || themes.dribbble.light
 
   const initializeApp = useCallback(async () => {
-    console.log("🔄 STARTING APP INITIALIZATION...")
-
+    setIsLoading(true)
     try {
       runDeviceDiagnostics()
       await checkForUpdates()
@@ -819,22 +852,33 @@ const App = () => {
         await clearAllCaches()
       }
 
-      console.log("✅ APP INITIALIZATION COMPLETED")
-      setIsInitialized(true)
-
       const storedUserName = await AsyncStorage.getItem(`kwestup_userName_${STORAGE_VERSION}`)
-      if (!storedUserName) {
+      if (storedUserName) {
+        setUserName(storedUserName)
+        setShowNameDialog(false)
+      } else {
         setShowNameDialog(true)
       }
+
+      setIsInitialized(true)
+      setIsLoading(false)
     } catch (error) {
       console.error("❌ APP INITIALIZATION FAILED:", error)
       setIsInitialized(true)
+      setIsLoading(false)
     }
   }, [])
 
   useEffect(() => {
     initializeApp()
   }, [initializeApp])
+
+  // Save userName to AsyncStorage immediately when set
+  useEffect(() => {
+    if (userName && userName.trim()) {
+      AsyncStorage.setItem(`kwestup_userName_${STORAGE_VERSION}`, userName)
+    }
+  }, [userName])
 
   const loadData = useCallback(async () => {
     if (!isInitialized) return
@@ -1099,23 +1143,6 @@ const App = () => {
       )
     );
   };
-
-  if (!isInitialized) {
-    return (
-      <PaperProvider theme={{ colors: currentTheme }}>
-        <View style={[styles.container, styles.loadingContainer, { backgroundColor: currentTheme.background }]}>
-          <CustomCard style={{ backgroundColor: currentTheme.cardBackground, alignItems: "center" }}>
-            <MaterialCommunityIcons name="loading" size={60} color={currentTheme.primary} />
-            <Text style={[styles.loadingTitle, { color: currentTheme.text }]}>Initializing KwestUp</Text>
-            <Text style={[styles.loadingText, { color: currentTheme.secondaryText }]}>{APP_VERSION}</Text>
-            <Text style={[styles.loadingText, { color: currentTheme.secondaryText }]}>
-              Running diagnostics and clearing caches...
-            </Text>
-          </CustomCard>
-        </View>
-      </PaperProvider>
-    )
-  }
 
   // --- Route Components ---
 
@@ -1921,7 +1948,7 @@ const App = () => {
         {/* Appearance Section */}
         <View style={styles.settingsSection}>
           <Text style={[styles.settingsSectionTitle, { color: currentTheme.primary, borderBottomColor: currentTheme.border }]}>Appearance</Text>
-          <View style={[styles.settingsRow, { flexDirection: 'column', alignItems: 'flex-start' }]}>
+          <View style={[styles.settingsRow, { flexDirection: 'column', alignItems: 'flex-start' }]}> 
             <Text style={[styles.settingsLabel, { color: currentTheme.text, marginBottom: 12 }]}>Theme Mode</Text>
             <CustomSegmentedButtons
               selectedValue={themeMode}
@@ -1934,7 +1961,7 @@ const App = () => {
               theme={currentTheme}
             />
           </View>
-          <View style={[styles.settingsRow, { flexDirection: 'column', alignItems: 'flex-start' }]}>
+          <View style={[styles.settingsRow, { flexDirection: 'column', alignItems: 'flex-start' }]}> 
             <Text style={[styles.settingsLabel, { color: currentTheme.text, marginBottom: 12 }]}>Color Theme</Text>
             <CustomSegmentedButtons
               selectedValue={selectedThemeName}
@@ -1951,27 +1978,14 @@ const App = () => {
           </View>
         </View>
         
-        {/* Data Management Section */}
-        <View style={styles.settingsSection}>
-          <Text style={[styles.settingsSectionTitle, { color: currentTheme.primary, borderBottomColor: currentTheme.border }]}>Data Management</Text>
-          <TouchableOpacity style={styles.settingsAction} onPress={handleSaveSettings}>
-            <Text style={[styles.settingsActionText, { color: currentTheme.text }]}>Save Settings</Text>
-            <MaterialCommunityIcons name="content-save" size={24} color={currentTheme.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.settingsAction} onPress={handleResetData}>
-            <Text style={[styles.settingsActionText, { color: currentTheme.error }]}>Reset All Data</Text>
-            <MaterialCommunityIcons name="delete" size={24} color={currentTheme.error} />
-          </TouchableOpacity>
-        </View>
-        
         {/* About Section */}
         <View style={styles.settingsSection}>
           <Text style={[styles.settingsSectionTitle, { color: currentTheme.primary, borderBottomColor: currentTheme.border }]}>About</Text>
-          <TouchableOpacity style={styles.settingsAction} onPress={() => Linking.openURL("https://github.com/Omprakash-p06/KwestUpMobile")}>
+          <TouchableOpacity style={styles.settingsAction} onPress={() => Linking.openURL("https://github.com/Omprakash-p06/KwestUpMobile")}> 
             <Text style={[styles.settingsActionText, { color: currentTheme.text }]}>GitHub Repository</Text>
             <MaterialCommunityIcons name="github" size={24} color={currentTheme.text} />
           </TouchableOpacity>
-          <View style={styles.settingsAction}>
+          <View style={styles.settingsAction}> 
             <Text style={[styles.settingsActionText, { color: currentTheme.text }]}>Developed by</Text>
             <Text style={[styles.settingsLabel, { color: currentTheme.secondaryText }]}>Omprakash Panda</Text>
           </View>
