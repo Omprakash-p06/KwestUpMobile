@@ -51,9 +51,30 @@ Or, for web:
 npm run web
 ```
 
-### 5. Build for production (optional)
+### 5. Build for development (EAS)
+To create a development build (for testing with all native features, works with Expo Go or EAS Dev Client):
+
+**Android:**
 ```
-eas build --platform android --profile production
+eas build --profile development --platform android
+```
+
+**iOS (on Mac):**
+```
+eas build --profile development --platform ios
+```
+
+### 6. Build for production (EAS)
+To create a production-ready build for app store submission:
+
+**Android:**
+```
+eas build --profile production --platform android
+```
+
+**iOS (on Mac):**
+```
+eas build --profile production --platform ios
 ```
 
 ## Notes

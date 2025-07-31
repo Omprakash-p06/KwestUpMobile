@@ -881,59 +881,59 @@ const App = () => {
   }, [userName])
 
   const loadData = useCallback(async () => {
-    if (!isInitialized) return
-
-    console.log("📊 LOADING APP DATA...")
+    if (!isInitialized) return;
 
     try {
-      const storageKey = `kwestup_data_${STORAGE_VERSION}`
-      const storedData = await AsyncStorage.getItem(storageKey)
+      const storageKey = `kwestup_data_${STORAGE_VERSION}`;
+      // Load all data in parallel
+      const [storedDataRaw, storedUserName] = await Promise.all([
+        AsyncStorage.getItem(storageKey),
+        AsyncStorage.getItem(`kwestup_userName_${STORAGE_VERSION}`),
+      ]);
 
-      if (storedData) {
-        const parsedData = JSON.parse(storedData)
-        console.log("📦 Found stored data:", Object.keys(parsedData))
-
-        setDailyTasks(parsedData.dailyTasks || [])
-        setBirthdays(parsedData.birthdays || [])
-        setTasks(parsedData.tasks || [])
-        setThemeMode(parsedData.themeMode || "light")
-        setSelectedThemeName(parsedData.selectedThemeName || "dribbble") // Default to dribbble
-        setUserName(parsedData.userName || "")
+      if (storedDataRaw) {
+        const parsedData = JSON.parse(storedDataRaw);
+        setDailyTasks(parsedData.dailyTasks || []);
+        setBirthdays(parsedData.birthdays || []);
+        setTasks(parsedData.tasks || []);
+        setThemeMode(parsedData.themeMode || "light");
+        setSelectedThemeName(parsedData.selectedThemeName || "dribbble");
+        if (storedUserName) setUserName(storedUserName);
+        else setUserName(parsedData.userName || "");
 
         if (parsedData.timerState) {
-          const { duration, remaining, isRunning, startTime } = parsedData.timerState
-          setTimerDuration(duration)
+          const { duration, remaining, isRunning, startTime } = parsedData.timerState;
+          setTimerDuration(duration);
           if (isRunning && startTime) {
-            const elapsed = Math.floor((Date.now() - startTime) / 1000)
-            const newRemaining = Math.max(0, duration - elapsed)
-            setTimerRemaining(newRemaining)
-            if (newRemaining > 0) {
-              setIsTimerRunning(true)
-              setShowTimerLockout(true)
-            } else {
-              setIsTimerRunning(false)
-              setShowTimerLockout(false)
-            }
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const newRemaining = Math.max(0, duration - elapsed);
+            setTimerRemaining(newRemaining);
+            setIsTimerRunning(newRemaining > 0);
+            setShowTimerLockout(newRemaining > 0);
           } else {
-            setTimerRemaining(remaining)
-            setIsTimerRunning(false)
-            setShowTimerLockout(false)
+            setTimerRemaining(remaining);
+            setIsTimerRunning(false);
+            setShowTimerLockout(false);
           }
         }
-
-        console.log("✅ Data loaded successfully!")
       } else {
-        console.log("📝 No stored data found, using defaults")
+        setDailyTasks([]);
+        setBirthdays([]);
+        setTasks([]);
+        setThemeMode("light");
+        setSelectedThemeName("dribbble");
+        setUserName(storedUserName || "");
       }
+      // No need for extra logs
     } catch (error) {
-      console.error("❌ Failed to load data:", error)
-      setDailyTasks([])
-      setBirthdays([])
-      setTasks([])
-      setThemeMode("light")
-      setSelectedThemeName("dribbble")
+      // Optionally show a toast or alert here
+      setDailyTasks([]);
+      setBirthdays([]);
+      setTasks([]);
+      setThemeMode("light");
+      setSelectedThemeName("dribbble");
     }
-  }, [isInitialized])
+  }, [isInitialized]);
 
   const saveData = useCallback(async () => {
     if (!isInitialized) return
@@ -1086,11 +1086,17 @@ const App = () => {
     showConfirmation(
       "Are you sure you want to delete this task?",
       () => {
-        setTasks(tasks.filter((task) => task.id !== id))
-        console.log("🗑️ Task deleted:", id)
+        setTasks(tasks => {
+          const taskToDelete = tasks.find(t => t.id === id);
+          if (taskToDelete && taskToDelete.notificationId) {
+            cancelDueDateNotification(taskToDelete.notificationId);
+          }
+          return tasks.filter((task) => task.id !== id);
+        });
+        console.log("🗑️ Task deleted:", id);
       },
       () => {},
-    )
+    );
   }
 
   const handleCompleteTask = (taskId) => {
@@ -1119,19 +1125,72 @@ const App = () => {
     });
   };
 
+  // Helper to schedule a push notification for a due date
+  async function scheduleDueDateNotification(task) {
+    if (!task.dueDate) return null;
+    try {
+      const triggerDate = new Date(task.dueDate);
+      if (triggerDate > new Date()) {
+        const notificationId = await Notifications.scheduleNotificationAsync({
+          content: {
+            title: `Task Due: ${task.title || task.name}`,
+            body: task.description ? task.description : 'Your task is due now!',
+            sound: true,
+          },
+          trigger: triggerDate,
+        });
+        return notificationId;
+      }
+    } catch (e) {
+      // Optionally log or show a toast
+    }
+    return null;
+  }
+
+  // Helper to cancel a scheduled notification
+  async function cancelDueDateNotification(notificationId) {
+    if (notificationId) {
+      try {
+        await Notifications.cancelScheduledNotificationAsync(notificationId);
+      } catch (e) {}
+    }
+  }
+
+  // Update handleSaveTask to schedule/cancel notifications
   const handleSaveTask = (savedTask) => {
     setTasks(currentTasks => {
-      // Check if it's an update or a new task
       const existingTaskIndex = currentTasks.findIndex(t => t.id === savedTask.id);
-
       if (existingTaskIndex > -1) {
         // Update existing task
-        const newTasks = [...currentTasks];
-        newTasks[existingTaskIndex] = savedTask;
-        return newTasks;
+        const oldTask = currentTasks[existingTaskIndex];
+        // Cancel old notification if dueDate changed or removed
+        if (oldTask.notificationId && oldTask.dueDate !== savedTask.dueDate) {
+          cancelDueDateNotification(oldTask.notificationId);
+        }
+        // Schedule new notification if dueDate exists
+        if (savedTask.dueDate) {
+          scheduleDueDateNotification(savedTask).then(notificationId => {
+            const newTasks = [...currentTasks];
+            newTasks[existingTaskIndex] = { ...savedTask, notificationId };
+            setTasks(newTasks);
+          });
+          return currentTasks; // Will be updated in .then
+        } else {
+          // No dueDate, just update
+          const newTasks = [...currentTasks];
+          newTasks[existingTaskIndex] = { ...savedTask, notificationId: null };
+          return newTasks;
+        }
       } else {
         // Add new task with a unique ID
-        return [...currentTasks, { ...savedTask, id: Date.now().toString() }];
+        if (savedTask.dueDate) {
+          scheduleDueDateNotification(savedTask).then(notificationId => {
+            setTasks([...currentTasks, { ...savedTask, id: Date.now().toString(), notificationId }]);
+          });
+          return currentTasks; // Will be updated in .then
+        } else {
+          return [...currentTasks, { ...savedTask, id: Date.now().toString(), notificationId: null }];
+        }
       }
     });
   };
@@ -1316,13 +1375,20 @@ const App = () => {
           time: newTaskTime || null,
           completed: false,
           completedDate: null,
+          notificationId: null,
+        };
+        if (newDailyTask.time) {
+          scheduleDailyTaskNotification(newDailyTask).then(notificationId => {
+            setDailyTasks([...dailyTasks, { ...newDailyTask, notificationId }]);
+          });
+        } else {
+          setDailyTasks([...dailyTasks, newDailyTask]);
         }
-        setDailyTasks([...dailyTasks, newDailyTask])
-        setNewTaskName("")
-        setNewTaskTime("")
-        console.log("✅ Daily task added:", newDailyTask.name)
+        setNewTaskName("");
+        setNewTaskTime("");
+        console.log("✅ Daily task added:", newDailyTask.name);
       }
-    }
+    };
 
     const toggleDailyTaskComplete = (id) => {
       setDailyTasks(
@@ -1346,7 +1412,13 @@ const App = () => {
       showConfirmation(
         "Are you sure you want to delete this daily task?",
         () => {
-          setDailyTasks(dailyTasks.filter((task) => task.id !== id))
+          setDailyTasks(dailyTasks => {
+            const taskToDelete = dailyTasks.find(t => t.id === id);
+            if (taskToDelete && taskToDelete.notificationId) {
+              cancelDueDateNotification(taskToDelete.notificationId);
+            }
+            return dailyTasks.filter((task) => task.id !== id);
+          });
           console.log("🗑️ Daily task deleted:", id)
         },
         () => {},
@@ -2110,6 +2182,30 @@ const App = () => {
     });
   }
 
+  // Helper to schedule a repeating daily notification for a daily task
+  async function scheduleDailyTaskNotification(task) {
+    if (!task.time) return null;
+    try {
+      const [hours, minutes] = task.time.split(":").map(Number);
+      if (!isNaN(hours) && !isNaN(minutes)) {
+        const notificationId = await Notifications.scheduleNotificationAsync({
+          content: {
+            title: `Daily Task: ${task.name}`,
+            body: 'Time for your daily task!',
+            sound: true,
+          },
+          trigger: {
+            hour: hours,
+            minute: minutes,
+            repeats: true,
+          },
+        });
+        return notificationId;
+      }
+    } catch (e) {}
+    return null;
+  }
+
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: currentTheme.background }}>
       <SafeAreaProvider>
@@ -2140,7 +2236,7 @@ const App = () => {
                   drawerType: "front",
                   drawerPosition: "left",
                   swipeEnabled: true,
-                  swipeEdgeWidth: 50,
+                  swipeEdgeWidth: Dimensions.get("window").width * 0.5,
                   overlayColor: "rgba(0, 0, 0, 0.5)",
                   drawerStyle: {
                     backgroundColor: currentTheme.cardBackground,
