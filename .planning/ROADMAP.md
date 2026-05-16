@@ -27,8 +27,8 @@ The roadmap for KwestUp Mobile focuses on transforming the existing codebase int
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: Setup Navigation and State Management.
-- [ ] 01-02: Integrate and optimize Local Storage.
+- [ ] 01-01-PLAN.md — Setup Navigation and State Management.
+- [ ] 01-02-PLAN.md — Integrate and optimize Local Storage.
 
 ### Phase 2: Task Management Module
 **Goal**: Implement the core task management experience.
