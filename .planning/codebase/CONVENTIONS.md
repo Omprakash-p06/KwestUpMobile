@@ -2,6 +2,12 @@
 
 **Analysis Date:** 2026-05-17
 
+## Global Standards
+
+All development in this repository must adhere to the global standards defined in [GEMINI.md](../../GEMINI.md):
+1. **Map Before Act:** Understand and map the codebase before making changes.
+2. **Test Before Commit:** Run code quality and lint tests before committing changes.
+
 ## Naming Patterns
 
 **Files:**
