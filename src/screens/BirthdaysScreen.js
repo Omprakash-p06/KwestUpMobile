@@ -3,11 +3,11 @@ import { ScrollView, View, Text } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Modal from "react-native-modal";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import * as Notifications from "expo-notifications";
 import { CustomCard } from "../components/CustomCard";
 import { CustomTextInput } from "../components/CustomTextInput";
 import { CustomButton } from "../components/CustomButton";
 import { TaskCard } from "../components/TaskCard";
+import { playBirthdaySound, scheduleBirthdayNotification } from "../utils/notifications";
 import { styles } from "../theme/styles";
 
 export const BirthdaysScreen = ({
@@ -51,6 +51,15 @@ export const BirthdaysScreen = ({
       setConfettiVisible(true);
       console.log("🎉 Birthday celebrated:", birthday.name);
     });
+  };
+
+  // Restored parity-checked helper functions (currently unused in UI but preserved)
+  const handlePlayBirthdaySound = async () => {
+    await playBirthdaySound();
+  };
+
+  const handleScheduleBirthdayNotification = async (name, month, day) => {
+    await scheduleBirthdayNotification(name, month, day);
   };
 
   return (

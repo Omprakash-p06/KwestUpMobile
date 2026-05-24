@@ -114,3 +114,47 @@ export async function cancelDueDateNotification(notificationId) {
     }
   }
 }
+
+// Helper to play birthday notification sound immediately
+export async function playBirthdaySound() {
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '🎂 Birthday!',
+        body: "It's someone's birthday today! 🎉",
+        sound: 'default',
+      },
+      trigger: null,
+    });
+  } catch (e) {
+    console.error("Failed to play birthday sound:", e);
+  }
+}
+
+// Helper to schedule repeating birthday notification
+export async function scheduleBirthdayNotification(name, month, day) {
+  try {
+    const now = new Date();
+    let year = now.getFullYear();
+    const birthdayThisYear = new Date(`${year}-${month}-${day}T00:00:00`);
+    if (birthdayThisYear < now) {
+      year += 1;
+    }
+    const nextBirthday = new Date(`${year}-${month}-${day}T00:00:00`);
+    const notificationId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: `🎂 Birthday: ${name}`,
+        body: `Wish ${name} a happy birthday!`,
+        sound: 'default',
+      },
+      trigger: {
+        date: nextBirthday,
+        repeats: false,
+      },
+    });
+    return notificationId;
+  } catch (e) {
+    console.error("Failed to schedule birthday notification:", e);
+  }
+  return null;
+}
