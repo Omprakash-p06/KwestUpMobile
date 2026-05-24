@@ -322,7 +322,7 @@ const App = () => {
         });
         console.log("🗑️ Task deleted:", id);
       },
-      () => {},
+      () => { },
     );
   };
 
@@ -333,9 +333,9 @@ const App = () => {
       return prevTasks.map(task => {
         if (task.id === taskId) {
           console.log("✅ Marking task as complete:", task.title || task.name);
-          return { 
-            ...task, 
-            completed: true, 
+          return {
+            ...task,
+            completed: true,
             completedDate: now.slice(0, 10),
             completedAt: now
           };
@@ -395,9 +395,9 @@ const App = () => {
         setTimerRemaining(25 * 60);
         setIsTimerRunning(false);
         setShowTimerLockout(false);
-        showConfirmation("All data has been reset!", () => {});
+        showConfirmation("All data has been reset!", () => { });
       },
-      () => {},
+      () => { },
     );
   };
 
@@ -451,7 +451,7 @@ const App = () => {
                 handleResetData={handleResetData}
               />
             </NavigationContainer>
-            
+
             {/* Confirmation Modal */}
             <Modal
               isVisible={confirmationVisible}
@@ -542,7 +542,7 @@ const App = () => {
                     setTimerRemaining(timerDuration);
                     console.log("Focus session interrupted!");
                   },
-                  () => {},
+                  () => { },
                 )
               }
               currentTheme={currentTheme}
