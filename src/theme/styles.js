@@ -5,35 +5,35 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   loadingContainer: {
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
     padding: 20,
   },
   loadingTitle: {
     fontSize: 24,
     fontWeight: "700",
-    marginTop: 16,
     marginBottom: 8,
+    marginTop: 16,
   },
   loadingText: {
     fontSize: 14,
-    textAlign: "center",
     marginBottom: 4,
+    textAlign: "center",
   },
   // Custom Button Styles
   customButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    flexDirection: "row",
     alignItems: "center",
+    borderRadius: 8,
+    elevation: 2,
+    flexDirection: "row",
     justifyContent: "center",
     minHeight: 44,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 3,
-    elevation: 2,
   },
   customButtonDisabled: {
     opacity: 0.7,
@@ -61,21 +61,21 @@ export const styles = StyleSheet.create({
     borderRadius: 8,
   },
   customTextInputIcon: {
-    position: "absolute",
     left: 12,
+    position: "absolute",
   },
   customTextInput: {
+    backgroundColor: "transparent",
     flex: 1,
+    fontSize: 16,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontSize: 16,
-    backgroundColor: "transparent",
   },
   // Custom Card Styles
   customCard: {
     borderRadius: 12,
-    padding: 16,
     marginBottom: 16,
+    padding: 16,
     // Base shadow is removed from here and applied dynamically in TaskCard
   },
   // Custom Badge Styles
@@ -94,8 +94,8 @@ export const styles = StyleSheet.create({
   },
   // Custom Switch Styles
   customSwitchContainer: {
-    flexDirection: "row",
     alignItems: "center",
+    flexDirection: "row",
     justifyContent: "space-between",
     paddingVertical: 5,
   },
@@ -104,23 +104,23 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
   },
   customSwitchTrack: {
-    width: 45,
-    height: 25,
     borderRadius: 15,
+    height: 25,
     justifyContent: "center",
     paddingHorizontal: 2,
+    width: 45,
   },
   customSwitchThumb: {
-    width: 21,
-    height: 21,
-    borderRadius: 10.5,
     backgroundColor: "#fff",
+    borderRadius: 10.5,
+    elevation: 2,
+    height: 21,
+    position: "absolute",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
-    elevation: 2,
-    position: "absolute",
+    width: 21,
   },
   // Custom Segmented Buttons Styles
   segmentedButtonsContainer: {
@@ -129,12 +129,12 @@ export const styles = StyleSheet.create({
     gap: 8,
   },
   segmentedButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    alignItems: 'center',
     borderRadius: 20,
     borderWidth: 1,
-    alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
 
   tabContentScroll: {
@@ -149,10 +149,10 @@ export const styles = StyleSheet.create({
     marginBottom: 12,
   },
   inputRow: {
-    flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
+    flexDirection: "row",
     gap: 8,
+    marginBottom: 12,
   },
   textInputFlex: {
     flex: 1,
@@ -170,8 +170,8 @@ export const styles = StyleSheet.create({
     marginBottom: 16,
   },
   cardHeader: {
-    flexDirection: "row",
     alignItems: "flex-start",
+    flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 10,
   },
@@ -185,8 +185,8 @@ export const styles = StyleSheet.create({
   },
   cardCode: {
     fontSize: 14,
-    opacity: 0.9,
     fontWeight: "500",
+    opacity: 0.9,
   },
   cardMenuButton: {
     padding: 5,
@@ -198,8 +198,8 @@ export const styles = StyleSheet.create({
     marginBottom: 10,
   },
   detailRow: {
-    flexDirection: "row",
     alignItems: "center",
+    flexDirection: "row",
     marginBottom: 5,
   },
   detailLabel: {
@@ -208,14 +208,14 @@ export const styles = StyleSheet.create({
     width: 100,
   },
   detailValue: {
-    fontSize: 14,
     flex: 1,
+    fontSize: 14,
     fontWeight: "500",
   },
   cardFooter: {
+    alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
     marginTop: 10,
   },
   cardTags: {
@@ -223,12 +223,12 @@ export const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   taskTag: {
-    marginRight: 8,
     marginBottom: 5,
+    marginRight: 8,
   },
   cardAvatars: {
-    flexDirection: "row",
     alignItems: "center",
+    flexDirection: "row",
     marginTop: 10,
   },
   cardActionsOverlay: {
@@ -239,62 +239,62 @@ export const styles = StyleSheet.create({
     marginTop: 10,
   },
   infoTextContainer: {
-    flexDirection: "row",
     alignItems: "flex-start",
+    borderRadius: 8,
+    flexDirection: "row",
     marginTop: 16,
     padding: 12,
-    borderRadius: 8,
   },
   infoText: {
+    flexShrink: 1,
     fontSize: 12,
     fontStyle: "italic",
-    flexShrink: 1,
     fontWeight: "500",
   },
   timerTitle: {
     fontSize: 20,
     fontWeight: "700",
-    textAlign: "center",
     marginBottom: 16,
+    textAlign: "center",
   },
   timerInputContainer: {
-    flexDirection: "row",
     alignItems: "center",
+    flexDirection: "row",
     justifyContent: "center",
     marginBottom: 16,
   },
   timerInputLabel: {
     fontSize: 16,
-    marginRight: 8,
     fontWeight: "600",
+    marginRight: 8,
   },
   timerDurationInput: {
-    width: 80,
     height: 40,
     textAlign: "center",
+    width: 80,
   },
   timerDisplayContainer: {
-    marginBottom: 24,
-    padding: 24,
+    alignItems: "center",
+    alignSelf: "center",
     borderRadius: 16,
     borderWidth: 3,
-    alignSelf: "center",
     elevation: 4,
+    marginBottom: 24,
     minWidth: 200,
-    alignItems: "center",
+    padding: 24,
   },
   timerDisplayText: {
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 48,
     fontWeight: "900",
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     textAlign: "center",
   },
   timerStatusText: {
     fontSize: 12,
     fontWeight: "700",
-    textAlign: "center",
-    marginTop: 4,
     letterSpacing: 1,
+    marginTop: 4,
+    textAlign: "center",
   },
   timerControls: {
     flexDirection: "row",
@@ -303,9 +303,9 @@ export const styles = StyleSheet.create({
   },
   timerButton: {
     borderRadius: 24,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
     elevation: 3,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   settingsTitle: {
     fontSize: 18,
@@ -313,16 +313,16 @@ export const styles = StyleSheet.create({
     marginBottom: 16,
   },
   settingRow: {
-    flexDirection: "row",
     alignItems: "center",
+    flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 12,
     paddingVertical: 4,
   },
   settingLabel: {
+    flex: 1,
     fontSize: 16,
     fontWeight: "600",
-    flex: 1,
   },
   settingValue: {
     fontSize: 14,
@@ -334,40 +334,40 @@ export const styles = StyleSheet.create({
   },
   settingDescription: {
     fontSize: 12,
-    marginTop: 4,
     fontStyle: "italic",
+    marginTop: 4,
   },
   actionButton: {
     marginBottom: 8,
   },
   githubButton: {
-    marginTop: 10,
     alignSelf: "center",
+    marginTop: 10,
   },
   nameInput: {
-    marginTop: 12,
-    alignSelf: 'stretch', // Ensure it takes width in the dialog
+    alignSelf: 'stretch',
+    marginTop: 12, // Ensure it takes width in the dialog
   },
   aboutText: {
     fontSize: 16,
-    textAlign: "center",
-    marginBottom: 8,
-    lineHeight: 24,
     fontWeight: "500",
+    lineHeight: 24,
+    marginBottom: 8,
+    textAlign: "center",
   },
   lockoutOverlay: {
     ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
     padding: 20,
   },
   lockoutContent: {
-    borderRadius: 16,
-    padding: 24,
     alignItems: "center",
-    width: "85%",
-    maxWidth: 350,
+    borderRadius: 16,
     elevation: 10,
+    maxWidth: 350,
+    padding: 24,
+    width: "85%",
   },
   lockoutTitle: {
     fontSize: 32,
@@ -377,41 +377,41 @@ export const styles = StyleSheet.create({
   },
   lockoutMessage: {
     fontSize: 18,
+    fontWeight: "500",
     marginBottom: 16,
     textAlign: "center",
-    fontWeight: "500",
   },
   lockoutTimer: {
-    fontSize: 80,
-    fontWeight: "900",
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    marginBottom: 24,
-    padding: 24,
     borderRadius: 100,
     borderWidth: 4,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontSize: 80,
+    fontWeight: "900",
+    marginBottom: 24,
+    padding: 24,
   },
   modalOverlay: {
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
   },
   dialogContent: {
+    alignItems: "center",
     borderRadius: 16,
+    maxWidth: 400,
     padding: 24,
     width: "85%",
-    maxWidth: 400,
-    alignItems: "center",
   },
   dialogTitle: {
-    textAlign: "center",
-    fontWeight: "700",
     fontSize: 20,
+    fontWeight: "700",
     marginBottom: 10,
+    textAlign: "center",
   },
   dialogMessage: {
-    textAlign: "center",
     fontSize: 16,
     fontWeight: "500",
     marginBottom: 20,
+    textAlign: "center",
   },
   dialogActions: {
     flexDirection: "row",
@@ -426,15 +426,15 @@ export const styles = StyleSheet.create({
     marginBottom: 20,
   },
   emptyListText: {
-    textAlign: "center",
-    paddingVertical: 20,
     fontSize: 16,
     fontWeight: "500",
+    paddingVertical: 20,
+    textAlign: "center",
   },
   insightRow: {
+    alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
     marginBottom: 8,
   },
   insightLabel: {
@@ -450,12 +450,12 @@ export const styles = StyleSheet.create({
     marginVertical: 10,
   },
   chartPlaceholder: {
-    height: 200,
-    justifyContent: "center",
     alignItems: "center",
     borderRadius: 12,
-    marginTop: 20,
     borderWidth: 1,
+    height: 200,
+    justifyContent: "center",
+    marginTop: 20,
   },
   // Drawer specific styles
   drawerContent: {
@@ -463,9 +463,9 @@ export const styles = StyleSheet.create({
     paddingTop: Platform.OS === "android" ? 25 : 0, // Adjust for Android status bar
   },
   drawerHeader: {
-    padding: 20,
     borderBottomWidth: 1,
     marginBottom: 10,
+    padding: 20,
   },
   drawerHeaderText: {
     fontSize: 24,
@@ -479,13 +479,13 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   drawerItem: {
-    flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    marginHorizontal: 10,
     borderRadius: 8,
+    flexDirection: "row",
     marginBottom: 5,
+    marginHorizontal: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
   drawerItemIcon: {
     marginRight: 15,
@@ -495,12 +495,12 @@ export const styles = StyleSheet.create({
     fontWeight: "500",
   },
   drawerFooter: {
-    padding: 20,
     borderTopWidth: 1,
+    padding: 20,
   },
   drawerFooterButton: {
-    flexDirection: "row",
     alignItems: "center",
+    flexDirection: "row",
     paddingVertical: 10,
   },
   drawerFooterText: {
@@ -531,9 +531,9 @@ export const styles = StyleSheet.create({
     elevation: 5,
   },
   summaryCardHeader: {
+    alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
     marginBottom: 10,
   },
   summaryCardCount: {
@@ -545,9 +545,9 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
   },
   chartHeader: {
+    alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
     marginBottom: 15,
   },
   chartTitle: {
@@ -555,16 +555,16 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
   },
   chartBarsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
     alignItems: "flex-end",
+    flexDirection: "row",
     height: 150,
+    justifyContent: "space-around",
     marginBottom: 10,
   },
   chartColumn: {
+    alignItems: "center",
     flexDirection: "column",
     justifyContent: "flex-end",
-    alignItems: "center",
     width: 20, // Width of each bar group
   },
   chartBar: {
@@ -582,15 +582,15 @@ export const styles = StyleSheet.create({
     marginTop: 10,
   },
   legendItem: {
-    flexDirection: "row",
     alignItems: "center",
+    flexDirection: "row",
     marginHorizontal: 10,
   },
   legendColor: {
-    width: 12,
-    height: 12,
     borderRadius: 6,
+    height: 12,
     marginRight: 5,
+    width: 12,
   },
   legendText: {
     fontSize: 12,
@@ -601,14 +601,14 @@ export const styles = StyleSheet.create({
     marginTop: 20,
   },
   bottomSummaryCard: {
-    width: "48%",
-    padding: 15,
     borderRadius: 15,
+    elevation: 2,
+    padding: 15,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 3,
-    elevation: 2,
+    width: "48%",
   },
   bottomSummaryTitle: {
     fontSize: 14,
@@ -629,12 +629,12 @@ export const styles = StyleSheet.create({
     padding: 5,
   },
   filterButton: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 8,
     alignItems: "center",
+    borderRadius: 8,
+    flex: 1,
     flexDirection: "row",
     justifyContent: "center",
+    paddingVertical: 10,
   },
   filterButtonText: {
     fontSize: 14,
@@ -656,16 +656,16 @@ export const styles = StyleSheet.create({
     elevation: 8,
   },
   bottomSubNav: {
-    flexDirection: "row",
-    justifyContent: "space-around",
     alignItems: "center",
-    height: 70,
     borderTopWidth: 1,
-    position: "absolute",
     bottom: 0,
+    flexDirection: "row",
+    height: 70,
+    justifyContent: "space-around",
     left: 0,
-    right: 0,
-    paddingBottom: Platform.OS === "ios" ? 15 : 0, // Adjust for iPhone X notch
+    paddingBottom: Platform.OS === "ios" ? 15 : 0,
+    position: "absolute",
+    right: 0, // Adjust for iPhone X notch
   },
   bottomSubNavItem: {
     alignItems: "center",
@@ -673,8 +673,8 @@ export const styles = StyleSheet.create({
   },
   bottomSubNavItemText: {
     fontSize: 12,
-    marginTop: 5,
     fontWeight: "500",
+    marginTop: 5,
   },
   taskCard: {
     borderRadius: 16,
@@ -688,15 +688,15 @@ export const styles = StyleSheet.create({
     shadowRadius: 5,
   },
   taskCardHeader: {
+    alignItems: "flex-start",
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
     marginBottom: 8,
   },
   taskTitle: {
+    flex: 1,
     fontSize: 18,
-    fontWeight: "600",
-    flex: 1, // Allow title to wrap
+    fontWeight: "600", // Allow title to wrap
   },
   taskDueDate: {
     fontSize: 13,
@@ -704,28 +704,28 @@ export const styles = StyleSheet.create({
     marginBottom: 16,
   },
   taskCardFooter: {
+    alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
     marginTop: 12,
   },
   taskStats: {
-    flexDirection: "row",
     alignItems: "center",
+    flexDirection: "row",
   },
   taskStatText: {
-    marginLeft: 5,
     fontSize: 14,
     fontWeight: "500",
+    marginLeft: 5,
   },
   completeButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 20,
     borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
   },
   completeButtonText: {
-    fontWeight: "bold",
     fontSize: 14,
+    fontWeight: "bold",
   },
   screen: {
     flex: 1,
@@ -737,9 +737,9 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   emptyStateContainer: {
+    alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
     paddingVertical: 50,
   },
   emptyStateText: {
@@ -747,8 +747,8 @@ export const styles = StyleSheet.create({
     fontWeight: '500',
   },
   completedDivider: {
-    flexDirection: 'row',
     alignItems: 'center',
+    flexDirection: 'row',
     marginVertical: 24,
   },
   dividerLine: {
@@ -756,23 +756,23 @@ export const styles = StyleSheet.create({
     height: 1,
   },
   completedTitle: {
-    marginHorizontal: 12,
     fontSize: 14,
     fontWeight: '600',
+    marginHorizontal: 12,
     textTransform: 'uppercase',
   },
   tabBar: {
+    alignItems: 'center',
+    borderTopColor: '#ccc',
+    borderTopWidth: 1,
     flexDirection: 'row',
     justifyContent: 'space-around',
-    alignItems: 'center',
     paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#ccc',
   },
   tabBarItem: {
+    borderBottomWidth: 2,
     flex: 1,
     padding: 10,
-    borderBottomWidth: 2,
   },
   tabBarText: {
     fontSize: 16,
@@ -792,15 +792,15 @@ export const styles = StyleSheet.create({
     marginBottom: 24,
   },
   settingsSectionTitle: {
+    borderBottomWidth: 1,
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 12,
     paddingBottom: 4,
-    borderBottomWidth: 1,
   },
   settingsRow: {
-    flexDirection: "row",
     alignItems: "center",
+    flexDirection: "row",
     justifyContent: "space-between",
     paddingVertical: 12,
   },
@@ -808,8 +808,8 @@ export const styles = StyleSheet.create({
     fontSize: 16,
   },
   settingsAction: {
-    flexDirection: 'row',
     alignItems: 'center',
+    flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 8,
   },

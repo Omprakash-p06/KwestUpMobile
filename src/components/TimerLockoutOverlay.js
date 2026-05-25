@@ -25,7 +25,7 @@ export const TimerLockoutOverlay = ({ show, remainingTime, onExitAttempt, curren
           {formatTime(remainingTime)}
         </Text>
         <Text style={[styles.lockoutMessage, { color: currentTheme.secondaryText }]}>
-          Keep going, you're doing great!
+          Keep going, you&apos;re doing great!
         </Text>
         <CustomButton
           title="Attempt Exit (Warning)"

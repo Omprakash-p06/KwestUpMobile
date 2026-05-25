@@ -42,7 +42,7 @@ export const SearchScreen = ({
           <CustomCard style={{ backgroundColor: currentTheme.cardBackground, alignItems: "center" }} theme={currentTheme}>
             <MaterialCommunityIcons name="magnify-minus-outline" size={60} color={currentTheme.secondaryText} />
             <Text style={[styles.emptyListText, { color: currentTheme.secondaryText }]}>
-              No results found for "{searchQuery}".
+              No results found for &ldquo;{searchQuery}&rdquo;.
             </Text>
           </CustomCard>
         ) : (
