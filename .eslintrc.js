@@ -30,5 +30,5 @@ module.exports = {
     'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
     'no-console': 'warn',
   },
-  ignorePatterns: ['node_modules/', '.expo/', 'dist/', 'web-build/', 'android/', 'ios/'],
+  ignorePatterns: ['node_modules/', '.expo/', 'dist/', 'web-build/', 'android/', 'ios/', 'KwestUpPC/'],
 };

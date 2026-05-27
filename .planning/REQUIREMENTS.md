@@ -1,94 +1,87 @@
-# Requirements: KwestUp Mobile
+# Functional Requirements - KwestUp Mobile
 
-**Defined:** 2026-05-17
-**Core Value:** A unified, lightweight, and performant personal organizer that simplifies daily productivity through intelligent automation and clear goal tracking.
-
-## v1 Requirements
-
-### Task Management
-
-- [ ] **TASK-01**: Google Tasks-style interface for creating and editing tasks.
-- [ ] **TASK-02**: Support for subtasks or checklist items within tasks.
-- [ ] **TASK-03**: Ability to mark tasks as complete/incomplete.
-- [ ] **TASK-04**: Task categorization or list grouping.
-
-### Reminders & Birthdays
-
-- [ ] **REMD-01**: Birthday tracker with local notifications.
-- [ ] **REMD-02**: Ability to import birthdays from contacts (optional/TBD).
-- [ ] **REMD-03**: Recurring reminders for non-birthday events.
-
-### Financial Tracking (OCR/AI)
-
-- [ ] **FIN-01**: Capture expense data using on-device OCR.
-- [ ] **FIN-02**: Categorize expenses using lightweight AI (on-device or simple heuristics).
-- [ ] **FIN-03**: Simple dashboard for monthly/weekly spending summary.
-- [ ] **FIN-04**: Manual entry option for expenses.
-
-### Goals & Habits
-
-- [ ] **GOAL-01**: Daily goals tab for recurring habits.
-- [ ] **GOAL-02**: Progress tracking for daily goals (streaks).
-- [ ] **GOAL-03**: Dedicated Goals tab for date/time specific milestones.
-
-### Tools & Utility
-
-- [ ] **UTIL-01**: Study timer (Pomodoro or similar focus mode).
-- [ ] **UTIL-02**: Android 10+ home screen widgets for quick task/goal view.
-
-### Technical Performance
-
-- [ ] **PERF-01**: App starts and responds smoothly on low-end Android devices.
-- [ ] **PERF-02**: Efficient local storage (SQLite or MMKV) for fast data access.
-
-## v2 Requirements
-
-### Sync & Backup
-
-- **SYNC-01**: Cloud synchronization (Google Drive or similar).
-- **SYNC-02**: Export data to CSV/JSON.
-
-### Advanced AI
-
-- **ADVAI-01**: Predictive spending analysis.
-- **ADVAI-02**: Natural language task creation.
-
-## Out of Scope
-
-| Feature | Reason |
-|---------|--------|
-| Social Sharing | Not core to personal productivity focus |
-| Multi-user Support | Single-user personal app focus |
-| Web Version | Focus on mobile experience first |
-
-## Traceability
-
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| TASK-01 | Phase 2 | Pending |
-| TASK-02 | Phase 2 | Pending |
-| TASK-03 | Phase 2 | Pending |
-| TASK-04 | Phase 2 | Pending |
-| REMD-01 | Phase 3 | Pending |
-| REMD-02 | Phase 3 | Pending |
-| REMD-03 | Phase 3 | Pending |
-| FIN-01 | Phase 4 | Pending |
-| FIN-02 | Phase 4 | Pending |
-| FIN-03 | Phase 4 | Pending |
-| FIN-04 | Phase 4 | Pending |
-| GOAL-01 | Phase 5 | Pending |
-| GOAL-02 | Phase 5 | Pending |
-| GOAL-03 | Phase 5 | Pending |
-| UTIL-01 | Phase 6 | Pending |
-| UTIL-02 | Phase 7 | Pending |
-| PERF-01 | Phase 1 | Pending |
-| PERF-02 | Phase 1 | Pending |
-
-**Coverage:**
-- v1 requirements: 18 total
-- Mapped to phases: 18
-- Unmapped: 0 âœ“
+This document establishes the functional requirements for KwestUp Mobile. All features are scoped into clear, falsifiable requirements.
 
 ---
-*Requirements defined: 2026-05-17*
-*Last updated: 2026-05-17 after initial definition*
+
+## 1. Notion/Obsidian-Style Markdown Notes (NOTE)
+
+### NOTE-01: Markdown Notes Management
+- **Description**: Users must be able to create, edit, save, and delete text notes.
+- **Format**: Notes must be stored in standard Markdown (`.md`) format internally or in structured database columns mapping directly to raw Markdown, ensuring long-term readability and file portability.
+- **Title & Metadata**: Each note must include a title, creation date, modification date, and optional list of hashtag keys (e.g. `#work`, `#personal`).
+
+### NOTE-02: Folder & Category Organization
+- **Description**: Users must be able to create nested folders and place notes in them.
+- **Navigation**: The UI must provide a sidebar or nested explorer mimicking Obsidian/Notion to navigate folders and quickly switch notes.
+
+### NOTE-03: Markdown Renderer
+- **Description**: The notes editor must support two modes:
+  1. **Edit Mode**: Raw markdown text input with syntax highlighting or assistive markdown keyboard shortcuts (headers, lists, codeblocks, links).
+  2. **Preview Mode**: Clean rendered rich text supporting Headers (H1-H6), bold, italics, checklists (`- [ ]`), bullet points, and codeblocks.
+
+---
+
+## 2. Google Tasks-Style Task Manager (TASK)
+
+### TASK-01: Core Task Operations
+- **Description**: Users must be able to create, read, update, and delete tasks.
+- **Fields**: Each task must support a title, optional multi-line notes, a due date (date & time), and a priority level (low, medium, high).
+
+### TASK-02: Lists & Category Grouping
+- **Description**: Users must be able to create custom Task Lists (e.g. "Inbox", "Shopping", "Coding") mimicking the Google Tasks slide-out panel or tabs.
+
+### TASK-03: Subtasks & Checklists
+- **Description**: Tasks must support nested subtasks/checklist items. Checking off a subtask must visually cross it out, and the parent task should display a completion progress fraction (e.g. `2/5 completed`).
+
+---
+
+## 3. Birthday Reminders & Alerts (REMD)
+
+### REMD-01: Birthday List & Dashboard
+- **Description**: A dedicated Birthdays screen displaying all tracked birthdays sorted by the next upcoming date.
+- **Dynamic Fields**: For each entry, the app must calculate:
+  - The person's current or upcoming age.
+  - The exact number of days remaining until their next birthday.
+
+### REMD-02: Native Local Notifications
+- **Description**: The app must schedule local native notifications (`expo-notifications`) to alert the user:
+  - On the morning of the contact's birthday (e.g. at 9:00 AM).
+  - Optionally, a custom advance reminder (e.g., 1 day or 1 week before) to buy a gift.
+
+---
+
+## 4. Local network Sync via Python QR Scanner (SYNC)
+
+### SYNC-01: QR Camera Scanner
+- **Description**: The app must integrate a native camera view (`expo-camera` or `react-native-vision-camera`) to scan a QR code displayed by the PC Electron app.
+- **Payload**: The QR code must contain a structured JSON string detailing:
+  - `ip`: The PC's local network IP address (e.g., `192.168.1.50`).
+  - `port`: The sync server port (e.g., `5001`).
+  - `token`: A temporary authorization token.
+
+### SYNC-02: Local Wi-Fi Synchronization
+- **Description**: Upon scanning, the mobile app must establish a local connection over Wi-Fi to the PC app (via HTTP REST API or WebSockets) and execute a two-way synchronization.
+- **Data Merge**: Merge notes, tasks, and birthdays, resolving conflicts based on the most recently updated timestamp.
+- **Python Sync Server**: Provide a reference Python server script (`sync_server.py`) for developers to run on the PC to test the network sync protocol independently from the Electron UI.
+
+---
+
+## 5. Local On-Device AI Integration (LAI)
+
+### LAI-01: Native llama.cpp Runtime
+- **Description**: The app must run AI inference entirely on-device, with zero internet connectivity.
+- **Implementation**: Use native bindings (`react-native-llama` compiling C++ `llama.cpp`) to run a highly quantized `0.5B` to `1B` parameter GGUF model (e.g. Qwen2.5-0.5B-Instruct).
+
+### LAI-02: AI Workflows
+- **Note Summarizer**: When viewing a note, the user can click "AI Summarize" to append or overlay a concise, bulleted summary generated by the local model.
+- **Task Extractor**: The user can run "AI Extract Tasks" on a markdown note, and the local LLM will parse the note text, identify actionable sentences, and automatically create structured tasks in the Task Manager database.
+
+---
+
+## 6. Dockerization (DOCKER)
+
+### DOCKER-01: Developer & Sync Containers
+- **Description**: Configure a `Dockerfile` and `docker-compose.yml` in the workspace to:
+  - Spin up the Python synchronization server locally for development testing.
+  - Run automated integration tests validating the network sync protocol between virtual mobile clients and the sync server.

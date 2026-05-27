@@ -2,120 +2,110 @@
 
 ## Overview
 
-The roadmap for KwestUp Mobile focuses on transforming the existing codebase into a high-performance productivity suite. We begin with architectural foundational work, followed by sequential implementation of core modules: Task Management, Birthday/Reminders, AI Financial Tracking, Goals/Habits, and finally Utility tools like the study timer and Android widgets.
+The roadmap for KwestUp Mobile transitions the application into a highly performant, local-first productivity workspace. The phases are ordered logically to establish core modules first (Notes, Tasks, Birthdays), implement the Wi-Fi synchronization network next, integrate offline local AI, and finally containerize developer environments.
+
+---
 
 ## Phases
 
-- [ ] **Phase 1: Architectural Foundation** - Establish core navigation, state management, and optimized storage.
-- [ ] **Phase 2: Task Management Module** - Implement Google Tasks-style interface and logic.
-- [ ] **Phase 3: Reminders & Birthday Tracker** - Build the notification-driven reminder system.
-- [ ] **Phase 4: Financial Manager (AI/OCR)** - Integrate lightweight OCR and expense categorization.
-- [ ] **Phase 5: Goals & Habit Tracking** - Implement daily and long-term goal management.
-- [ ] **Phase 6: Productivity Utilities** - Add study timer and focus modes.
-- [ ] **Phase 7: Android Widget Integration** - Develop home screen widgets for Android 10+.
+- [x] **Phase 1: Notion/Obsidian-style Notes** - Obsidian-style raw `.md` filesystem vault with Notion-style debounced auto-save, collapsible sidebar explorer, dual edit/preview markdown engine. ✅ COMPLETE
+- [ ] **Phase 2: Google Tasks-style Task Management** - Build Google Tasks-style Lists with drag-and-drop, due dates, checklist subtasks, and DB persistence.
+- [ ] **Phase 3: Birthday Reminder Module** - Build contact birthday dashboard with age and countdown calculations, plus Native push notifications.
+- [ ] **Phase 4: Local Network Sync via QR Scanner** - Integrate camera QR scanning to retrieve PC host IP, port, and security token, and execute two-way Wi-Fi synchronization with the Electron app. Implement the Python desktop sync reference server.
+- [ ] **Phase 5: Local On-Device AI Integration** - Link `react-native-llama` to compile native C++ bindings, download a quantized Qwen2.5-0.5B-Instruct model, and implement local note summarization and task extraction.
+- [ ] **Phase 6: Docker Integration & System Polish** - Set up Docker compose for developer sync services, execute automated integration tests, and polish the user experience.
+
+---
 
 ## Phase Details
 
-### Phase 1: Architectural Foundation
-**Goal**: Establish a robust and performant foundation for the app.
-**Depends on**: Nothing
-**Requirements**: [PERF-01, PERF-02]
+### Phase 1: Notion/Obsidian-style Notes
+**Goal**: Build a beautiful, nested-folder Markdown notes organizer mimicking Notion/Obsidian.
+**Depends on**: Nothing.
+**Requirements**: [NOTE-01, NOTE-02, NOTE-03]
 **Success Criteria**:
-  1. App navigation structure is clear and performant.
-  2. Local storage (SQLite/MMKV) is integrated and tested for speed.
-  3. Global state management is set up to support multi-module data.
-**Plans**: 2 plans
+  1. Users can create, organize, and delete markdown notes in folders.
+  2. The preview mode cleanly renders markdown titles, bolding, lists, and checklists.
+**Plans**:
+- [x] 01-01-PLAN.md — Core persistence layer: notes state, filesystem init, factory reset wipe. ✅
+- [x] 01-02-PLAN.md — Notes list UI, sidebar explorer, dual markdown editor/preview engine. ✅
 
-Plans:
-- [ ] 01-01-PLAN.md — Setup Navigation and State Management.
-- [ ] 01-02-PLAN.md — Integrate and optimize Local Storage.
+---
 
-### Phase 2: Task Management Module
-**Goal**: Implement the core task management experience.
-**Depends on**: Phase 1
-**Requirements**: [TASK-01, TASK-02, TASK-03, TASK-04]
+### Phase 2: Google Tasks-style Task Management
+**Goal**: Implement a slick, high-performance task management system resembling Google Tasks.
+**Depends on**: Phase 1.
+**Requirements**: [TASK-01, TASK-02, TASK-03]
 **Success Criteria**:
-  1. User can create, edit, and group tasks.
-  2. Subtasks/checklist items are functional.
-  3. Tasks persist across app restarts.
-**Plans**: 2 plans
+  1. Users can slide between custom task categories/lists.
+  2. Tasks display nested checklists with visual progress completion tracking.
+**Plans**:
+- [ ] 02-01-PLAN.md — Build Task lists DB tables, core task CRUD logic, and category tabs UI.
+- [ ] 02-02-PLAN.md — Build subtasks checklists UI and visual progress tracker.
 
-Plans:
-- [ ] 02-01: Implement Task List UI and Grouping.
-- [ ] 02-02: Implement Task Editing and Subtask logic.
+---
 
-### Phase 3: Reminders & Birthday Tracker
-**Goal**: Add time-sensitive reminders and birthday tracking.
-**Depends on**: Phase 2
-**Requirements**: [REMD-01, REMD-02, REMD-03]
+### Phase 3: Birthday Reminder Module
+**Goal**: Add time-sensitive upcoming birthday indicators and native system alerts.
+**Depends on**: Phase 2.
+**Requirements**: [REMD-01, REMD-02]
 **Success Criteria**:
-  1. Local notifications trigger correctly for upcoming birthdays.
-  2. User can set recurring reminders for arbitrary events.
-**Plans**: 2 plans
+  1. Birthday cards display age and days remaining with automated countdowns.
+  2. Local system notifications fire correctly on the morning of scheduled birthdays.
+**Plans**:
+- [ ] 03-01-PLAN.md — Create birthday list screen, age algorithms, and contact CRUD.
+- [ ] 03-02-PLAN.md — Integrate Expo local notification manager and advance alert options.
 
-Plans:
-- [ ] 03-01: Implement Birthday Tracker and Notification system.
-- [ ] 03-02: Implement recurring reminders.
+---
 
-### Phase 4: Financial Manager (AI/OCR)
-**Goal**: Integrate AI-powered financial tracking.
-**Depends on**: Phase 1
-**Requirements**: [FIN-01, FIN-02, FIN-03, FIN-04]
+### Phase 4: Local Network Sync via QR Scanner
+**Goal**: Synchronize database contents locally over Wi-Fi with KwestUp PC desktop app using a QR code camera scan.
+**Depends on**: Phase 3.
+**Requirements**: [SYNC-01, SYNC-02]
 **Success Criteria**:
-  1. App can extract expense data from a photo (OCR).
-  2. Expenses are automatically categorized using lightweight logic.
-  3. Financial dashboard displays spending summaries.
-**Plans**: 3 plans
+  1. The mobile camera scans PC-displayed QR codes to retrieve connection details.
+  2. Two-way Wi-Fi synchronization successfully merges local data with PC app local JSON storage.
+  3. A robust standalone Python synchronization server is created for PC testing.
+**Plans**:
+- [ ] 04-01-PLAN.md — Integrate QR scanning module and parse credentials payload.
+- [ ] 04-02-PLAN.md — Implement local HTTP sync client and data merge algorithms.
+- [ ] 04-03-PLAN.md — Develop the companion Python synchronization server (`sync_server.py`) for desktop.
 
-Plans:
-- [ ] 04-01: Integrate on-device OCR library.
-- [ ] 04-02: Implement AI categorization and manual entry.
-- [ ] 04-03: Build Financial Dashboard UI.
+---
 
-### Phase 5: Goals & Habit Tracking
-**Goal**: Add daily habit and long-term goal tracking.
-**Depends on**: Phase 2
-**Requirements**: [GOAL-01, GOAL-02, GOAL-03]
+### Phase 5: Local On-Device AI Integration
+**Goal**: Host a fully offline 0.5B/1B parameter LLM on-device for local summarization and task generation.
+**Depends on**: Phase 1, Phase 4.
+**Requirements**: [LAI-01, LAI-02]
 **Success Criteria**:
-  1. Daily goals tab tracks streaks and completion.
-  2. Long-term goals tab supports date-specific milestones.
-**Plans**: 2 plans
+  1. Native C++ llama.cpp compiles correctly inside React Native via native bindings.
+  2. AI model runs entirely offline, successfully summarizing notes and extracting checklist items into the Tasks database.
+**Plans**:
+- [ ] 05-01-PLAN.md — Integrate `react-native-llama` native library and set up GGUF model loader.
+- [ ] 05-02-PLAN.md — Implement note summarization UI and automated task extraction pipeline.
 
-Plans:
-- [ ] 05-01: Implement Daily Habits and Streaks.
-- [ ] 05-02: Implement Long-term Goals and Milestones.
+---
 
-### Phase 6: Productivity Utilities
-**Goal**: Add focus-enhancing tools.
-**Depends on**: Phase 1
-**Requirements**: [UTIL-01]
+### Phase 6: Docker Integration & System Polish
+**Goal**: Provide developer containerization and polish the overall user interface.
+**Depends on**: Phase 5.
+**Requirements**: [DOCKER-01]
 **Success Criteria**:
-  1. Functional study timer with configurable intervals.
-**Plans**: 1 plan
+  1. Docker-compose spins up local development servers and executes clean network tests.
+  2. Visual elements are completely polished, fully responsive, and premium.
+**Plans**:
+- [ ] 06-01-PLAN.md — Write Dockerfiles, docker-compose, and automation testing scripts.
+- [ ] 06-02-PLAN.md — Complete comprehensive visual audit, optimize startup latency, and freeze code.
 
-Plans:
-- [ ] 06-01: Implement Study Timer.
-
-### Phase 7: Android Widget Integration
-**Goal**: Extend the app experience to the home screen.
-**Depends on**: Phase 2, Phase 5
-**Requirements**: [UTIL-02]
-**Success Criteria**:
-  1. Functional Android widgets for tasks and daily goals.
-**Plans**: 2 plans
-
-Plans:
-- [ ] 07-01: Setup Android Widget infrastructure.
-- [ ] 07-02: Implement Task and Goal widgets.
+---
 
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/2 | Not started | - |
+| 1. Notes | 2/2 | ✅ Complete | 2026-05-28 |
 | 2. Tasks | 0/2 | Not started | - |
-| 3. Reminders | 0/2 | Not started | - |
-| 4. Finance | 0/3 | Not started | - |
-| 5. Goals | 0/2 | Not started | - |
-| 6. Utilities | 0/1 | Not started | - |
-| 7. Widgets | 0/2 | Not started | - |
+| 3. Birthdays | 0/2 | Not started | - |
+| 4. QR Sync | 0/3 | Not started | - |
+| 5. On-Device AI | 0/2 | Not started | - |
+| 6. Docker & Polish | 0/2 | Not started | - |

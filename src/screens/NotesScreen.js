@@ -1,0 +1,1157 @@
+import React, { useState, useMemo, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  TextInput,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+} from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import Modal from "react-native-modal";
+import {
+  saveNoteFile,
+  deleteNoteFile,
+  getAllNotesFromFilesystem,
+  extractHashtags,
+} from "../utils/fileStorage";
+
+export const NotesScreen = ({ currentTheme, notes, setNotes, showConfirmation }) => {
+  const [selectedNote, setSelectedNote] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
+  const [editFolder, setEditFolder] = useState("Uncategorized");
+  const [editTags, setEditTags] = useState("");
+
+  const [activeFolder, setActiveFolder] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTag, setSelectedTag] = useState("All");
+
+  const [isFolderModalVisible, setIsFolderModalVisible] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+
+  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+  const [editorTab, setEditorTab] = useState("edit"); // "edit" | "preview"
+
+  // 1. Folders extraction
+  const folders = useMemo(() => {
+    const list = new Set(["Uncategorized"]);
+    notes.forEach((note) => {
+      if (note.folder) list.add(note.folder);
+    });
+    return Array.from(list);
+  }, [notes]);
+
+  // 2. Tags extraction
+  const tags = useMemo(() => {
+    const list = new Set();
+    notes.forEach((note) => {
+      if (note.tags) {
+        note.tags.split(",").forEach((tag) => {
+          const trimmed = tag.trim().toLowerCase();
+          if (trimmed) list.add(trimmed);
+        });
+      }
+    });
+    return Array.from(list);
+  }, [notes]);
+
+  // 3. Filtered notes
+  const filteredNotes = useMemo(() => {
+    return notes.filter((note) => {
+      const matchesFolder = activeFolder === "All" || note.folder === activeFolder;
+      const matchesSearch =
+        searchQuery === "" ||
+        note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        note.content.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      let matchesTag = true;
+      if (selectedTag !== "All") {
+        matchesTag =
+          note.tags &&
+          note.tags
+            .split(",")
+            .map((t) => t.trim().toLowerCase())
+            .includes(selectedTag);
+      }
+
+      return matchesFolder && matchesSearch && matchesTag;
+    });
+  }, [notes, activeFolder, searchQuery, selectedTag]);
+
+  // 4. CRUD handlers
+  const handleCreateNote = async () => {
+    const defaultFolder = activeFolder === "All" ? "Uncategorized" : activeFolder;
+    let title = "Untitled Note";
+    let counter = 1;
+    while (notes.some((n) => n.folder === defaultFolder && n.title === title)) {
+      title = `Untitled Note ${counter}`;
+      counter++;
+    }
+
+    const result = await saveNoteFile(defaultFolder, title, "");
+    if (result.success) {
+      const freshNotes = await getAllNotesFromFilesystem();
+      setNotes(freshNotes);
+      const newNote = freshNotes.find((n) => n.id === result.filePath) || {
+        id: result.filePath,
+        title,
+        content: "",
+        folder: defaultFolder,
+        tags: "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      setSelectedNote(newNote);
+      setEditTitle(title);
+      setEditContent("");
+      setEditFolder(defaultFolder);
+      setEditTags("");
+      setIsEditing(true);
+      setEditorTab("edit");
+    } else {
+      Alert.alert("Error", "Failed to create note file on local disk.");
+    }
+  };
+
+  const handleSelectNote = (note) => {
+    setSelectedNote(note);
+    setEditTitle(note.title);
+    setEditContent(note.content);
+    setEditFolder(note.folder || "Uncategorized");
+    setEditTags(note.tags || "");
+    setIsEditing(true);
+    setEditorTab("preview"); // View mode by default
+  };
+
+  const handleSaveNote = async () => {
+    if (!editTitle.trim()) {
+      Alert.alert("Title Required", "Please enter a title for your note.");
+      return;
+    }
+
+    const oldFolder = (selectedNote.folder || "Uncategorized").trim();
+    const oldTitle = (selectedNote.title || "Untitled Note").trim();
+    const newFolder = (editFolder || "Uncategorized").trim();
+    const newTitle = (editTitle || "Untitled Note").trim();
+
+    const oldSanitizedTitle = oldTitle.replace(/[/\\?%*:|"<>. ]/g, "_");
+    const newSanitizedTitle = newTitle.replace(/[/\\?%*:|"<>. ]/g, "_");
+
+    const pathChanged = oldFolder !== newFolder || oldSanitizedTitle !== newSanitizedTitle;
+
+    // Check if the new title already exists in the same folder (excluding current)
+    if (pathChanged && notes.some((n) => n.folder === newFolder && n.title.replace(/[/\\?%*:|"<>. ]/g, "_") === newSanitizedTitle && n.id !== selectedNote.id)) {
+      Alert.alert("Conflict", "A note with this title already exists in the selected folder.");
+      return;
+    }
+
+    if (pathChanged) {
+      await deleteNoteFile(selectedNote.folder, selectedNote.title);
+    }
+
+    const result = await saveNoteFile(editFolder, editTitle, editContent);
+    if (result.success) {
+      const freshNotes = await getAllNotesFromFilesystem();
+      setNotes(freshNotes);
+      const savedNote = freshNotes.find((n) => n.id === result.filePath) || {
+        id: result.filePath,
+        title: editTitle,
+        content: editContent,
+        folder: editFolder,
+        tags: extractHashtags(editContent).join(", "),
+        createdAt: selectedNote.createdAt,
+        updatedAt: new Date().toISOString(),
+      };
+      setSelectedNote(savedNote);
+      setIsEditing(false);
+    } else {
+      Alert.alert("Error", "Failed to save the note to local disk.");
+    }
+  };
+
+  const handleDeleteNote = (id) => {
+    showConfirmation("Are you sure you want to delete this note?", async () => {
+      if (selectedNote) {
+        await deleteNoteFile(selectedNote.folder, selectedNote.title);
+      }
+      const freshNotes = await getAllNotesFromFilesystem();
+      setNotes(freshNotes);
+      setSelectedNote(null);
+      setIsEditing(false);
+    });
+  };
+
+  // Notion-style auto-save with 1s debounce
+  useEffect(() => {
+    if (!selectedNote || !isEditing || editorTab !== "edit") return;
+    if (editContent === selectedNote.content) return;
+
+    const delayDebounceFn = setTimeout(async () => {
+      const currentSanitizedTitle = (selectedNote.title || "Untitled Note").trim().replace(/[/\\?%*:|"<>. ]/g, "_");
+      const editingSanitizedTitle = (editTitle || "Untitled Note").trim().replace(/[/\\?%*:|"<>. ]/g, "_");
+
+      if (
+        (editFolder || "Uncategorized").trim() === (selectedNote.folder || "Uncategorized").trim() &&
+        editingSanitizedTitle === currentSanitizedTitle
+      ) {
+        console.log("⏱️ Debounced Auto-saving note to local disk...");
+        const result = await saveNoteFile(selectedNote.folder, selectedNote.title, editContent);
+        if (result.success) {
+          setNotes((prevNotes) =>
+            prevNotes.map((n) =>
+              n.id === selectedNote.id
+                ? {
+                    ...n,
+                    content: editContent,
+                    tags: extractHashtags(editContent).join(", "),
+                    updatedAt: new Date().toISOString(),
+                  }
+                : n
+            )
+          );
+        }
+      }
+    }, 1000);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [editContent]);
+
+  // Tab toggling with auto-save
+  const handleToggleTab = async (tab) => {
+    if (tab === "preview" && editorTab === "edit") {
+      await handleSaveNote();
+    }
+    setEditorTab(tab);
+  };
+
+  // Back navigation with auto-save
+  const handleBack = async () => {
+    if (isEditing && editorTab === "edit") {
+      await handleSaveNote();
+    }
+    setSelectedNote(null);
+    setIsEditing(false);
+  };
+
+  const handleAddFolder = () => {
+    if (!newFolderName.trim()) return;
+    setActiveFolder(newFolderName.trim());
+    setIsFolderModalVisible(false);
+    setNewFolderName("");
+  };
+
+  // 5. Markdown Helper shortcuts
+  const insertMarkdown = (syntax) => {
+    setEditContent((prev) => prev + syntax);
+  };
+
+  // 6. Local Markdown parser
+  const renderMarkdown = (text) => {
+    if (!text) {
+      return (
+        <Text style={[styles.emptyContentText, { color: currentTheme.secondaryText }]}>
+          {'No content yet. Click "Edit" to write something!'}
+        </Text>
+      );
+    }
+
+    const lines = text.split("\n");
+    return lines.map((line, index) => {
+      // Headers
+      if (line.startsWith("# ")) {
+        return (
+          <Text key={index} style={[styles.h1, { color: currentTheme.text }]}>
+            {line.substring(2)}
+          </Text>
+        );
+      }
+      if (line.startsWith("## ")) {
+        return (
+          <Text key={index} style={[styles.h2, { color: currentTheme.text }]}>
+            {line.substring(3)}
+          </Text>
+        );
+      }
+      if (line.startsWith("### ")) {
+        return (
+          <Text key={index} style={[styles.h3, { color: currentTheme.text }]}>
+            {line.substring(4)}
+          </Text>
+        );
+      }
+
+      // Checkboxes / Tasks
+      if (line.startsWith("- [ ] ")) {
+        return (
+          <View key={index} style={styles.mdTodoRow}>
+            <MaterialCommunityIcons name="checkbox-blank-outline" size={20} color={currentTheme.primary} />
+            <Text style={[styles.mdTodoText, { color: currentTheme.text }]}>
+              {line.substring(6)}
+            </Text>
+          </View>
+        );
+      }
+      if (line.startsWith("- [x] ") || line.startsWith("- [X] ")) {
+        return (
+          <View key={index} style={styles.mdTodoRow}>
+            <MaterialCommunityIcons name="checkbox-marked" size={20} color={currentTheme.primary} />
+            <Text style={[styles.mdTodoText, styles.mdTodoDone, { color: currentTheme.secondaryText }]}>
+              {line.substring(6)}
+            </Text>
+          </View>
+        );
+      }
+
+      // Bullet points
+      if (line.startsWith("- ") || line.startsWith("* ")) {
+        return (
+          <View key={index} style={styles.mdBulletRow}>
+            <Text style={[styles.bullet, { color: currentTheme.primary }]}>•</Text>
+            <Text style={[styles.mdBulletText, { color: currentTheme.text }]}>
+              {line.substring(2)}
+            </Text>
+          </View>
+        );
+      }
+
+      // Regular Paragraph with Bold/Italic formatting
+      return (
+        <Text key={index} style={[styles.paragraph, { color: currentTheme.text }]}>
+          {parseInlineMarkdown(line)}
+        </Text>
+      );
+    });
+  };
+
+  const parseInlineMarkdown = (text) => {
+    const parts = [];
+    let currentIdx = 0;
+
+    // Simple regex parser for bold (**) and italic (*)
+    const regex = /(\*\*|__)(.*?)\1|(\*)(.*?)\3/g;
+    let match;
+
+    while ((match = regex.exec(text)) !== null) {
+      const matchIdx = match.index;
+      
+      // Add plain text before match
+      if (matchIdx > currentIdx) {
+        parts.push(text.substring(currentIdx, matchIdx));
+      }
+
+      if (match[1]) {
+        // Bold
+        parts.push(
+          <Text key={matchIdx} style={styles.boldText}>
+            {match[2]}
+          </Text>
+        );
+      } else if (match[3]) {
+        // Italic
+        parts.push(
+          <Text key={matchIdx} style={styles.italicText}>
+            {match[4]}
+          </Text>
+        );
+      }
+
+      currentIdx = regex.lastIndex;
+    }
+
+    if (currentIdx < text.length) {
+      parts.push(text.substring(currentIdx));
+    }
+
+    return parts.length > 0 ? parts : text;
+  };
+
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={[styles.container, { backgroundColor: currentTheme.background }]}
+    >
+      <View style={styles.rowContainer}>
+        {/* SIDEBAR EXPLORER */}
+        {isSidebarVisible && !selectedNote && (
+          <View style={[styles.sidebar, { borderRightColor: currentTheme.border, backgroundColor: currentTheme.cardBackground }]}>
+            <View style={styles.sidebarHeader}>
+              <Text style={[styles.sidebarTitle, { color: currentTheme.text }]}>Explorer</Text>
+              <TouchableOpacity onPress={() => setIsFolderModalVisible(true)}>
+                <MaterialCommunityIcons name="folder-plus" size={22} color={currentTheme.primary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Folder list */}
+            <ScrollView style={styles.sidebarScroll}>
+              <Text style={[styles.sectionHeader, { color: currentTheme.secondaryText }]}>FOLDERS</Text>
+              <TouchableOpacity
+                style={[styles.sidebarItem, activeFolder === "All" && styles.activeItem]}
+                onPress={() => setActiveFolder("All")}
+              >
+                <MaterialCommunityIcons
+                  name="folder-outline"
+                  size={20}
+                  color={activeFolder === "All" ? currentTheme.primary : currentTheme.secondaryText}
+                />
+                <Text style={[styles.sidebarText, activeFolder === "All" && { color: currentTheme.primary }]}>
+                  All Notes
+                </Text>
+              </TouchableOpacity>
+
+              {folders.map((folder) => (
+                <TouchableOpacity
+                  key={folder}
+                  style={[styles.sidebarItem, activeFolder === folder && styles.activeItem]}
+                  onPress={() => setActiveFolder(folder)}
+                >
+                  <MaterialCommunityIcons
+                    name="folder"
+                    size={20}
+                    color={activeFolder === folder ? currentTheme.primary : currentTheme.secondaryText}
+                  />
+                  <Text style={[styles.sidebarText, activeFolder === folder && { color: currentTheme.primary }]}>
+                    {folder}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+
+              {/* Tags Filter Section */}
+              {tags.length > 0 && (
+                <>
+                  <Text style={[styles.sectionHeader, { color: currentTheme.secondaryText, marginTop: 20 }]}>TAGS</Text>
+                  <TouchableOpacity
+                    style={[styles.sidebarItem, selectedTag === "All" && styles.activeItem]}
+                    onPress={() => setSelectedTag("All")}
+                  >
+                    <MaterialCommunityIcons
+                      name="tag-outline"
+                      size={20}
+                      color={selectedTag === "All" ? currentTheme.primary : currentTheme.secondaryText}
+                    />
+                    <Text style={[styles.sidebarText, selectedTag === "All" && { color: currentTheme.primary }]}>
+                      All Tags
+                    </Text>
+                  </TouchableOpacity>
+                  {tags.map((tag) => (
+                    <TouchableOpacity
+                      key={tag}
+                      style={[styles.sidebarItem, selectedTag === tag && styles.activeItem]}
+                      onPress={() => setSelectedTag(tag)}
+                    >
+                      <MaterialCommunityIcons
+                        name="tag"
+                        size={20}
+                        color={selectedTag === tag ? currentTheme.primary : currentTheme.secondaryText}
+                      />
+                      <Text style={[styles.sidebarText, selectedTag === tag && { color: currentTheme.primary }]}>
+                        #{tag}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </>
+              )}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* MAIN PANEL */}
+        <View style={styles.mainPanel}>
+          {!selectedNote ? (
+            // NOTES LIST
+            <View style={styles.flexOne}>
+              {/* Toolbar */}
+              <View style={styles.listHeader}>
+                <View style={styles.searchBarContainer}>
+                  <MaterialCommunityIcons name="magnify" size={20} color={currentTheme.secondaryText} style={styles.searchIcon} />
+                  <TextInput
+                    style={[styles.searchInput, { color: currentTheme.text, backgroundColor: currentTheme.cardBackground }]}
+                    placeholder="Search notes..."
+                    placeholderTextColor={currentTheme.secondaryText}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                  />
+                </View>
+                <TouchableOpacity
+                  style={[styles.createButton, { backgroundColor: currentTheme.primary }]}
+                  onPress={handleCreateNote}
+                >
+                  <MaterialCommunityIcons name="plus" size={20} color="#FFF" />
+                  <Text style={styles.createButtonText}>Note</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Selected path display */}
+              <View style={styles.pathHeader}>
+                <MaterialCommunityIcons name="home-outline" size={16} color={currentTheme.secondaryText} />
+                <Text style={[styles.pathText, { color: currentTheme.secondaryText }]}>
+                  / {activeFolder} {selectedTag !== "All" ? `> #${selectedTag}` : ""}
+                </Text>
+              </View>
+
+              {/* Notes Grid/List */}
+              <FlatList
+                data={filteredNotes}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={styles.listScroll}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[styles.noteCard, { backgroundColor: currentTheme.cardBackground }]}
+                    onPress={() => handleSelectNote(item)}
+                  >
+                    <View style={styles.noteCardHeader}>
+                      <Text style={[styles.noteCardTitle, { color: currentTheme.text }]} numberOfLines={1}>
+                        {item.title || "Untitled Note"}
+                      </Text>
+                      <MaterialCommunityIcons name="chevron-right" size={18} color={currentTheme.secondaryText} />
+                    </View>
+                    <Text style={[styles.noteCardSnippet, { color: currentTheme.secondaryText }]} numberOfLines={2}>
+                      {item.content || "Empty content"}
+                    </Text>
+                    <View style={styles.noteCardFooter}>
+                      <View style={styles.noteTagsContainer}>
+                        {item.tags ? (
+                          item.tags.split(",").map((t, idx) => (
+                            <View key={idx} style={[styles.badge, { backgroundColor: currentTheme.primary + "15" }]}>
+                              <Text style={[styles.badgeText, { color: currentTheme.primary }]}>#{t.trim()}</Text>
+                            </View>
+                          ))
+                        ) : (
+                          <View style={[styles.badge, { backgroundColor: currentTheme.primary + "10" }]}>
+                            <Text style={[styles.badgeText, { color: currentTheme.secondaryText }]}>note</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={[styles.noteCardTime, { color: currentTheme.secondaryText }]}>
+                        {new Date(item.updatedAt).toLocaleDateString()}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+                ListEmptyComponent={
+                  <View style={styles.emptyStateContainer}>
+                    <MaterialCommunityIcons name="note-text-outline" size={64} color={currentTheme.secondaryText} />
+                    <Text style={[styles.emptyStateText, { color: currentTheme.secondaryText }]}>
+                      No notes found in this folder.
+                    </Text>
+                  </View>
+                }
+              />
+            </View>
+          ) : (
+            // NOTE EDITOR / RENDERER
+            <View style={styles.flexOne}>
+              {/* Editor Header */}
+              <View style={[styles.editorHeader, { borderBottomColor: currentTheme.border }]}>
+                <TouchableOpacity
+                  style={styles.backButton}
+                  onPress={handleBack}
+                >
+                  <MaterialCommunityIcons name="arrow-left" size={24} color={currentTheme.text} />
+                  <Text style={[styles.backText, { color: currentTheme.text }]}>Back</Text>
+                </TouchableOpacity>
+
+                {/* Edit vs Preview Toggle */}
+                <View style={[styles.editorToggle, { backgroundColor: currentTheme.primary + "10" }]}>
+                  <TouchableOpacity
+                    style={[styles.toggleBtn, editorTab === "preview" && [styles.toggleActive, { backgroundColor: currentTheme.primary }]]}
+                    onPress={() => handleToggleTab("preview")}
+                  >
+                    <Text style={[styles.toggleText, { color: editorTab === "preview" ? "#FFF" : currentTheme.text }]}>
+                      Preview
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.toggleBtn, editorTab === "edit" && [styles.toggleActive, { backgroundColor: currentTheme.primary }]]}
+                    onPress={() => handleToggleTab("edit")}
+                  >
+                    <Text style={[styles.toggleText, { color: editorTab === "edit" ? "#FFF" : currentTheme.text }]}>
+                      Edit
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Editor Action buttons */}
+                <View style={styles.editorActions}>
+                  {editorTab === "edit" ? (
+                    <TouchableOpacity style={styles.saveBtn} onPress={handleSaveNote}>
+                      <MaterialCommunityIcons name="content-save" size={24} color={currentTheme.primary} />
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity style={styles.saveBtn} onPress={() => handleToggleTab("edit")}>
+                      <MaterialCommunityIcons name="pencil" size={24} color={currentTheme.primary} />
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDeleteNote(selectedNote.id)}>
+                    <MaterialCommunityIcons name="trash-can-outline" size={24} color="#FF5252" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* EDITOR VIEW */}
+              {editorTab === "edit" ? (
+                <View style={styles.flexOne}>
+                  {/* Meta inputs */}
+                  <View style={styles.metaContainer}>
+                    <TextInput
+                      style={[styles.titleInput, { color: currentTheme.text }]}
+                      placeholder="Note Title"
+                      placeholderTextColor={currentTheme.secondaryText}
+                      value={editTitle}
+                      onChangeText={setEditTitle}
+                    />
+
+                    <View style={styles.metaRow}>
+                      <MaterialCommunityIcons name="folder-outline" size={18} color={currentTheme.secondaryText} />
+                      <Text style={[styles.metaLabel, { color: currentTheme.secondaryText }]}>Folder:</Text>
+                      <TextInput
+                        style={[styles.folderInput, { color: currentTheme.text, backgroundColor: currentTheme.primary + "10" }]}
+                        value={editFolder}
+                        onChangeText={setEditFolder}
+                        placeholder="Folder Name"
+                        placeholderTextColor={currentTheme.secondaryText}
+                      />
+                    </View>
+
+                    <View style={styles.metaRow}>
+                      <MaterialCommunityIcons name="tag-outline" size={18} color={currentTheme.secondaryText} />
+                      <Text style={[styles.metaLabel, { color: currentTheme.secondaryText }]}>Tags:</Text>
+                      <TextInput
+                        style={[styles.tagsInput, { color: currentTheme.text }]}
+                        value={editTags}
+                        onChangeText={setEditTags}
+                        placeholder="work, idea, draft (comma separated)"
+                        placeholderTextColor={currentTheme.secondaryText}
+                      />
+                    </View>
+                  </View>
+
+                  {/* Body Input */}
+                  <TextInput
+                    style={[styles.contentInput, { color: currentTheme.text }]}
+                    placeholder="Start writing markdown..."
+                    placeholderTextColor={currentTheme.secondaryText}
+                    multiline
+                    value={editContent}
+                    onChangeText={setEditContent}
+                    textAlignVertical="top"
+                  />
+
+                  {/* Markdown keyboard accessory toolbar */}
+                  <View style={[styles.mdToolbar, { backgroundColor: currentTheme.cardBackground, borderTopColor: currentTheme.border }]}>
+                    <TouchableOpacity onPress={() => insertMarkdown("# ")} style={styles.mdTool}>
+                      <Text style={[styles.mdToolText, { color: currentTheme.text }]}>H1</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => insertMarkdown("## ")} style={styles.mdTool}>
+                      <Text style={[styles.mdToolText, { color: currentTheme.text }]}>H2</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => insertMarkdown("**bold**")} style={styles.mdTool}>
+                      <MaterialCommunityIcons name="format-bold" size={20} color={currentTheme.text} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => insertMarkdown("*italic*")} style={styles.mdTool}>
+                      <MaterialCommunityIcons name="format-italic" size={20} color={currentTheme.text} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => insertMarkdown("- [ ] ")} style={styles.mdTool}>
+                      <MaterialCommunityIcons name="checkbox-blank-outline" size={20} color={currentTheme.text} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => insertMarkdown("- ")} style={styles.mdTool}>
+                      <MaterialCommunityIcons name="format-list-bulleted" size={20} color={currentTheme.text} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                // PREVIEW VIEW
+                <ScrollView style={styles.previewContainer} contentContainerStyle={styles.previewContent}>
+                  <Text style={[styles.previewTitle, { color: currentTheme.text }]}>{selectedNote.title}</Text>
+                  
+                  {/* Metadata labels */}
+                  <View style={styles.previewMeta}>
+                    <View style={[styles.metaBadge, { backgroundColor: currentTheme.primary + "15" }]}>
+                      <MaterialCommunityIcons name="folder" size={14} color={currentTheme.primary} />
+                      <Text style={[styles.metaBadgeText, { color: currentTheme.primary }]}>{selectedNote.folder}</Text>
+                    </View>
+                    
+                    {selectedNote.tags &&
+                      selectedNote.tags.split(",").map((t, idx) => (
+                        <View key={idx} style={[styles.metaBadge, { backgroundColor: "rgba(0,0,0,0.05)" }]}>
+                          <Text style={[styles.metaBadgeText, { color: currentTheme.secondaryText }]}>#{t.trim()}</Text>
+                        </View>
+                      ))}
+                  </View>
+
+                  <View style={[styles.divider, { backgroundColor: currentTheme.border }]} />
+
+                  {/* Rendered content */}
+                  {renderMarkdown(selectedNote.content)}
+                </ScrollView>
+              )}
+            </View>
+          )}
+        </View>
+      </View>
+
+      {/* Folder Creation Modal */}
+      <Modal
+        isVisible={isFolderModalVisible}
+        onBackdropPress={() => setIsFolderModalVisible(false)}
+        style={styles.modalOverlay}
+      >
+        <View style={[styles.dialogContent, { backgroundColor: currentTheme.cardBackground }]}>
+          <Text style={[styles.dialogTitle, { color: currentTheme.text }]}>New Folder</Text>
+          <Text style={[styles.dialogMessage, { color: currentTheme.secondaryText }]}>
+            Enter folder name to create and select it.
+          </Text>
+          <TextInput
+            style={[styles.nameInput, { color: currentTheme.text, borderBottomColor: currentTheme.primary }]}
+            value={newFolderName}
+            onChangeText={setNewFolderName}
+            placeholder="Folder Name"
+            placeholderTextColor={currentTheme.secondaryText}
+            autoFocus
+          />
+          <View style={styles.dialogActions}>
+            <TouchableOpacity style={styles.cancelButton} onPress={() => setIsFolderModalVisible(false)}>
+              <Text style={{ color: currentTheme.secondaryText, fontWeight: "500" }}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.confirmButton, { backgroundColor: currentTheme.primary }]}
+              onPress={handleAddFolder}
+            >
+              <Text style={{ color: "#FFF", fontWeight: "600" }}>Create</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </KeyboardAvoidingView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  rowContainer: {
+    flex: 1,
+    flexDirection: "row",
+  },
+  sidebar: {
+    width: 220,
+    borderRightWidth: 1,
+    paddingTop: 15,
+  },
+  sidebarHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 15,
+    marginBottom: 15,
+  },
+  sidebarTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  sidebarScroll: {
+    flex: 1,
+  },
+  sectionHeader: {
+    fontSize: 11,
+    fontWeight: "700",
+    paddingHorizontal: 15,
+    marginTop: 10,
+    marginBottom: 5,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  sidebarItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    marginHorizontal: 8,
+    marginBottom: 2,
+  },
+  activeItem: {
+    backgroundColor: "rgba(0, 0, 0, 0.04)",
+  },
+  sidebarText: {
+    fontSize: 14,
+    marginLeft: 10,
+    fontWeight: "500",
+  },
+  mainPanel: {
+    flex: 1,
+  },
+  flexOne: {
+    flex: 1,
+  },
+  listHeader: {
+    flexDirection: "row",
+    padding: 15,
+    alignItems: "center",
+  },
+  searchBarContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  searchIcon: {
+    position: "absolute",
+    left: 10,
+    zIndex: 1,
+  },
+  searchInput: {
+    flex: 1,
+    height: 40,
+    borderRadius: 20,
+    paddingLeft: 38,
+    paddingRight: 15,
+    fontSize: 14,
+  },
+  createButton: {
+    flexDirection: "row",
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 15,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  createButtonText: {
+    color: "#FFF",
+    fontWeight: "600",
+    marginLeft: 5,
+    fontSize: 14,
+  },
+  pathHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+  },
+  pathText: {
+    fontSize: 13,
+    marginLeft: 6,
+    fontWeight: "600",
+  },
+  listScroll: {
+    paddingHorizontal: 15,
+    paddingBottom: 40,
+  },
+  noteCard: {
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+  },
+  noteCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  noteCardTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    flex: 1,
+    marginRight: 10,
+  },
+  noteCardSnippet: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  noteCardFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  noteTagsContainer: {
+    flexDirection: "row",
+    flex: 1,
+    flexWrap: "wrap",
+  },
+  noteCardTime: {
+    fontSize: 11,
+    fontWeight: "500",
+  },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginRight: 6,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  emptyStateContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 80,
+  },
+  emptyStateText: {
+    fontSize: 15,
+    fontWeight: "500",
+    marginTop: 15,
+  },
+  editorHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 15,
+    height: 56,
+    borderBottomWidth: 1,
+  },
+  backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  backText: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginLeft: 5,
+  },
+  editorToggle: {
+    flexDirection: "row",
+    borderRadius: 18,
+    padding: 2,
+  },
+  toggleBtn: {
+    paddingHorizontal: 15,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  toggleActive: {
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
+  },
+  toggleText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  editorActions: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  saveBtn: {
+    marginRight: 15,
+  },
+  deleteBtn: {
+    padding: 2,
+  },
+  metaContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    paddingBottom: 10,
+  },
+  titleInput: {
+    fontSize: 22,
+    fontWeight: "700",
+    marginBottom: 12,
+    padding: 0,
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  metaLabel: {
+    fontSize: 13,
+    width: 60,
+    marginLeft: 8,
+    fontWeight: "500",
+  },
+  folderInput: {
+    fontSize: 13,
+    fontWeight: "600",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    minWidth: 100,
+  },
+  tagsInput: {
+    fontSize: 13,
+    flex: 1,
+    padding: 0,
+    fontWeight: "500",
+  },
+  contentInput: {
+    flex: 1,
+    fontSize: 15,
+    lineHeight: 22,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  mdToolbar: {
+    height: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    borderTopWidth: 1,
+  },
+  mdTool: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mdToolText: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  previewContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  previewContent: {
+    paddingBottom: 60,
+  },
+  previewTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    marginBottom: 10,
+  },
+  previewMeta: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginBottom: 15,
+  },
+  metaBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginRight: 8,
+    marginBottom: 6,
+  },
+  metaBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginLeft: 4,
+  },
+  divider: {
+    height: 1,
+    marginVertical: 15,
+  },
+  h1: {
+    fontSize: 22,
+    fontWeight: "700",
+    marginTop: 15,
+    marginBottom: 8,
+  },
+  h2: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  h3: {
+    fontSize: 15,
+    fontWeight: "700",
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  paragraph: {
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 10,
+  },
+  boldText: {
+    fontWeight: "700",
+  },
+  italicText: {
+    fontStyle: "italic",
+  },
+  mdTodoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 4,
+  },
+  mdTodoText: {
+    fontSize: 15,
+    marginLeft: 8,
+  },
+  mdTodoDone: {
+    textDecorationLine: "line-through",
+  },
+  mdBulletRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginVertical: 4,
+  },
+  bullet: {
+    fontSize: 18,
+    lineHeight: 18,
+    marginRight: 8,
+  },
+  mdBulletText: {
+    fontSize: 15,
+    lineHeight: 22,
+    flex: 1,
+  },
+  emptyContentText: {
+    fontSize: 14,
+    fontStyle: "italic",
+    textAlign: "center",
+    marginTop: 30,
+  },
+  modalOverlay: {
+    justifyContent: "center",
+    margin: 20,
+  },
+  dialogContent: {
+    borderRadius: 16,
+    padding: 20,
+    elevation: 5,
+  },
+  dialogTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  dialogMessage: {
+    fontSize: 14,
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  nameInput: {
+    borderBottomWidth: 1,
+    height: 40,
+    fontSize: 16,
+    marginBottom: 20,
+    paddingHorizontal: 5,
+  },
+  dialogActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+  },
+  cancelButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    marginRight: 10,
+  },
+  confirmButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+  },
+});

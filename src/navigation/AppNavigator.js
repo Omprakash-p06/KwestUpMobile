@@ -9,6 +9,7 @@ import { TaskListScreen } from "../screens/TaskListScreen";
 import { FocusTimerScreen } from "../screens/FocusTimerScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import { SearchScreen } from "../screens/SearchScreen";
+import { NotesScreen } from "../screens/NotesScreen";
 
 const Drawer = createDrawerNavigator();
 
@@ -42,7 +43,9 @@ export const AppNavigator = ({
   setThemeMode,
   selectedThemeName,
   setSelectedThemeName,
-  handleResetData
+  handleResetData,
+  notes,
+  setNotes
 }) => {
   return (
     <Drawer.Navigator
@@ -141,6 +144,16 @@ export const AppNavigator = ({
             currentTheme={currentTheme}
             setSelectedTask={setSelectedTask}
             setModalVisible={setModalVisible}
+          />
+        )}
+      </Drawer.Screen>
+      <Drawer.Screen name="Notes" options={{ title: "Notes" }}>
+        {() => (
+          <NotesScreen
+            currentTheme={currentTheme}
+            notes={notes}
+            setNotes={setNotes}
+            showConfirmation={showConfirmation}
           />
         )}
       </Drawer.Screen>

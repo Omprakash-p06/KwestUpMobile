@@ -11,3 +11,11 @@ Resolved debug sessions. Used by `gsd-debugger` to surface known-pattern hypothe
 - **Fix:** Create a workspace-specific GEMINI.md in the root directory to document these global standards and ensure they are followed by all agents.
 - **Files changed:** GEMINI.md, .planning/codebase/CONVENTIONS.md, .planning/codebase/TESTING.md
 ---
+
+## sonar-server-not-reached — SonarQube Scanner Missing Host URL
+- **Date:** 2026-05-26
+- **Error patterns:** SonarQube, server, not reached, host, url, colon, empty
+- **Root cause:** When required secrets (`SONAR_HOST_URL` or `SONAR_TOKEN`) are not configured (e.g. on fork PR builds), they pass as empty strings to the environment variables, causing the SonarQube scanner to crash.
+- **Fix:** Add a conditional `if` check to the workflow step so it only runs if both secrets are non-empty.
+- **Files changed:** .github/workflows/sonarqube.yml
+---

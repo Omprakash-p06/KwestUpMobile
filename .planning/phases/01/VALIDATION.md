@@ -1,59 +1,40 @@
-# Phase 1: Architectural Foundation - Validation
+# Validation: Phase 1 (Markdown Notes)
 
-This document verifies the completion of the Architectural Foundation phase, ensuring the core navigation, state management, and optimized storage are correctly implemented and meet the performance requirements.
+This document outlines the testing and validation criteria for the **Notion/Obsidian Markdown Notes** phase.
 
-## 1. Goal-Backward Verification
+---
 
-**Phase Goal:** Establish a robust and performant foundation for the app.
+## User Acceptance Criteria (UAT)
 
-### Observable Truths
-| ID | Truth | Verification Method |
-|----|-------|---------------------|
-| V-01 | **Tab Navigation** | Launch app; verify "Tasks", "Finance", and "Goals" tabs are visible and navigable. |
-| V-02 | **State Persistence** | Change a setting in the app; restart app; verify the setting is retained (MMKV-backed Zustand). |
-| V-03 | **SQLite Persistence** | Add a task; kill app; relaunch; verify task persists in the Tasks tab (expo-sqlite). |
-| V-04 | **High-Perf Scrolling** | Bulk-insert 100+ tasks; scroll list; verify smooth 60fps performance (FlashList). |
-| V-05 | **CI/CD Readiness** | Run `npm test`; verify all unit tests for stores and repositories pass. |
+### UAT-1: Notes Explorer Navigation
+- **Action**: Open the main side navigation drawer and click "Notes".
+- **Result**: The app switches to the Notes screen. The sidebar displays folders (including Uncategorized) and a list of hashtags.
 
-### Required Artifacts
-| Path | Purpose | Verification |
-|------|---------|--------------|
-| `app/_layout.tsx` | Root Navigation Provider | Check for `Stack` and `Tabs` configuration. |
-| `src/store/storage.ts` | MMKV Persistence Adapter | Verify `StateStorage` implementation for Zustand. |
-| `src/db/client.ts` | SQLite JSI Connection | Verify `SQLite.openDatabaseSync` usage. |
-| `src/components/common/HighPerfList.tsx` | Optimized List Component | Verify `@shopify/flash-list` wrapper with `estimatedItemSize`. |
+### UAT-2: Creating and Saving Notes
+- **Action**: Click the "+ Note" button in the notes list.
+- **Result**: A new note titled "Untitled Note" is created. Enter edit mode, change the title, add tags, and type markdown content (e.g. headings, bolding). Click save.
+- **Result**: The note persists. Relaunching the app loads the note and all metadata from AsyncStorage.
 
-### Key Links
-| Link | Description | Verification Pattern |
-|------|-------------|----------------------|
-| **UI -> Store** | Tabs consume global state | `useAppStore()` in components. |
-| **Store -> MMKV** | State survives reloads | `persist(..., { storage: createJSONStorage(() => mmkvStorage) })` |
-| **Repo -> SQLite** | Data is relational and fast | `TaskRepository` uses `db.runSync()` or `db.getAllSync()`. |
+### UAT-3: Markdown Rendering (Preview)
+- **Action**: Write standard headers `# H1` and `## H2`, bold `**bold**`, bullets `- list`, and checkboxes `- [ ] todo` in edit mode. Switch to preview mode.
+- **Result**: The content is beautifully styled. Checking a todo checklist checkbox displays as complete.
 
-## 2. Requirement Coverage
+### UAT-4: Folder Organization & Filter
+- **Action**: Click "New Folder" icon, create folder "School". Move a note to folder "School" inside the meta editor. Click "School" folder in sidebar.
+- **Result**: The notes list is filtered to display only notes located in the "School" folder.
 
-| Requirement ID | Description | Implementation Status |
-|----------------|-------------|-----------------------|
-| **PERF-01** | Sub-100ms UI responsiveness for state updates. | Handled by Zustand + MMKV (Synchronous). |
-| **PERF-02** | Efficient local storage for 1000+ relational items. | Handled by expo-sqlite (JSI-based). |
+---
 
-## 3. Automated Verification
+## Technical Verification
 
-```bash
-# Verify Type Safety
-npx expo-typecheck
+### 1. Code Review & Linting
+- Ensure all files are styled properly and follow standard Javascript style guidelines.
+- Execute ESLint validation:
+  ```bash
+  npm run lint
+  ```
+- **Falsifiable Pass**: Output contains `0 errors`.
 
-# Run Unit Tests
-npm test src/store/__tests__/useAppStore.test.ts
-npm test src/db/__tests__/TaskRepository.test.ts
-
-# Verify Linting
-npm run lint
-```
-
-## 4. Manual Verification (UAT)
-
-1. **Cold Start:** App should boot to the Tasks tab in under 2 seconds on a physical device.
-2. **Navigation:** Switch between all three tabs; check for visual glitches or delays.
-3. **Persistence:** Toggle a persistent state flag (e.g., `hasSeenOnboarding`); restart; verify flag state.
-4. **Stress Test:** Use the "Bulk Add" feature in the Tasks tab; verify scrolling feels native and responsive.
+### 2. Storage Persistence Integrity
+- Open AsyncStorage files or check AsyncStorage logs.
+- **Falsifiable Pass**: Saved data string includes `"notes": [...]` array with full objects containing `id`, `title`, `content`, `folder`, `tags`, `createdAt`, and `updatedAt`.

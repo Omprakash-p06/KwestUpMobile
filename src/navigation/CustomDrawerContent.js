@@ -15,6 +15,7 @@ export const CustomDrawerContent = (props) => {
     { key: "Daily", title: "Daily Tasks", icon: "bell", route: "Daily" },
     { key: "Birthdays", title: "Birthdays", icon: "cake", route: "Birthdays" },
     { key: "Tasks", title: "Task List", icon: "clipboard-list", route: "Tasks" },
+    { key: "Notes", title: "Notes", icon: "notebook", route: "Notes" },
     { key: "Focus", title: "Focus Timer", icon: "timer", route: "Focus" },
     { key: "Settings", title: "Settings", icon: "cog", route: "Settings" },
     { key: "Search", title: "Search", icon: "magnify", route: "Search" },

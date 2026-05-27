@@ -26,6 +26,7 @@ jobs:
         run: npx eslint . --format json --output-file eslint-report.json
 
       - name: SonarQube Scan
+        if: ${{ secrets.SONAR_HOST_URL != '' && secrets.SONAR_TOKEN != '' }}
         uses: sonarsource/sonarqube-scan-action@v2
         with:
           args: >

@@ -20,6 +20,7 @@ import { TimerLockoutOverlay } from "./src/components/TimerLockoutOverlay";
 import { themes } from "./src/theme/colors";
 import { styles } from "./src/theme/styles";
 import { AppNavigator } from "./src/navigation/AppNavigator";
+import { initNotesFolder, getAllNotesFromFilesystem, wipeNotesFilesystem } from "./src/utils/fileStorage";
 
 // Utility imports
 import { APP_VERSION, STORAGE_VERSION, clearAllCaches } from "./src/utils/storage";
@@ -41,6 +42,7 @@ const App = () => {
   const [dailyTasks, setDailyTasks] = useState([]);
   const [birthdays, setBirthdays] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [notes, setNotes] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [timerDuration, setTimerDuration] = useState(25 * 60);
@@ -69,6 +71,7 @@ const App = () => {
   const initializeApp = useCallback(async () => {
     setIsLoading(true);
     try {
+      await initNotesFolder();
       runDeviceDiagnostics();
       await checkForUpdates();
       await runNetworkDiagnostics();
@@ -126,6 +129,8 @@ const App = () => {
         setDailyTasks(parsedData.dailyTasks || []);
         setBirthdays(parsedData.birthdays || []);
         setTasks(parsedData.tasks || []);
+        const fsNotes = await getAllNotesFromFilesystem();
+        setNotes(fsNotes);
         setThemeMode(parsedData.themeMode || "light");
         setSelectedThemeName(parsedData.selectedThemeName || "dribbble");
         if (storedUserName) setUserName(storedUserName);
@@ -150,6 +155,8 @@ const App = () => {
         setDailyTasks([]);
         setBirthdays([]);
         setTasks([]);
+        const fsNotes = await getAllNotesFromFilesystem();
+        setNotes(fsNotes);
         setThemeMode("light");
         setSelectedThemeName("dribbble");
         setUserName(storedUserName || "");
@@ -158,6 +165,8 @@ const App = () => {
       setDailyTasks([]);
       setBirthdays([]);
       setTasks([]);
+      const fsNotes = await getAllNotesFromFilesystem();
+      setNotes(fsNotes);
       setThemeMode("light");
       setSelectedThemeName("dribbble");
     }
@@ -170,6 +179,7 @@ const App = () => {
       dailyTasks,
       birthdays,
       tasks,
+      notes,
       timerState: {
         duration: timerDuration,
         remaining: timerRemaining,
@@ -387,10 +397,12 @@ const App = () => {
   const handleResetData = () => {
     showConfirmation(
       "Are you sure you want to reset all data? This action cannot be undone.",
-      () => {
+      async () => {
         setDailyTasks([]);
         setBirthdays([]);
         setTasks([]);
+        setNotes([]);
+        await wipeNotesFilesystem();
         setTimerDuration(25 * 60);
         setTimerRemaining(25 * 60);
         setIsTimerRunning(false);
@@ -422,6 +434,8 @@ const App = () => {
                 currentTheme={currentTheme}
                 tasks={tasks}
                 setTasks={setTasks}
+                notes={notes}
+                setNotes={setNotes}
                 handleCompleteTask={handleCompleteTask}
                 toggleTaskComplete={toggleTaskComplete}
                 deleteTask={deleteTask}
