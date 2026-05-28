@@ -20,7 +20,7 @@ import { TimerLockoutOverlay } from "./src/components/TimerLockoutOverlay";
 import { themes } from "./src/theme/colors";
 import { styles } from "./src/theme/styles";
 import { AppNavigator } from "./src/navigation/AppNavigator";
-import { initNotesFolder, getAllNotesFromFilesystem, wipeNotesFilesystem } from "./src/utils/fileStorage";
+import { initNotesFolder, getAllNotesFromFilesystem, wipeNotesFilesystem, saveNoteFile } from "./src/utils/fileStorage";
 
 // Utility imports
 import { APP_VERSION, STORAGE_VERSION, clearAllCaches } from "./src/utils/storage";
@@ -31,8 +31,10 @@ import {
   schedulePushNotification,
   scheduleDueDateNotification,
   cancelDueDateNotification,
-  cancelCustomBirthdayReminders
+  cancelCustomBirthdayReminders,
+  scheduleCustomBirthdayReminders
 } from "./src/utils/notifications";
+import { performSync } from "./src/utils/syncService";
 
 // Configuration
 const FORCE_CLEAR_ALL_STORAGE = false;
@@ -65,6 +67,8 @@ const App = () => {
   const [showNameDialog, setShowNameDialog] = useState(false);
   const [confettiVisible, setConfettiVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [lastSynced, setLastSynced] = useState(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -140,6 +144,7 @@ const App = () => {
         setNotes(fsNotes);
         setThemeMode(parsedData.themeMode || "light");
         setSelectedThemeName(parsedData.selectedThemeName || "dribbble");
+        setLastSynced(parsedData.lastSynced || null);
         if (storedUserName) setUserName(storedUserName);
         else setUserName(parsedData.userName || "");
 
@@ -169,6 +174,7 @@ const App = () => {
         setNotes(fsNotes);
         setThemeMode("light");
         setSelectedThemeName("dribbble");
+        setLastSynced(null);
         setUserName(storedUserName || "");
       }
     } catch (error) {
@@ -182,6 +188,7 @@ const App = () => {
       setNotes(fsNotes);
       setThemeMode("light");
       setSelectedThemeName("dribbble");
+      setLastSynced(null);
     }
   }, [isInitialized]);
 
@@ -203,6 +210,7 @@ const App = () => {
       themeMode,
       selectedThemeName,
       userName,
+      lastSynced,
       version: APP_VERSION,
       timestamp: new Date().toISOString(),
     };
@@ -225,6 +233,7 @@ const App = () => {
     themeMode,
     selectedThemeName,
     userName,
+    lastSynced,
     isInitialized,
   ]);
 
@@ -250,6 +259,7 @@ const App = () => {
     themeMode,
     selectedThemeName,
     userName,
+    lastSynced,
     isInitialized,
     saveData,
   ]);
@@ -486,6 +496,86 @@ const App = () => {
     );
   };
 
+  const handleExecuteSync = async (config) => {
+    setIsSyncing(true);
+    try {
+      // 1. Run sync over network
+      const result = await performSync(config, {
+        notes,
+        tasks,
+        taskLists,
+        birthdays,
+        themeMode,
+        selectedThemeName,
+        userName
+      });
+
+      if (result) {
+        // 2. Clear old notes filesystem vault completely
+        await wipeNotesFilesystem();
+
+        // 3. Write returning synchronized note markdown files back to device storage
+        for (const note of result.notes || []) {
+          await saveNoteFile(note.folder, note.title, note.content);
+        }
+
+        // 4. Cancel all old scheduled birthday alarm system configurations
+        birthdays.forEach(bday => {
+          if (bday.notificationIds && bday.notificationIds.length > 0) {
+            cancelCustomBirthdayReminders(bday.notificationIds);
+          }
+        });
+
+        // 5. Reschedule upcoming reminders for newly synchronized birthdays list
+        const rescheduledBirthdays = [];
+        for (const bday of result.birthdays || []) {
+          const updatedBday = { ...bday };
+          try {
+            const newNotificationIds = await scheduleCustomBirthdayReminders(bday);
+            updatedBday.notificationIds = newNotificationIds;
+          } catch (err) {
+            console.error("reschedule custom birthdays failed:", bday.name, err);
+          }
+          rescheduledBirthdays.push(updatedBday);
+        }
+
+        // 6. Overwrite app React state properties
+        setTasks(result.tasks || []);
+        setTaskLists(result.taskLists || [
+          { id: "default_inbox", name: "My Tasks", createdAt: new Date().toISOString() }
+        ]);
+        setThemeMode(result.themeMode || "light");
+        setSelectedThemeName(result.selectedThemeName || "dribbble");
+        setUserName(result.userName || "");
+        
+        // 7. Load merged notes array directly from updated filesystem
+        const updatedNotes = await getAllNotesFromFilesystem();
+        setNotes(updatedNotes);
+        
+        // Save the updated birthdays with scheduled notification IDs
+        setBirthdays(rescheduledBirthdays);
+
+        // 8. Update sync timestamp status indicators
+        const nowStr = new Date().toISOString();
+        setLastSynced(nowStr);
+
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        showConfirmation(
+          `Sync Completed!\n\n• ${result.notes?.length || 0} notes updated\n• ${result.tasks?.length || 0} tasks updated\n• ${result.birthdays?.length || 0} birthdays updated`,
+          () => {}
+        );
+      }
+    } catch (error) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      showConfirmation(
+        error.message || "Local network sync request failed. Please check host connections.",
+        () => {}
+      );
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleResetData = () => {
     showConfirmation(
       "Are you sure you want to reset all data? This action cannot be undone.",
@@ -569,6 +659,9 @@ const App = () => {
                 selectedThemeName={selectedThemeName}
                 setSelectedThemeName={setSelectedThemeName}
                 handleResetData={handleResetData}
+                handleExecuteSync={handleExecuteSync}
+                lastSynced={lastSynced}
+                isSyncing={isSyncing}
               />
             </NavigationContainer>
 

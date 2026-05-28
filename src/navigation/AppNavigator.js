@@ -50,7 +50,10 @@ export const AppNavigator = ({
   setSelectedThemeName,
   handleResetData,
   notes,
-  setNotes
+  setNotes,
+  handleExecuteSync,
+  lastSynced,
+  isSyncing
 }) => {
   return (
     <Drawer.Navigator
@@ -186,6 +189,9 @@ export const AppNavigator = ({
             setSelectedThemeName={setSelectedThemeName}
             showConfirmation={showConfirmation}
             handleResetData={handleResetData}
+            handleExecuteSync={handleExecuteSync}
+            lastSynced={lastSynced}
+            isSyncing={isSyncing}
           />
         )}
       </Drawer.Screen>

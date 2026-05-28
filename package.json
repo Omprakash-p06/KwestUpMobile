@@ -30,7 +30,8 @@
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
     "use-latest-callback": "^0.2.4",
-    "expo-file-system": "~18.1.11"
+    "expo-file-system": "~18.1.11",
+    "expo-camera": "~16.1.11"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

@@ -28,6 +28,14 @@
       "favicon": "./assets/favicon.png"
     },
     "sdkVersion": "53.0.0",
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow KwestUp to access your camera to scan synchronization QR codes."
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "9b029b06-5b07-4a1d-9999-a543a3ef1614"
