@@ -30,6 +30,70 @@ export const TaskCard = ({ task, onPress, onComplete, onUncomplete, onDelete, th
     : {};
 
   if (type === 'birthday') {
+    // birthDate is task.birthDate or task.date
+    const dateStr = task.birthDate || task.date || "";
+    
+    // Calculate stats safely
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const parts = dateStr.split('-');
+    let birthYear = null;
+    let month = 0;
+    let day = 1;
+
+    if (parts.length === 3) {
+      birthYear = parseInt(parts[0], 10);
+      month = parseInt(parts[1], 10) - 1;
+      day = parseInt(parts[2], 10);
+    } else if (parts.length === 2) {
+      month = parseInt(parts[0], 10) - 1;
+      day = parseInt(parts[1], 10);
+    }
+
+    const currentYear = today.getFullYear();
+    
+    // Leap-safe date check
+    let bdayThisYear = new Date(currentYear, month, day);
+    if (bdayThisYear.getMonth() !== month) {
+      bdayThisYear = new Date(currentYear, month, day + 1);
+    }
+
+    let nextBday = new Date(bdayThisYear);
+    if (bdayThisYear < today) {
+      nextBday.setFullYear(currentYear + 1);
+      if (nextBday.getMonth() !== month) {
+        nextBday = new Date(currentYear + 1, month, day + 1);
+      }
+    }
+
+    const diffTime = nextBday.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    let ageText = "";
+    if (birthYear) {
+      const upcomingAge = nextBday.getFullYear() - birthYear;
+      const currentAge = upcomingAge - 1;
+      if (diffDays === 0) {
+        ageText = `Turns ${upcomingAge} today! 🍰`;
+      } else {
+        ageText = `Turns ${upcomingAge} (Age: ${currentAge})`;
+      }
+    }
+
+    let countdownText = "";
+    if (diffDays === 0) {
+      countdownText = "TODAY! 🎉🎂";
+    } else if (diffDays === 1) {
+      countdownText = "tomorrow!";
+    } else {
+      countdownText = `in ${diffDays} days`;
+    }
+
+    // Format display date: "Month Day" e.g. "Oct 15"
+    const monthsName = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const displayDate = `${monthsName[month]} ${day}`;
+
     return (
       <View style={{
         backgroundColor: cardBg,
@@ -44,18 +108,25 @@ export const TaskCard = ({ task, onPress, onComplete, onUncomplete, onDelete, th
         shadowOpacity: 0.08,
         shadowRadius: 16,
         elevation: 4,
-        minHeight: 80,
+        minHeight: 90,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         ...importantGlow,
       }}>
-        <View>
+        <View style={{ flex: 1, marginRight: 10 }}>
           <Text style={{ color: textColor, fontWeight: '700', fontSize: 17, marginBottom: 2 }}>{task.title || task.name || 'Birthday'}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2, flexWrap: 'wrap' }}>
             <MaterialCommunityIcons name="cake-variant" size={18} color={cardAccent} style={{ marginRight: 4 }} />
-            <Text style={{ color: cardAccent, fontWeight: '600', fontSize: 14 }}>{task.date}</Text>
+            <Text style={{ color: cardAccent, fontWeight: '700', fontSize: 14, marginRight: 8 }}>{displayDate}</Text>
+            <Text style={{ color: currentTheme.secondaryText || '#888', fontSize: 13, marginRight: 8 }}>•</Text>
+            <Text style={{ color: diffDays === 0 ? (currentTheme.success || '#4CAF50') : cardAccent, fontWeight: '700', fontSize: 14 }}>{countdownText}</Text>
           </View>
+          {ageText ? (
+            <Text style={{ color: currentTheme.secondaryText || '#888', fontSize: 13, marginTop: 4, fontWeight: '600' }}>
+              {ageText}
+            </Text>
+          ) : null}
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           {task.completed ? (
@@ -122,11 +193,15 @@ export const TaskCard = ({ task, onPress, onComplete, onUncomplete, onDelete, th
         </View>
       )}
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, marginTop: 2 }}>
-        <Text style={{ color: cardAccent, fontWeight: '600', fontSize: 13, marginRight: 8 }}>TASK PROGRESS</Text>
+        <Text style={{ color: cardAccent, fontWeight: '600', fontSize: 13, marginRight: 8 }}>PROGRESS</Text>
         <View style={{ flex: 1, height: 7, backgroundColor: currentTheme.border || '#F0F2F6', borderRadius: 4, overflow: 'hidden', marginRight: 8 }}>
           <View style={{ width: `${(task.subtasks && task.subtasks.length > 0 ? (task.subtasks.filter(st => st.completed).length / task.subtasks.length) : 0) * 100}%`, height: 7, backgroundColor: cardAccent, borderRadius: 4, opacity: (task.subtasks && task.subtasks.length > 0) ? 1 : 0.25 }} />
         </View>
-        <Text style={{ color: cardAccent, fontWeight: '700', fontSize: 13 }}>{task.subtasks && task.subtasks.length > 0 ? `${Math.round((task.subtasks.filter(st => st.completed).length / task.subtasks.length) * 100)}%` : '0%'}</Text>
+        <Text style={{ color: cardAccent, fontWeight: '700', fontSize: 13 }}>
+          {task.subtasks && task.subtasks.length > 0 
+            ? `${task.subtasks.filter(st => st.completed).length}/${task.subtasks.length} (${Math.round((task.subtasks.filter(st => st.completed).length / task.subtasks.length) * 100)}%)` 
+            : '0%'}
+        </Text>
       </View>
       {task.subtasks && task.subtasks.length > 0 && (
         <View style={{ marginBottom: 8, marginLeft: 2 }}>

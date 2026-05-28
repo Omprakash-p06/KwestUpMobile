@@ -9,10 +9,10 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 ## Phases
 
 - [x] **Phase 1: Notion/Obsidian-style Notes** - Obsidian-style raw `.md` filesystem vault with Notion-style debounced auto-save, collapsible sidebar explorer, dual edit/preview markdown engine. ✅ COMPLETE
-- [ ] **Phase 2: Google Tasks-style Task Management** - Build Google Tasks-style Lists with drag-and-drop, due dates, checklist subtasks, and DB persistence.
-- [ ] **Phase 3: Birthday Reminder Module** - Build contact birthday dashboard with age and countdown calculations, plus Native push notifications.
+- [x] **Phase 2: Google Tasks-style Task Management** - Build Google Tasks-style Lists with drag-and-drop, due dates, checklist subtasks, and DB persistence. ✅ COMPLETE
+- [x] **Phase 3: Birthday Reminder Module** - Build contact birthday dashboard with age and countdown calculations, plus Native push notifications. ✅ COMPLETE
 - [ ] **Phase 4: Local Network Sync via QR Scanner** - Integrate camera QR scanning to retrieve PC host IP, port, and security token, and execute two-way Wi-Fi synchronization with the Electron app. Implement the Python desktop sync reference server.
-- [ ] **Phase 5: Local On-Device AI Integration** - Link `react-native-llama` to compile native C++ bindings, download a quantized Qwen2.5-0.5B-Instruct model, and implement local note summarization and task extraction.
+- [ ] **Phase 5: Local On-Device AI Integration** - Link `react-native-llama` to compile native C++ bindings, download a quantized Qwen3-0.6B-GGUF model (https://huggingface.co/Qwen/Qwen3-0.6B-GGUF), and implement local note summarization and task extraction.
 - [ ] **Phase 6: Docker Integration & System Polish** - Set up Docker compose for developer sync services, execute automated integration tests, and polish the user experience.
 
 ---
@@ -40,8 +40,8 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
   1. Users can slide between custom task categories/lists.
   2. Tasks display nested checklists with visual progress completion tracking.
 **Plans**:
-- [ ] 02-01-PLAN.md — Build Task lists DB tables, core task CRUD logic, and category tabs UI.
-- [ ] 02-02-PLAN.md — Build subtasks checklists UI and visual progress tracker.
+- [x] 02-01-PLAN.md — Build Task lists DB tables, core task CRUD logic, and category tabs UI. ✅
+- [x] 02-02-PLAN.md — Build subtasks checklists UI and visual progress tracker. ✅
 
 ---
 
@@ -53,8 +53,8 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
   1. Birthday cards display age and days remaining with automated countdowns.
   2. Local system notifications fire correctly on the morning of scheduled birthdays.
 **Plans**:
-- [ ] 03-01-PLAN.md — Create birthday list screen, age algorithms, and contact CRUD.
-- [ ] 03-02-PLAN.md — Integrate Expo local notification manager and advance alert options.
+- [x] 03-01-PLAN.md — Create birthday list screen, age algorithms, and contact CRUD. ✅
+- [x] 03-02-PLAN.md — Integrate Expo local notification manager and advance alert options. ✅
 
 ---
 
@@ -74,7 +74,7 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 ---
 
 ### Phase 5: Local On-Device AI Integration
-**Goal**: Host a fully offline 0.5B/1B parameter LLM on-device for local summarization and task generation.
+**Goal**: Host a fully offline 0.6B parameter LLM on-device (specifically Qwen3-0.6B-GGUF: https://huggingface.co/Qwen/Qwen3-0.6B-GGUF) for local summarization and task generation.
 **Depends on**: Phase 1, Phase 4.
 **Requirements**: [LAI-01, LAI-02]
 **Success Criteria**:
@@ -104,8 +104,8 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Notes | 2/2 | ✅ Complete | 2026-05-28 |
-| 2. Tasks | 0/2 | Not started | - |
-| 3. Birthdays | 0/2 | Not started | - |
+| 2. Tasks | 2/2 | ✅ Complete | 2026-05-28 |
+| 3. Birthdays | 2/2 | ✅ Complete | 2026-05-28 |
 | 4. QR Sync | 0/3 | Not started | - |
 | 5. On-Device AI | 0/2 | Not started | - |
 | 6. Docker & Polish | 0/2 | Not started | - |

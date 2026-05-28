@@ -17,6 +17,11 @@ export const AppNavigator = ({
   currentTheme,
   tasks,
   setTasks,
+  taskLists,
+  handleCreateList,
+  handleRenameList,
+  handleDeleteList,
+  handleToggleSubtask,
   handleCompleteTask,
   toggleTaskComplete,
   deleteTask,
@@ -129,21 +134,18 @@ export const AppNavigator = ({
           <TaskListScreen
             tasks={tasks}
             setTasks={setTasks}
+            taskLists={taskLists}
+            handleCreateList={handleCreateList}
+            handleRenameList={handleRenameList}
+            handleDeleteList={handleDeleteList}
+            handleToggleSubtask={handleToggleSubtask}
             handleCompleteTask={handleCompleteTask}
             toggleTaskComplete={toggleTaskComplete}
             deleteTask={deleteTask}
-            handleToggleSubtask={(taskId, subtaskIdx) => {
-              setTasks(prevTasks => prevTasks.map(task => {
-                if (task.id === taskId) {
-                  const newSubtasks = task.subtasks.map((st, idx) => idx === subtaskIdx ? { ...st, completed: !st.completed } : st);
-                  return { ...task, subtasks: newSubtasks };
-                }
-                return task;
-              }));
-            }}
             currentTheme={currentTheme}
             setSelectedTask={setSelectedTask}
             setModalVisible={setModalVisible}
+            showConfirmation={showConfirmation}
           />
         )}
       </Drawer.Screen>

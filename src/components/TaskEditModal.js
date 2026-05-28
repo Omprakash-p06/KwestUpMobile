@@ -15,7 +15,7 @@ export const colorPalette = [
   '#A799FF', // light purple
 ];
 
-export const TaskEditModal = ({ visible, onClose, task, onSave, theme }) => {
+export const TaskEditModal = ({ visible, onClose, task, onSave, theme, taskLists = [] }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [subtasks, setSubtasks] = useState([]);
@@ -26,6 +26,7 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [pickerMode, setPickerMode] = useState('date');
   const [tempDate, setTempDate] = useState(null);
+  const [listId, setListId] = useState('default_inbox');
 
   // Reset modal state when opening for a new task or closing
   useEffect(() => {
@@ -38,6 +39,7 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme }) => {
         setImportant(!!task?.important);
         setDueDate(task?.dueDate ? new Date(task.dueDate) : null);
         setDueDateText(task?.dueDate ? new Date(task.dueDate).toLocaleString() : '');
+        setListId(task?.listId || 'default_inbox');
       } else {
         setTitle('');
         setDescription('');
@@ -46,6 +48,7 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme }) => {
         setImportant(false);
         setDueDate(null);
         setDueDateText('');
+        setListId('default_inbox');
       }
     } else {
       setTitle('');
@@ -55,6 +58,7 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme }) => {
       setImportant(false);
       setDueDate(null);
       setDueDateText('');
+      setListId('default_inbox');
     }
   }, [visible, task]);
 
@@ -76,7 +80,17 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme }) => {
       const parsed = new Date(dueDateText);
       if (!isNaN(parsed.getTime())) finalDueDate = parsed;
     }
-    onSave({ ...task, title, name: title, description, subtasks, color, important, dueDate: finalDueDate ? finalDueDate.toISOString() : undefined });
+    onSave({
+      ...task,
+      title,
+      name: title,
+      description,
+      subtasks,
+      color,
+      important,
+      listId,
+      dueDate: finalDueDate ? finalDueDate.toISOString() : undefined
+    });
     onClose();
   };
   const handleDateChange = (event, selectedDate) => {
@@ -125,6 +139,41 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme }) => {
             placeholderTextColor={theme.secondaryText}
             multiline
           />
+          {/* Category List Selector */}
+          {taskLists && taskLists.length > 0 && (
+            <View style={{ marginBottom: 16 }}>
+              <Text style={{ color: theme.text, fontWeight: '600', marginBottom: 8 }}>Task List / Category</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 4 }}>
+                {taskLists.map((list) => {
+                  const isSelected = list.id === listId;
+                  return (
+                    <TouchableOpacity
+                      key={list.id}
+                      onPress={() => setListId(list.id)}
+                      style={{
+                        backgroundColor: isSelected ? theme.primary : (theme.cardBackground === '#fff' ? '#F0F2F6' : '#2D3039'),
+                        borderRadius: 20,
+                        paddingHorizontal: 16,
+                        paddingVertical: 8,
+                        marginRight: 8,
+                        borderWidth: 1.5,
+                        borderColor: isSelected ? theme.primary : (theme.border || '#E5EAF1'),
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={{
+                        color: isSelected ? '#FFFFFF' : theme.text,
+                        fontWeight: isSelected ? '700' : '500',
+                        fontSize: 13,
+                      }}>
+                        {list.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
           {/* Due Date/Time Picker and Manual Entry */}
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
             <TouchableOpacity onPress={() => { setPickerMode('date'); setShowDatePicker(true); }} style={{ marginRight: 8, marginBottom: 4 }}>

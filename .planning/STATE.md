@@ -5,35 +5,35 @@
 See: .planning/PROJECT.md (updated 2026-05-28)
 
 **Core value:** A fully secure, offline-first personal workspace on your phone that pairs with your desktop and provides on-device AI automation, rich markdown organization, and smart task management.
-**Current focus:** Phase 2: Google Tasks-style Task Management
+**Current focus:** Phase 4: Local Network Sync via QR Scanner
 
 ---
 
 ## Current Position
 
-Phase: 2 of 6 (Google Tasks-style Task Management)
-Plan: 0 of 2 in current phase
-Status: Ready to execute
-Last activity: 2026-05-28 — Phase 1 (Notion/Obsidian-style Notes) fully completed.
+Phase: 4 of 6 (Local Network Sync via QR Scanner)
+Plan: 0 of 3 in current phase
+Status: Ready to plan
+Last activity: 2026-05-28 — Phase 3 (Birthday Reminder Module) fully completed.
 
-Progress: [█░░░░░░░░░] 16%
+Progress: [█████░░░░░] 50%
 
 ---
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
+- Total plans completed: 6
 - Average duration: ~45 min
-- Total execution time: ~1.5 hours
+- Total execution time: ~4.5 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1. Notes ✅ | 2/2 | 2026-05-28 | - |
-| 2. Tasks | 0/2 | - | - |
-| 3. Birthdays | 0/2 | - | - |
+| 2. Tasks ✅ | 2/2 | 2026-05-28 | - |
+| 3. Birthdays ✅ | 2/2 | 2026-05-28 | - |
 | 4. QR Sync | 0/3 | - | - |
 | 5. On-Device AI | 0/2 | - | - |
 | 6. Docker & Polish | 0/2 | - | - |
@@ -55,10 +55,18 @@ Progress: [█░░░░░░░░░] 16%
 - [Phase-1]: Notion-style 1-second debounced auto-save on keystroke; also saves on tab switch and back navigation.
 - [Phase-1]: Tags indexed dynamically by scanning `#hashtag` tokens from raw markdown body — no separate metadata fields.
 - [Phase-1]: Factory reset wipes entire `Notes/` filesystem directory via `wipeNotesFilesystem()`.
+- [Phase-2]: Seeded default list "default_inbox" ("My Tasks") on startup; list data and association serialized in AsyncStorage.
+- [Phase-2]: Implemented bidirectional snapping ViewPager using native horizontal ScrollView synced with category Tab Pills.
+- [Phase-2]: Integrated subtasks progress fraction ("completed/total") and percentage next to progress bar, allowing inline checking.
+- [Phase-2]: Added custom lists CRUD dashboard permitting list creation, renaming, and safety-warned cascading list deletions.
+- [Phase-3]: Upgraded birthday schema to track full birthdate, custom alert time, remindAtTime, and notification tracking IDs.
+- [Phase-3]: Designed dynamic list sorting based on closest upcoming countdown, automatically prioritizing closest birthdays.
+- [Phase-3]: Added dynamic calculations displaying Display Dates, countdown days, and turning age milestones with leap-safe protections.
+- [Phase-3]: Configured dual-reminder alarms morning-of and optionally 1 day/3 days/1 week prior, with safety cancellations on resets.
 
 ### Pending Todos
 
-- Execute Phase 2: Google Tasks-style Task Management (02-01-PLAN.md, 02-02-PLAN.md).
+- Execute Phase 4: Local Network Sync via QR Scanner (04-01-PLAN.md, 04-02-PLAN.md, 04-03-PLAN.md).
 
 ### Blockers/Concerns
 
@@ -69,6 +77,6 @@ Progress: [█░░░░░░░░░] 16%
 
 ## Session Continuity
 
-Last session: 2026-05-28 00:53
-Stopped at: Phase 1 (Notion/Obsidian-style Notes) marked COMPLETE. All plans executed and verified.
-Resume file: .planning/phases/02/02-01-PLAN.md
+Last session: 2026-05-28 11:45
+Stopped at: Phase 3 (Birthday Reminder Module) marked COMPLETE. All plans executed and verified.
+Resume file: .planning/phases/04/04-01-PLAN.md

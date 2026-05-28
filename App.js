@@ -30,7 +30,8 @@ import {
   scheduleDailyTaskNotification,
   schedulePushNotification,
   scheduleDueDateNotification,
-  cancelDueDateNotification
+  cancelDueDateNotification,
+  cancelCustomBirthdayReminders
 } from "./src/utils/notifications";
 
 // Configuration
@@ -42,6 +43,9 @@ const App = () => {
   const [dailyTasks, setDailyTasks] = useState([]);
   const [birthdays, setBirthdays] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [taskLists, setTaskLists] = useState([
+    { id: "default_inbox", name: "My Tasks", createdAt: new Date().toISOString() }
+  ]);
   const [notes, setNotes] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -129,6 +133,9 @@ const App = () => {
         setDailyTasks(parsedData.dailyTasks || []);
         setBirthdays(parsedData.birthdays || []);
         setTasks(parsedData.tasks || []);
+        setTaskLists(parsedData.taskLists || [
+          { id: "default_inbox", name: "My Tasks", createdAt: new Date().toISOString() }
+        ]);
         const fsNotes = await getAllNotesFromFilesystem();
         setNotes(fsNotes);
         setThemeMode(parsedData.themeMode || "light");
@@ -155,6 +162,9 @@ const App = () => {
         setDailyTasks([]);
         setBirthdays([]);
         setTasks([]);
+        setTaskLists([
+          { id: "default_inbox", name: "My Tasks", createdAt: new Date().toISOString() }
+        ]);
         const fsNotes = await getAllNotesFromFilesystem();
         setNotes(fsNotes);
         setThemeMode("light");
@@ -165,6 +175,9 @@ const App = () => {
       setDailyTasks([]);
       setBirthdays([]);
       setTasks([]);
+      setTaskLists([
+        { id: "default_inbox", name: "My Tasks", createdAt: new Date().toISOString() }
+      ]);
       const fsNotes = await getAllNotesFromFilesystem();
       setNotes(fsNotes);
       setThemeMode("light");
@@ -179,6 +192,7 @@ const App = () => {
       dailyTasks,
       birthdays,
       tasks,
+      taskLists,
       notes,
       timerState: {
         duration: timerDuration,
@@ -204,6 +218,7 @@ const App = () => {
     dailyTasks,
     birthdays,
     tasks,
+    taskLists,
     timerDuration,
     timerRemaining,
     isTimerRunning,
@@ -228,6 +243,7 @@ const App = () => {
     dailyTasks,
     birthdays,
     tasks,
+    taskLists,
     timerDuration,
     timerRemaining,
     isTimerRunning,
@@ -362,36 +378,112 @@ const App = () => {
   };
 
   const handleSaveTask = (savedTask) => {
+    // Ensure task listId is bound
+    const taskToSave = {
+      ...savedTask,
+      listId: savedTask.listId || "default_inbox"
+    };
+
     setTasks(currentTasks => {
-      const existingTaskIndex = currentTasks.findIndex(t => t.id === savedTask.id);
+      const existingTaskIndex = currentTasks.findIndex(t => t.id === taskToSave.id);
       if (existingTaskIndex > -1) {
         const oldTask = currentTasks[existingTaskIndex];
-        if (oldTask.notificationId && oldTask.dueDate !== savedTask.dueDate) {
+        if (oldTask.notificationId && oldTask.dueDate !== taskToSave.dueDate) {
           cancelDueDateNotification(oldTask.notificationId);
         }
-        if (savedTask.dueDate) {
-          scheduleDueDateNotification(savedTask).then(notificationId => {
+        if (taskToSave.dueDate) {
+          scheduleDueDateNotification(taskToSave).then(notificationId => {
             const newTasks = [...currentTasks];
-            newTasks[existingTaskIndex] = { ...savedTask, notificationId };
+            newTasks[existingTaskIndex] = { ...taskToSave, notificationId };
             setTasks(newTasks);
           });
           return currentTasks;
         } else {
           const newTasks = [...currentTasks];
-          newTasks[existingTaskIndex] = { ...savedTask, notificationId: null };
+          newTasks[existingTaskIndex] = { ...taskToSave, notificationId: null };
           return newTasks;
         }
       } else {
-        if (savedTask.dueDate) {
-          scheduleDueDateNotification(savedTask).then(notificationId => {
-            setTasks([...currentTasks, { ...savedTask, id: Date.now().toString(), notificationId }]);
+        const newTaskId = Date.now().toString();
+        const finalTask = { ...taskToSave, id: newTaskId };
+        if (finalTask.dueDate) {
+          scheduleDueDateNotification(finalTask).then(notificationId => {
+            setTasks([...currentTasks, { ...finalTask, notificationId }]);
           });
           return currentTasks;
         } else {
-          return [...currentTasks, { ...savedTask, id: Date.now().toString(), notificationId: null }];
+          return [...currentTasks, { ...finalTask, notificationId: null }];
         }
       }
     });
+  };
+
+  const handleToggleSubtask = (taskId, subtaskIdx) => {
+    console.log("🔄 Toggling subtask at index:", subtaskIdx, "for task ID:", taskId);
+    setTasks(prevTasks =>
+      prevTasks.map(task => {
+        if (task.id === taskId) {
+          const updatedSubtasks = (task.subtasks || []).map((st, i) => {
+            if (i === subtaskIdx) {
+              const newCompleted = !st.completed;
+              return {
+                ...st,
+                completed: newCompleted,
+                completedAt: newCompleted ? new Date().toISOString() : null
+              };
+            }
+            return st;
+          });
+          return {
+            ...task,
+            subtasks: updatedSubtasks
+          };
+        }
+        return task;
+      })
+    );
+  };
+
+  const handleCreateList = (name) => {
+    if (!name || !name.trim()) return;
+    const newList = {
+      id: Date.now().toString(),
+      name: name.trim(),
+      createdAt: new Date().toISOString()
+    };
+    setTaskLists(prev => [...prev, newList]);
+    console.log("➕ Custom list created:", newList.name);
+  };
+
+  const handleRenameList = (listId, name) => {
+    if (!name || !name.trim()) return;
+    setTaskLists(prev =>
+      prev.map(list => (list.id === listId ? { ...list, name: name.trim() } : list))
+    );
+    console.log("✏️ Custom list renamed to:", name.trim());
+  };
+
+  const handleDeleteList = (listId) => {
+    if (listId === "default_inbox") {
+      showConfirmation("You cannot delete the default task list.", () => {});
+      return;
+    }
+    showConfirmation(
+      "Are you sure you want to delete this list? All tasks inside will be permanently deleted.",
+      () => {
+        setTasks(currentTasks => {
+          currentTasks.forEach(task => {
+            if (task.listId === listId && task.notificationId) {
+              cancelDueDateNotification(task.notificationId);
+            }
+          });
+          return currentTasks.filter(task => task.listId !== listId);
+        });
+        setTaskLists(prev => prev.filter(list => list.id !== listId));
+        console.log("🗑️ Custom list deleted:", listId);
+      },
+      () => {}
+    );
   };
 
   const handleResetData = () => {
@@ -399,8 +491,17 @@ const App = () => {
       "Are you sure you want to reset all data? This action cannot be undone.",
       async () => {
         setDailyTasks([]);
+        // Cancel all scheduled birthday alerts
+        birthdays.forEach(bday => {
+          if (bday.notificationIds) {
+            cancelCustomBirthdayReminders(bday.notificationIds);
+          }
+        });
         setBirthdays([]);
         setTasks([]);
+        setTaskLists([
+          { id: "default_inbox", name: "My Tasks", createdAt: new Date().toISOString() }
+        ]);
         setNotes([]);
         await wipeNotesFilesystem();
         setTimerDuration(25 * 60);
@@ -434,6 +535,11 @@ const App = () => {
                 currentTheme={currentTheme}
                 tasks={tasks}
                 setTasks={setTasks}
+                taskLists={taskLists}
+                handleCreateList={handleCreateList}
+                handleRenameList={handleRenameList}
+                handleDeleteList={handleDeleteList}
+                handleToggleSubtask={handleToggleSubtask}
                 notes={notes}
                 setNotes={setNotes}
                 handleCompleteTask={handleCompleteTask}
@@ -541,6 +647,7 @@ const App = () => {
               task={selectedTask}
               onSave={handleSaveTask}
               theme={currentTheme}
+              taskLists={taskLists}
             />
 
             {/* Timer Lockout Overlay */}
