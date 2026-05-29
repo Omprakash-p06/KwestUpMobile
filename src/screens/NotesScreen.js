@@ -19,8 +19,9 @@ import {
   getAllNotesFromFilesystem,
   extractHashtags,
 } from "../utils/fileStorage";
+import { AIAssistant } from "../components/AIAssistant";
 
-export const NotesScreen = ({ currentTheme, notes, setNotes, showConfirmation }) => {
+export const NotesScreen = ({ currentTheme, notes, setNotes, showConfirmation, tasks, setTasks }) => {
   const [selectedNote, setSelectedNote] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -694,6 +695,27 @@ export const NotesScreen = ({ currentTheme, notes, setNotes, showConfirmation })
           )}
         </View>
       </View>
+
+      {/* AI Assistant — shown when a note is open */}
+      {selectedNote && (
+        <AIAssistant
+          currentTheme={currentTheme}
+          noteContent={editContent || selectedNote.content}
+          noteTitle={editTitle || selectedNote.title}
+          onTasksExtracted={(extractedTaskTitles) => {
+            if (!setTasks) return;
+            const newTasks = extractedTaskTitles.map((title) => ({
+              id: Date.now().toString() + Math.random().toString(36).slice(2),
+              title,
+              listId: "default_inbox",
+              completed: false,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            }));
+            setTasks((prev) => [...prev, ...newTasks]);
+          }}
+        />
+      )}
 
       {/* Folder Creation Modal */}
       <Modal

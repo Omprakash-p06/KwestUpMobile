@@ -159,6 +159,8 @@ export const AppNavigator = ({
             notes={notes}
             setNotes={setNotes}
             showConfirmation={showConfirmation}
+            tasks={tasks}
+            setTasks={setTasks}
           />
         )}
       </Drawer.Screen>

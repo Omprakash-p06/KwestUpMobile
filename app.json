@@ -34,6 +34,14 @@
         {
           "cameraPermission": "Allow KwestUp to access your camera to scan synchronization QR codes."
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
       ]
     ],
     "extra": {

@@ -12,7 +12,7 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 - [x] **Phase 2: Google Tasks-style Task Management** - Build Google Tasks-style Lists with drag-and-drop, due dates, checklist subtasks, and DB persistence. ✅ COMPLETE
 - [x] **Phase 3: Birthday Reminder Module** - Build contact birthday dashboard with age and countdown calculations, plus Native push notifications. ✅ COMPLETE
 - [x] **Phase 4: Local Network Sync via QR Scanner** - Integrate camera QR scanning to retrieve PC host IP, port, and security token, and execute two-way Wi-Fi synchronization with the Electron app. Implement the Python desktop sync reference server. ✅ COMPLETE
-- [ ] **Phase 5: Local On-Device AI Integration** - Link `react-native-llama` to compile native C++ bindings, download a quantized Qwen3-0.6B-GGUF model (https://huggingface.co/Qwen/Qwen3-0.6B-GGUF), and implement local note summarization and task extraction.
+- [x] **Phase 5: Local On-Device AI Integration** - Link `react-native-llama` to compile native C++ bindings, download a quantized Qwen3-0.6B-GGUF model (https://huggingface.co/Qwen/Qwen3-0.6B-GGUF), and implement local note summarization and task extraction. ✅ COMPLETE
 - [ ] **Phase 6: Docker Integration & System Polish** - Set up Docker compose for developer sync services, execute automated integration tests, and polish the user experience.
 
 ---
@@ -81,8 +81,8 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
   1. Native C++ llama.cpp compiles correctly inside React Native via native bindings.
   2. AI model runs entirely offline, successfully summarizing notes and extracting checklist items into the Tasks database.
 **Plans**:
-- [ ] 05-01-PLAN.md — Integrate `react-native-llama` native library and set up GGUF model loader.
-- [ ] 05-02-PLAN.md — Implement note summarization UI and automated task extraction pipeline.
+- [x] 05-01-PLAN.md — Integrate `react-native-llama` native library and set up GGUF model loader. ✅
+- [x] 05-02-PLAN.md — Implement note summarization UI and automated task extraction pipeline. ✅
 
 ---
 
@@ -107,5 +107,5 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 | 2. Tasks | 2/2 | ✅ Complete | 2026-05-28 |
 | 3. Birthdays | 2/2 | ✅ Complete | 2026-05-28 |
 | 4. QR Sync | 3/3 | ✅ Complete | 2026-05-29 |
-| 5. On-Device AI | 0/2 | Not started | - |
+| 5. On-Device AI | 2/2 | ✅ Complete | 2026-05-29 |
 | 6. Docker & Polish | 0/2 | Not started | - |
