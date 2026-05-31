@@ -112,7 +112,7 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 
 ---
 
-### Phase 8: Obsidian-Style Note Vaults
+### Phase 8: Obsidian-Style Note Vaults ✅ COMPLETE
 **Goal**: Support multiple separate raw `.md` note vaults, dynamic switching, and folder importing.
 **Depends on**: Phase 7.
 **Requirements**: [NOTE-04]
@@ -120,8 +120,8 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
    1. Users can create, switch between, and delete isolated notes vaults on local directories.
    2. Existing local folders of markdown files can be imported as functional vaults.
 **Plans**:
-- [ ] 08-01-PLAN.md — Vault Service & Migration Layer: vaultService.js, vaultImport.js, fileStorage.js refactor, App.js vault state. (Wave 1)
-- [ ] 08-02-PLAN.md — Vault Management UI: vault switcher sidebar, CRUD modals, import .md flow. (Wave 2)
+- [x] 08-01-PLAN.md — Vault Service & Migration Layer: vaultService.js, vaultImport.js, fileStorage.js refactor, App.js vault state. (Wave 1) ✅
+- [x] 08-02-PLAN.md — Vault Management UI: vault switcher sidebar, CRUD modals, import .md flow. (Wave 2) ✅
 
 ### Phase 9: Android Home-Screen Widgets
 **Goal**: Fully implement interactive home-screen widgets for Android devices.
@@ -145,7 +145,5 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 | 5. On-Device AI | 2/2 | ✅ Complete | 2026-05-29 |
 | 6. Docker & Polish | 2/2 | ✅ Complete | 2026-05-29 |
 | 7. Skia Glass UI | 2/2 | ✅ Complete | 2026-05-31 |
-| 8. Note Vaults | 0/2 | ⏳ Pending | - |
+| 8. Note Vaults | 2/2 | ✅ Complete | 2026-05-31 |
 | 9. Android Widgets | 0/1 | ⏳ Pending | - |
-
-
