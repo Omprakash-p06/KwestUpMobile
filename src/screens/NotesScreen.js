@@ -22,6 +22,7 @@ import {
 import { createVault, deleteVault, renameVault, getVaults, getActiveVaultId } from "../utils/vaultService";
 import { importMDFilesAsVault } from "../utils/vaultImport";
 import { AIAssistant } from "../components/AIAssistant";
+import { LiquidGlassCard } from "../components/LiquidGlassCard";
 
 export const NotesScreen = ({
   currentTheme,
@@ -414,20 +415,30 @@ export const NotesScreen = ({
               {/* ── VAULTS SECTION ── */}
               <Text style={[styles.sectionHeader, { color: currentTheme.secondaryText }]}>VAULTS</Text>
 
-              {/* Active vault display / toggle */}
+              {/* Active vault display / toggle inside a LiquidGlassCard */}
               <TouchableOpacity
-                style={[styles.sidebarItem, isVaultSwitcherVisible && styles.activeItem]}
                 onPress={() => setIsVaultSwitcherVisible(!isVaultSwitcherVisible)}
+                style={{ marginHorizontal: 8, marginVertical: 4 }}
               >
-                <MaterialCommunityIcons name="safe" size={20} color={currentTheme.primary} />
-                <Text style={[styles.sidebarText, { color: currentTheme.text, flex: 1 }]} numberOfLines={1}>
-                  {vaults.find((v) => v.id === activeVaultId)?.name || "My Vault"}
-                </Text>
-                <MaterialCommunityIcons
-                  name={isVaultSwitcherVisible ? "chevron-up" : "chevron-down"}
-                  size={16}
-                  color={currentTheme.secondaryText}
-                />
+                <LiquidGlassCard
+                  theme={currentTheme}
+                  style={{ width: 204, marginVertical: 0 }}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <MaterialCommunityIcons name="safe" size={20} color={currentTheme.primary} />
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                      <Text style={{ fontSize: 13, fontWeight: "700", color: currentTheme.text }} numberOfLines={1}>
+                        {vaults.find((v) => v.id === activeVaultId)?.name || "My Vault"}
+                      </Text>
+                      <Text style={{ fontSize: 9, color: currentTheme.secondaryText, marginTop: 2 }}>ACTIVE VAULT</Text>
+                    </View>
+                    <MaterialCommunityIcons
+                      name={isVaultSwitcherVisible ? "chevron-up" : "chevron-down"}
+                      size={16}
+                      color={currentTheme.secondaryText}
+                    />
+                  </View>
+                </LiquidGlassCard>
               </TouchableOpacity>
 
               {/* Expandable vault list */}
