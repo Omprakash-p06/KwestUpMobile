@@ -37,6 +37,9 @@ import {
   scheduleCustomBirthdayReminders
 } from "./src/utils/notifications";
 import { performSync } from "./src/utils/syncService";
+import { requestWidgetUpdate } from 'react-native-android-widget';
+import { FocusTimerWidget } from './widgets/FocusTimerWidget';
+import { DailyTasksWidget } from './widgets/DailyTasksWidget';
 
 // Configuration
 const FORCE_CLEAR_ALL_STORAGE = false;
@@ -281,6 +284,46 @@ const App = () => {
     isInitialized,
     saveData,
   ]);
+
+  // Debounced foreground widget updates — pushes state to home-screen widgets
+  // when app is in foreground. Background updates handled by widget-task-handler.
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    // Debounce: only update every 2 seconds to avoid excessive bridge traffic
+    const debounceTimer = setTimeout(() => {
+      const widgetData = {
+        remaining: timerRemaining,
+        isRunning: isTimerRunning,
+        dailyTaskCount: dailyTasks.length,
+        dailyTasksCompleted: dailyTasks.filter(t => t.completed).length,
+      };
+
+      if (Platform.OS === 'android') {
+        requestWidgetUpdate({
+          widgetName: 'FocusTimer',
+          renderWidget: () => (
+            <FocusTimerWidget
+              remaining={widgetData.remaining}
+              isRunning={widgetData.isRunning}
+            />
+          ),
+        });
+
+        requestWidgetUpdate({
+          widgetName: 'DailyTasks',
+          renderWidget: () => (
+            <DailyTasksWidget
+              dailyTaskCount={widgetData.dailyTaskCount}
+              dailyTasksCompleted={widgetData.dailyTasksCompleted}
+            />
+          ),
+        });
+      }
+    }, 2000); // 2-second debounce — per RESEARCH.md Open Question 1 recommendation
+
+    return () => clearTimeout(debounceTimer);
+  }, [timerRemaining, isTimerRunning, dailyTasks, isInitialized]);
 
   const showConfirmation = (message, onConfirm, onCancel = null) => {
     setConfirmationMessage(message);

@@ -42,6 +42,36 @@
             "useFrameworks": "static"
           }
         }
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "fonts": [],
+          "widgets": [
+            {
+              "name": "FocusTimer",
+              "label": "Focus Timer",
+              "description": "Shows your current focus session timer status",
+              "minWidth": "250dp",
+              "minHeight": "100dp",
+              "targetCellWidth": 3,
+              "targetCellHeight": 2,
+              "previewImage": "./assets/widget-preview/focus-timer-preview.png",
+              "updatePeriodMillis": 1800000
+            },
+            {
+              "name": "DailyTasks",
+              "label": "Daily Tasks",
+              "description": "Shows your daily task completion progress",
+              "minWidth": "250dp",
+              "minHeight": "100dp",
+              "targetCellWidth": 3,
+              "targetCellHeight": 2,
+              "previewImage": "./assets/widget-preview/daily-tasks-preview.png",
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
       ]
     ],
     "extra": {

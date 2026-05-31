@@ -130,8 +130,8 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 **Success Criteria**:
   1. Android widgets (`react-native-android-widget` or custom widget receivers) render task lists and focus timer counts on Android user home screens.
 **Plans**:
-- [ ] 09-01-PLAN.md — Install react-native-android-widget, create FocusTimerWidget, DailyTasksWidget, widget task handler, and app.json config. (Wave 1)
-- [ ] 09-02-PLAN.md — Wire widget registration in index.js and add debounced foreground update effects in App.js. (Wave 2)
+- [x] 09-01-PLAN.md — Install react-native-android-widget, create FocusTimerWidget, DailyTasksWidget, widget task handler, and app.json config. (Wave 1) ✅
+- [x] 09-02-PLAN.md — Wire widget registration in index.js and add debounced foreground update effects in App.js. (Wave 2) ✅
 
 ---
 
@@ -147,4 +147,5 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 | 6. Docker & Polish | 2/2 | ✅ Complete | 2026-05-29 |
 | 7. Skia Glass UI | 2/2 | ✅ Complete | 2026-05-31 |
 | 8. Note Vaults | 2/2 | ✅ Complete | 2026-05-31 |
-| 9. Android Widgets | 0/1 | ⏳ Pending | - |
+| 9. Android Widgets | 2/2 | ✅ Complete | 2026-05-31 |
+
