@@ -1,9 +1,9 @@
 ---
 phase: 09
 slug: android-widgets
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: approved
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-05-31
 ---
 
@@ -38,11 +38,11 @@ created: 2026-05-31
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 09-01-01 | 01 | 1 | WIDG-01 | T-09-01 | N/A — no user input or data exposure | build | `npx expo export --platform android --dump-sourceflag` | ❌ W0 | ⬜ pending |
-| 09-01-02 | 01 | 1 | WIDG-01 | T-09-01 | N/A — display-only widget | build | `grep -q "widgetTaskHandler" widgets/widget-task-handler.tsx` | ❌ W0 | ⬜ pending |
-| 09-01-03 | 01 | 1 | WIDG-01 | T-09-01 | N/A — config only | config | `grep -q "react-native-android-widget" app.json` | ❌ W0 | ⬜ pending |
-| 09-02-01 | 02 | 2 | WIDG-01 | T-09-01 | N/A — JS registration only | build | `grep -q "registerWidgetTaskHandler" index.js` | ❌ W0 | ⬜ pending |
-| 09-02-02 | 02 | 2 | WIDG-01 | T-09-01 | N/A — read-only display | build | `grep -q "requestWidgetUpdate" App.js` | ❌ W0 | ⬜ pending |
+| 09-01-01 | 01 | 1 | WIDG-01 | T-09-01 | N/A — no user input or data exposure | build | `npx expo export --platform android --dump-sourceflag` | ✅ exists | ✅ green |
+| 09-01-02 | 01 | 1 | WIDG-01 | T-09-01 | N/A — display-only widget | build | `grep -q "widgetTaskHandler" widgets/widget-task-handler.tsx` | ✅ exists | ✅ green |
+| 09-01-03 | 01 | 1 | WIDG-01 | T-09-01 | N/A — config only | config | `grep -q "react-native-android-widget" app.json` | ✅ exists | ✅ green |
+| 09-02-01 | 02 | 2 | WIDG-01 | T-09-01 | N/A — JS registration only | build | `grep -q "registerWidgetTaskHandler" index.js` | ✅ exists | ✅ green |
+| 09-02-02 | 02 | 2 | WIDG-01 | T-09-01 | N/A — read-only display | build | `grep -q "requestWidgetUpdate" App.js` | ✅ exists | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -50,9 +50,9 @@ created: 2026-05-31
 
 ## Wave 0 Requirements
 
-- [ ] `widgets/FocusTimerWidget.tsx` — widget component
-- [ ] `widgets/DailyTasksWidget.tsx` — widget component
-- [ ] `widgets/widget-task-handler.tsx` — task handler with AsyncStorage reads
+- [x] `widgets/FocusTimerWidget.tsx` — widget component
+- [x] `widgets/DailyTasksWidget.tsx` — widget component
+- [x] `widgets/widget-task-handler.tsx` — task handler with AsyncStorage reads
 
 *No automated test framework exists for Android widgets — testing is 100% manual on device/emulator.*
 
@@ -71,11 +71,11 @@ created: 2026-05-31
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 900s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 900s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** {pending / approved YYYY-MM-DD}
+**Approval:** approved 2026-05-31
