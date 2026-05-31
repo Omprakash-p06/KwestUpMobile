@@ -16,8 +16,12 @@
     "@react-native-community/datetimepicker": "8.4.1",
     "@react-navigation/drawer": "^6.6.6",
     "@react-navigation/native": "^6.1.9",
+    "@shopify/react-native-skia": "v2.0.0-next.4",
     "expo": "~53.0.20",
+    "expo-build-properties": "~0.14.8",
     "expo-camera": "~16.1.11",
+    "expo-dev-client": "~5.2.4",
+    "expo-document-picker": "~13.1.6",
     "expo-file-system": "~18.1.11",
     "expo-haptics": "~14.1.4",
     "expo-notifications": "~0.31.4",
@@ -25,6 +29,7 @@
     "llama.rn": "^0.12.4",
     "react": "19.0.0",
     "react-native": "0.79.5",
+    "react-native-android-widget": "^0.16.1",
     "react-native-confetti-cannon": "^1.5.2",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-modal": "^14.0.0-rc.1",
@@ -32,11 +37,7 @@
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
-    "use-latest-callback": "^0.2.4",
-    "expo-build-properties": "~0.14.8",
-    "expo-dev-client": "~5.2.4",
-    "@shopify/react-native-skia": "v2.0.0-next.4",
-    "expo-document-picker": "~13.1.6"
+    "use-latest-callback": "^0.2.4"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
