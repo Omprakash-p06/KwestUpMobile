@@ -1,5 +1,5 @@
 import React from "react";
-import { Dimensions } from "react-native";
+import { useWindowDimensions } from "react-native";
 import { createDrawerNavigator } from "@react-navigation/drawer";
 import { CustomDrawerContent } from "./CustomDrawerContent";
 import { DashboardScreen } from "../screens/DashboardScreen";
@@ -53,8 +53,14 @@ export const AppNavigator = ({
   setNotes,
   handleExecuteSync,
   lastSynced,
-  isSyncing
+  isSyncing,
+  vaults,
+  setVaults,
+  activeVaultId,
+  handleSetActiveVault,
 }) => {
+  const { width } = useWindowDimensions();
+
   return (
     <Drawer.Navigator
       initialRouteName="Dashboard"
@@ -85,11 +91,11 @@ export const AppNavigator = ({
         drawerType: "front",
         drawerPosition: "left",
         swipeEnabled: true,
-        swipeEdgeWidth: Dimensions.get("window").width * 0.5,
+        swipeEdgeWidth: width * 0.5,
         overlayColor: "rgba(0, 0, 0, 0.5)",
         drawerStyle: {
           backgroundColor: currentTheme.cardBackground,
-          width: Dimensions.get("window").width * 0.75,
+          width: width * 0.75,
         },
       }}
     >
@@ -161,6 +167,10 @@ export const AppNavigator = ({
             showConfirmation={showConfirmation}
             tasks={tasks}
             setTasks={setTasks}
+            vaults={vaults}
+            setVaults={setVaults}
+            activeVaultId={activeVaultId}
+            handleSetActiveVault={handleSetActiveVault}
           />
         )}
       </Drawer.Screen>

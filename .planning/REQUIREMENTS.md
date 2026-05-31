@@ -85,3 +85,33 @@ This document establishes the functional requirements for KwestUp Mobile. All fe
 - **Description**: Configure a `Dockerfile` and `docker-compose.yml` in the workspace to:
   - Spin up the Python synchronization server locally for development testing.
   - Run automated integration tests validating the network sync protocol between virtual mobile clients and the sync server.
+
+---
+
+## 7. Premium Liquid Glass UI (UI)
+
+### UI-01: Hardware-Accelerated Glassmorphism Style
+- **Description**: Overhaul the entire user interface to utilize premium hardware-accelerated fluid glass card layouts.
+- **Implementation**: Install Shopify `@shopify/react-native-skia` and apply backdrop blurs (`Blur`), organic liquid merge filters (`ColorMatrix`), dynamic background gradients, and translucent rim highlight borders.
+
+---
+
+## 8. Obsidian-Style Note Vaults (VAULT)
+
+### NOTE-04: Isolated Notes Vaults
+- **Description**: Implement file storage partition structures resembling Obsidian Notes Vaults.
+- **Features**:
+  - Allow users to create, label, and delete multiple isolated vaults.
+  - Quick-switch dynamically between active vaults.
+  - Specify custom root paths inside sandboxed local directories or external document vaults.
+  - Support a tool to import an existing folder of markdown `.md` files as a new active vault.
+
+---
+
+## 9. Native Home-Screen Widgets (WIDG)
+
+### WIDG-01: Android App Widgets
+- **Description**: Develop native Android home-screen widgets utilizing `react-native-android-widget` or custom Java/Kotlin widget providers.
+- **Display**: Render live counts of active daily tasks and show progress for active Study Focus Timer states.
+
+

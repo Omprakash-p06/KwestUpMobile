@@ -33,7 +33,10 @@
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
     "use-latest-callback": "^0.2.4",
-    "expo-build-properties": "~0.14.8"
+    "expo-build-properties": "~0.14.8",
+    "expo-dev-client": "~5.2.4",
+    "@shopify/react-native-skia": "v2.0.0-next.4",
+    "expo-document-picker": "~13.1.6"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

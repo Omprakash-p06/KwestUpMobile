@@ -15,12 +15,14 @@ import { CustomButton } from "./src/components/CustomButton";
 import { CustomTextInput } from "./src/components/CustomTextInput";
 import { TaskEditModal } from "./src/components/TaskEditModal";
 import { TimerLockoutOverlay } from "./src/components/TimerLockoutOverlay";
+import { LiquidGlassBackground } from "./src/components/LiquidGlassBackground";
 
 // Theme and Navigation imports
 import { themes } from "./src/theme/colors";
 import { styles } from "./src/theme/styles";
 import { AppNavigator } from "./src/navigation/AppNavigator";
 import { initNotesFolder, getAllNotesFromFilesystem, wipeNotesFilesystem, saveNoteFile } from "./src/utils/fileStorage";
+import { migrateToVaultSystem, getVaults, getActiveVaultId, setActiveVaultId } from "./src/utils/vaultService";
 
 // Utility imports
 import { APP_VERSION, STORAGE_VERSION, clearAllCaches } from "./src/utils/storage";
@@ -70,6 +72,9 @@ const App = () => {
   const [lastSynced, setLastSynced] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
+  const [vaults, setVaults] = useState([]);
+  const [activeVaultId, setActiveVaultIdState] = useState("default");
+
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -79,7 +84,17 @@ const App = () => {
   const initializeApp = useCallback(async () => {
     setIsLoading(true);
     try {
-      await initNotesFolder();
+      // Run one-time migration from flat Notes/ to multi-vault Notes/Vaults/
+      await migrateToVaultSystem();
+
+      // Load vault metadata
+      const loadedVaults = await getVaults();
+      setVaults(loadedVaults);
+      const activeId = await getActiveVaultId();
+      const resolvedActiveId = activeId || "default";
+      setActiveVaultIdState(resolvedActiveId);
+
+      await initNotesFolder(resolvedActiveId);
       runDeviceDiagnostics();
       await checkForUpdates();
       await runNetworkDiagnostics();
@@ -132,6 +147,9 @@ const App = () => {
         AsyncStorage.getItem(`kwestup_userName_${STORAGE_VERSION}`),
       ]);
 
+      // Resolve active vault for this load cycle
+      const activeId = activeVaultId || (await getActiveVaultId()) || "default";
+
       if (storedDataRaw) {
         const parsedData = JSON.parse(storedDataRaw);
         setDailyTasks(parsedData.dailyTasks || []);
@@ -140,7 +158,7 @@ const App = () => {
         setTaskLists(parsedData.taskLists || [
           { id: "default_inbox", name: "My Tasks", createdAt: new Date().toISOString() }
         ]);
-        const fsNotes = await getAllNotesFromFilesystem();
+        const fsNotes = await getAllNotesFromFilesystem(activeId);
         setNotes(fsNotes);
         setThemeMode(parsedData.themeMode || "light");
         setSelectedThemeName(parsedData.selectedThemeName || "dribbble");
@@ -170,7 +188,7 @@ const App = () => {
         setTaskLists([
           { id: "default_inbox", name: "My Tasks", createdAt: new Date().toISOString() }
         ]);
-        const fsNotes = await getAllNotesFromFilesystem();
+        const fsNotes = await getAllNotesFromFilesystem(activeId);
         setNotes(fsNotes);
         setThemeMode("light");
         setSelectedThemeName("dribbble");
@@ -184,13 +202,13 @@ const App = () => {
       setTaskLists([
         { id: "default_inbox", name: "My Tasks", createdAt: new Date().toISOString() }
       ]);
-      const fsNotes = await getAllNotesFromFilesystem();
+      const fsNotes = await getAllNotesFromFilesystem(activeVaultId || "default");
       setNotes(fsNotes);
       setThemeMode("light");
       setSelectedThemeName("dribbble");
       setLastSynced(null);
     }
-  }, [isInitialized]);
+  }, [isInitialized, activeVaultId]);
 
   const saveData = useCallback(async () => {
     if (!isInitialized) return;
@@ -496,6 +514,16 @@ const App = () => {
     );
   };
 
+  /**
+   * Handles active vault switching: persists to AsyncStorage, reloads notes from new vault.
+   */
+  const handleSetActiveVault = useCallback(async (id) => {
+    setActiveVaultIdState(id);
+    await setActiveVaultId(id);
+    const fsNotes = await getAllNotesFromFilesystem(id);
+    setNotes(fsNotes);
+  }, []);
+
   const handleExecuteSync = async (config) => {
     setIsSyncing(true);
     try {
@@ -511,12 +539,12 @@ const App = () => {
       });
 
       if (result) {
-        // 2. Clear old notes filesystem vault completely
-        await wipeNotesFilesystem();
+        // 2. Clear active vault notes from filesystem
+        await wipeNotesFilesystem(activeVaultId);
 
         // 3. Write returning synchronized note markdown files back to device storage
         for (const note of result.notes || []) {
-          await saveNoteFile(note.folder, note.title, note.content);
+          await saveNoteFile(activeVaultId, note.folder, note.title, note.content);
         }
 
         // 4. Cancel all old scheduled birthday alarm system configurations
@@ -548,8 +576,8 @@ const App = () => {
         setSelectedThemeName(result.selectedThemeName || "dribbble");
         setUserName(result.userName || "");
         
-        // 7. Load merged notes array directly from updated filesystem
-        const updatedNotes = await getAllNotesFromFilesystem();
+        // 7. Load merged notes array from active vault filesystem
+        const updatedNotes = await getAllNotesFromFilesystem(activeVaultId);
         setNotes(updatedNotes);
         
         // Save the updated birthdays with scheduled notification IDs
@@ -593,7 +621,7 @@ const App = () => {
           { id: "default_inbox", name: "My Tasks", createdAt: new Date().toISOString() }
         ]);
         setNotes([]);
-        await wipeNotesFilesystem();
+        await wipeNotesFilesystem(activeVaultId);
         setTimerDuration(25 * 60);
         setTimerRemaining(25 * 60);
         setIsTimerRunning(false);
@@ -619,9 +647,10 @@ const App = () => {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: currentTheme.background }}>
       <SafeAreaProvider>
         <PaperProvider theme={{ colors: currentTheme }}>
-          <View style={[styles.container, { backgroundColor: currentTheme.background }]}>
-            <NavigationContainer theme={{ colors: { background: currentTheme.background } }}>
-              <AppNavigator
+          <LiquidGlassBackground theme={currentTheme}>
+            <View style={[styles.container, { backgroundColor: "transparent" }]}>
+              <NavigationContainer theme={{ colors: { background: "transparent" } }}>
+                <AppNavigator
                 currentTheme={currentTheme}
                 tasks={tasks}
                 setTasks={setTasks}
@@ -662,6 +691,10 @@ const App = () => {
                 handleExecuteSync={handleExecuteSync}
                 lastSynced={lastSynced}
                 isSyncing={isSyncing}
+                vaults={vaults}
+                setVaults={setVaults}
+                activeVaultId={activeVaultId}
+                handleSetActiveVault={handleSetActiveVault}
               />
             </NavigationContainer>
 
@@ -772,7 +805,8 @@ const App = () => {
                 onAnimationEnd={() => setConfettiVisible(false)}
               />
             )}
-          </View>
+            </View>
+          </LiquidGlassBackground>
         </PaperProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

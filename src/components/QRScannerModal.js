@@ -8,8 +8,7 @@ import {
   TextInput,
   ScrollView,
   KeyboardAvoidingView,
-  Platform,
-  Dimensions
+  Platform
 } from "react-native";
 import Modal from "react-native-modal";
 import { CameraView, useCameraPermissions } from "expo-camera";

@@ -19,9 +19,22 @@ import {
   getAllNotesFromFilesystem,
   extractHashtags,
 } from "../utils/fileStorage";
+import { createVault, deleteVault, renameVault, getVaults, getActiveVaultId } from "../utils/vaultService";
+import { importMDFilesAsVault } from "../utils/vaultImport";
 import { AIAssistant } from "../components/AIAssistant";
 
-export const NotesScreen = ({ currentTheme, notes, setNotes, showConfirmation, tasks, setTasks }) => {
+export const NotesScreen = ({
+  currentTheme,
+  notes,
+  setNotes,
+  showConfirmation,
+  tasks,
+  setTasks,
+  vaults = [],
+  setVaults,
+  activeVaultId = "default",
+  handleSetActiveVault,
+}) => {
   const [selectedNote, setSelectedNote] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -38,6 +51,16 @@ export const NotesScreen = ({ currentTheme, notes, setNotes, showConfirmation, t
 
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const [editorTab, setEditorTab] = useState("edit"); // "edit" | "preview"
+
+  // ─── Vault UI State ─────────────────────────────────────────────────────────
+  const [isVaultSwitcherVisible, setIsVaultSwitcherVisible] = useState(false);
+  const [isCreateVaultModalVisible, setIsCreateVaultModalVisible] = useState(false);
+  const [isRenameVaultModalVisible, setIsRenameVaultModalVisible] = useState(false);
+  const [renameVaultId, setRenameVaultId] = useState(null);
+  const [renameVaultNameInput, setRenameVaultNameInput] = useState("");
+  const [newVaultName, setNewVaultName] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
+  // ────────────────────────────────────────────────────────────────────────────
 
   // 1. Folders extraction
   const folders = useMemo(() => {
@@ -95,9 +118,9 @@ export const NotesScreen = ({ currentTheme, notes, setNotes, showConfirmation, t
       counter++;
     }
 
-    const result = await saveNoteFile(defaultFolder, title, "");
+    const result = await saveNoteFile(activeVaultId, defaultFolder, title, "");
     if (result.success) {
-      const freshNotes = await getAllNotesFromFilesystem();
+      const freshNotes = await getAllNotesFromFilesystem(activeVaultId);
       setNotes(freshNotes);
       const newNote = freshNotes.find((n) => n.id === result.filePath) || {
         id: result.filePath,
@@ -146,19 +169,18 @@ export const NotesScreen = ({ currentTheme, notes, setNotes, showConfirmation, t
 
     const pathChanged = oldFolder !== newFolder || oldSanitizedTitle !== newSanitizedTitle;
 
-    // Check if the new title already exists in the same folder (excluding current)
     if (pathChanged && notes.some((n) => n.folder === newFolder && n.title.replace(/[/\\?%*:|"<>. ]/g, "_") === newSanitizedTitle && n.id !== selectedNote.id)) {
       Alert.alert("Conflict", "A note with this title already exists in the selected folder.");
       return;
     }
 
     if (pathChanged) {
-      await deleteNoteFile(selectedNote.folder, selectedNote.title);
+      await deleteNoteFile(activeVaultId, selectedNote.folder, selectedNote.title);
     }
 
-    const result = await saveNoteFile(editFolder, editTitle, editContent);
+    const result = await saveNoteFile(activeVaultId, editFolder, editTitle, editContent);
     if (result.success) {
-      const freshNotes = await getAllNotesFromFilesystem();
+      const freshNotes = await getAllNotesFromFilesystem(activeVaultId);
       setNotes(freshNotes);
       const savedNote = freshNotes.find((n) => n.id === result.filePath) || {
         id: result.filePath,
@@ -179,9 +201,9 @@ export const NotesScreen = ({ currentTheme, notes, setNotes, showConfirmation, t
   const handleDeleteNote = (id) => {
     showConfirmation("Are you sure you want to delete this note?", async () => {
       if (selectedNote) {
-        await deleteNoteFile(selectedNote.folder, selectedNote.title);
+        await deleteNoteFile(activeVaultId, selectedNote.folder, selectedNote.title);
       }
-      const freshNotes = await getAllNotesFromFilesystem();
+      const freshNotes = await getAllNotesFromFilesystem(activeVaultId);
       setNotes(freshNotes);
       setSelectedNote(null);
       setIsEditing(false);
@@ -202,7 +224,7 @@ export const NotesScreen = ({ currentTheme, notes, setNotes, showConfirmation, t
         editingSanitizedTitle === currentSanitizedTitle
       ) {
         console.log("⏱️ Debounced Auto-saving note to local disk...");
-        const result = await saveNoteFile(selectedNote.folder, selectedNote.title, editContent);
+        const result = await saveNoteFile(activeVaultId, selectedNote.folder, selectedNote.title, editContent);
         if (result.success) {
           setNotes((prevNotes) =>
             prevNotes.map((n) =>
@@ -388,9 +410,142 @@ export const NotesScreen = ({ currentTheme, notes, setNotes, showConfirmation, t
               </TouchableOpacity>
             </View>
 
-            {/* Folder list */}
             <ScrollView style={styles.sidebarScroll}>
-              <Text style={[styles.sectionHeader, { color: currentTheme.secondaryText }]}>FOLDERS</Text>
+              {/* ── VAULTS SECTION ── */}
+              <Text style={[styles.sectionHeader, { color: currentTheme.secondaryText }]}>VAULTS</Text>
+
+              {/* Active vault display / toggle */}
+              <TouchableOpacity
+                style={[styles.sidebarItem, isVaultSwitcherVisible && styles.activeItem]}
+                onPress={() => setIsVaultSwitcherVisible(!isVaultSwitcherVisible)}
+              >
+                <MaterialCommunityIcons name="safe" size={20} color={currentTheme.primary} />
+                <Text style={[styles.sidebarText, { color: currentTheme.text, flex: 1 }]} numberOfLines={1}>
+                  {vaults.find((v) => v.id === activeVaultId)?.name || "My Vault"}
+                </Text>
+                <MaterialCommunityIcons
+                  name={isVaultSwitcherVisible ? "chevron-up" : "chevron-down"}
+                  size={16}
+                  color={currentTheme.secondaryText}
+                />
+              </TouchableOpacity>
+
+              {/* Expandable vault list */}
+              {isVaultSwitcherVisible && (
+                <View style={{ marginLeft: 8 }}>
+                  {vaults.map((vault) => (
+                    <TouchableOpacity
+                      key={vault.id}
+                      style={[
+                        styles.sidebarItem,
+                        activeVaultId === vault.id && styles.activeItem,
+                      ]}
+                      onPress={async () => {
+                        if (isEditing) await handleSaveNote();
+                        setIsVaultSwitcherVisible(false);
+                        if (handleSetActiveVault) await handleSetActiveVault(vault.id);
+                        const vaultNotes = await getAllNotesFromFilesystem(vault.id);
+                        setNotes(vaultNotes);
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name={activeVaultId === vault.id ? "safe-square" : "safe-outline"}
+                        size={18}
+                        color={activeVaultId === vault.id ? currentTheme.primary : currentTheme.secondaryText}
+                      />
+                      <Text
+                        style={[
+                          styles.sidebarText,
+                          { flex: 1 },
+                          activeVaultId === vault.id && { color: currentTheme.primary },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {vault.name}
+                      </Text>
+
+                      {/* Rename button (any vault) */}
+                      <TouchableOpacity
+                        onPress={() => {
+                          setRenameVaultId(vault.id);
+                          setRenameVaultNameInput(vault.name);
+                          setIsRenameVaultModalVisible(true);
+                        }}
+                        style={{ padding: 4, marginRight: 2 }}
+                      >
+                        <MaterialCommunityIcons name="pencil" size={15} color={currentTheme.secondaryText} />
+                      </TouchableOpacity>
+
+                      {/* Delete button (only when >1 vault) */}
+                      {vaults.length > 1 && (
+                        <TouchableOpacity
+                          onPress={() => {
+                            if (!showConfirmation) return;
+                            showConfirmation(
+                              `Delete vault "${vault.name}"? All notes inside will be permanently deleted.`,
+                              async () => {
+                                await deleteVault(vault.id);
+                                const remaining = await getVaults();
+                                if (setVaults) setVaults(remaining);
+                                const newActive = await getActiveVaultId();
+                                if (newActive && newActive !== activeVaultId && handleSetActiveVault) {
+                                  await handleSetActiveVault(newActive);
+                                  const vaultNotes = await getAllNotesFromFilesystem(newActive);
+                                  setNotes(vaultNotes);
+                                }
+                              }
+                            );
+                          }}
+                          style={{ padding: 4 }}
+                        >
+                          <MaterialCommunityIcons name="delete-outline" size={15} color="#FF5252" />
+                        </TouchableOpacity>
+                      )}
+                    </TouchableOpacity>
+                  ))}
+
+                  {/* Create Vault button */}
+                  <TouchableOpacity
+                    style={[styles.sidebarItem, { opacity: 0.8 }]}
+                    onPress={() => setIsCreateVaultModalVisible(true)}
+                  >
+                    <MaterialCommunityIcons name="plus-circle-outline" size={17} color={currentTheme.primary} />
+                    <Text style={[styles.sidebarText, { color: currentTheme.primary }]}>New Vault</Text>
+                  </TouchableOpacity>
+
+                  {/* Import .md files button */}
+                  <TouchableOpacity
+                    style={[styles.sidebarItem, { opacity: 0.8 }]}
+                    onPress={async () => {
+                      setIsImporting(true);
+                      try {
+                        const vault = await importMDFilesAsVault();
+                        if (vault) {
+                          const updatedVaults = await getVaults();
+                          if (setVaults) setVaults(updatedVaults);
+                          if (handleSetActiveVault) await handleSetActiveVault(vault.id);
+                          const vaultNotes = await getAllNotesFromFilesystem(vault.id);
+                          setNotes(vaultNotes);
+                          if (showConfirmation) showConfirmation(`Imported "${vault.name}" with markdown files.`, () => {});
+                        }
+                      } catch (err) {
+                        console.error("Import failed:", err);
+                        if (showConfirmation) showConfirmation("Import failed. Please try again.", () => {});
+                      } finally {
+                        setIsImporting(false);
+                      }
+                    }}
+                  >
+                    <MaterialCommunityIcons name="file-import-outline" size={17} color={currentTheme.primary} />
+                    <Text style={[styles.sidebarText, { color: currentTheme.primary }]}>
+                      {isImporting ? "Importing..." : "Import .md Files"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* ── FOLDERS SECTION ── */}
+              <Text style={[styles.sectionHeader, { color: currentTheme.secondaryText, marginTop: 16 }]}>FOLDERS</Text>
               <TouchableOpacity
                 style={[styles.sidebarItem, activeFolder === "All" && styles.activeItem]}
                 onPress={() => setActiveFolder("All")}
@@ -487,11 +642,11 @@ export const NotesScreen = ({ currentTheme, notes, setNotes, showConfirmation, t
                 </TouchableOpacity>
               </View>
 
-              {/* Selected path display */}
+              {/* Selected path display — shows Vault / Folder */}
               <View style={styles.pathHeader}>
-                <MaterialCommunityIcons name="home-outline" size={16} color={currentTheme.secondaryText} />
+                <MaterialCommunityIcons name="safe" size={16} color={currentTheme.secondaryText} />
                 <Text style={[styles.pathText, { color: currentTheme.secondaryText }]}>
-                  / {activeFolder} {selectedTag !== "All" ? `> #${selectedTag}` : ""}
+                  {vaults.find((v) => v.id === activeVaultId)?.name || "My Vault"} / {activeFolder}{selectedTag !== "All" ? ` > #${selectedTag}` : ""}
                 </Text>
               </View>
 
@@ -745,6 +900,92 @@ export const NotesScreen = ({ currentTheme, notes, setNotes, showConfirmation, t
               onPress={handleAddFolder}
             >
               <Text style={{ color: "#FFF", fontWeight: "600" }}>Create</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Create Vault Modal */}
+      <Modal
+        isVisible={isCreateVaultModalVisible}
+        onBackdropPress={() => setIsCreateVaultModalVisible(false)}
+        style={styles.modalOverlay}
+      >
+        <View style={[styles.dialogContent, { backgroundColor: currentTheme.cardBackground }]}>
+          <Text style={[styles.dialogTitle, { color: currentTheme.text }]}>New Vault</Text>
+          <Text style={[styles.dialogMessage, { color: currentTheme.secondaryText }]}>
+            Vaults are isolated note directories — like separate Obsidian vaults.
+          </Text>
+          <TextInput
+            style={[styles.nameInput, { color: currentTheme.text, borderBottomColor: currentTheme.primary }]}
+            value={newVaultName}
+            onChangeText={setNewVaultName}
+            placeholder="Vault Name"
+            placeholderTextColor={currentTheme.secondaryText}
+            autoFocus
+          />
+          <View style={styles.dialogActions}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => { setIsCreateVaultModalVisible(false); setNewVaultName(""); }}
+            >
+              <Text style={{ color: currentTheme.secondaryText, fontWeight: "500" }}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.confirmButton, { backgroundColor: currentTheme.primary }]}
+              onPress={async () => {
+                if (!newVaultName.trim()) return;
+                const vault = await createVault(newVaultName.trim());
+                const updatedVaults = await getVaults();
+                if (setVaults) setVaults(updatedVaults);
+                if (handleSetActiveVault) await handleSetActiveVault(vault.id);
+                const vaultNotes = await getAllNotesFromFilesystem(vault.id);
+                setNotes(vaultNotes);
+                setIsCreateVaultModalVisible(false);
+                setNewVaultName("");
+              }}
+            >
+              <Text style={{ color: "#FFF", fontWeight: "600" }}>Create</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Rename Vault Modal */}
+      <Modal
+        isVisible={isRenameVaultModalVisible}
+        onBackdropPress={() => setIsRenameVaultModalVisible(false)}
+        style={styles.modalOverlay}
+      >
+        <View style={[styles.dialogContent, { backgroundColor: currentTheme.cardBackground }]}>
+          <Text style={[styles.dialogTitle, { color: currentTheme.text }]}>Rename Vault</Text>
+          <TextInput
+            style={[styles.nameInput, { color: currentTheme.text, borderBottomColor: currentTheme.primary }]}
+            value={renameVaultNameInput}
+            onChangeText={setRenameVaultNameInput}
+            placeholder="Vault Name"
+            placeholderTextColor={currentTheme.secondaryText}
+            autoFocus
+          />
+          <View style={styles.dialogActions}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => { setIsRenameVaultModalVisible(false); setRenameVaultId(null); }}
+            >
+              <Text style={{ color: currentTheme.secondaryText, fontWeight: "500" }}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.confirmButton, { backgroundColor: currentTheme.primary }]}
+              onPress={async () => {
+                if (!renameVaultNameInput.trim() || !renameVaultId) return;
+                await renameVault(renameVaultId, renameVaultNameInput.trim());
+                const updatedVaults = await getVaults();
+                if (setVaults) setVaults(updatedVaults);
+                setIsRenameVaultModalVisible(false);
+                setRenameVaultId(null);
+              }}
+            >
+              <Text style={{ color: "#FFF", fontWeight: "600" }}>Rename</Text>
             </TouchableOpacity>
           </View>
         </View>

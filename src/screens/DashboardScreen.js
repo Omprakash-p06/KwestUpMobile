@@ -5,6 +5,7 @@ import { CustomCard } from "../components/CustomCard";
 import { TaskCard } from "../components/TaskCard";
 import { CustomBadge } from "../components/CustomBadge";
 import { styles } from "../theme/styles";
+import { LiquidGlassCard } from "../components/LiquidGlassCard";
 
 export const DashboardScreen = ({
   tasks,
@@ -73,12 +74,12 @@ export const DashboardScreen = ({
       <View style={styles.tabContent}>
         <Text style={[styles.dashboardSectionTitle, { color: currentTheme.text }]}>Your Tasks</Text>
         {tasks.filter(t => !t.completed).length === 0 ? (
-          <CustomCard style={{ backgroundColor: currentTheme.cardBackground, alignItems: "center" }} theme={currentTheme}>
-            <MaterialCommunityIcons name="clipboard-list-outline" size={60} color={currentTheme.secondaryText} />
-            <Text style={[styles.emptyListText, { color: currentTheme.secondaryText }]}>
+          <LiquidGlassCard style={{ alignItems: "center" }} theme={currentTheme}>
+            <MaterialCommunityIcons name="clipboard-list-outline" size={60} color={currentTheme.secondaryText} style={{ marginBottom: 8 }} />
+            <Text style={[styles.emptyListText, { color: currentTheme.secondaryText, paddingVertical: 4 }]}>
               No active tasks. Start by adding one!
             </Text>
-          </CustomCard>
+          </LiquidGlassCard>
         ) : (
           tasks.filter(t => !t.completed).map((task) => (
             <TaskCard
@@ -101,7 +102,7 @@ export const DashboardScreen = ({
         <Text style={[styles.dashboardSectionTitle, { color: currentTheme.text, marginTop: 20 }]}>
           Task Statistics
         </Text>
-        <CustomCard style={{ backgroundColor: currentTheme.cardBackground }}>
+        <LiquidGlassCard theme={currentTheme}>
           <View style={styles.chartHeader}>
             <Text style={[styles.chartTitle, { color: currentTheme.text }]}>Weekly Activity</Text>
             <CustomBadge
@@ -137,21 +138,21 @@ export const DashboardScreen = ({
               </Text>
             )}
           </View>
-        </CustomCard>
+        </LiquidGlassCard>
 
         <View style={styles.bottomSummaryGrid}>
-          <CustomCard style={[styles.bottomSummaryCard, { backgroundColor: currentTheme.cardBackground }]}>
+          <LiquidGlassCard theme={currentTheme} style={styles.bottomSummaryCard}>
             <Text style={[styles.bottomSummaryTitle, { color: currentTheme.text }]}>Total Completed Tasks</Text>
             <Text style={[styles.bottomSummaryValue, { color: currentTheme.text }]}>
               {tasks.filter((t) => t.completed).length} Tasks
             </Text>
-          </CustomCard>
-          <CustomCard style={[styles.bottomSummaryCard, { backgroundColor: currentTheme.cardBackground }]}>
+          </LiquidGlassCard>
+          <LiquidGlassCard theme={currentTheme} style={styles.bottomSummaryCard}>
             <Text style={[styles.bottomSummaryTitle, { color: currentTheme.text }]}>Total Incomplete Tasks</Text>
             <Text style={[styles.bottomSummaryValue, { color: currentTheme.text }]}>
               {tasks.filter((t) => !t.completed).length} Tasks
             </Text>
-          </CustomCard>
+          </LiquidGlassCard>
         </View>
       </View>
     </ScrollView>

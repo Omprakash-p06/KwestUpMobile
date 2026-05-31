@@ -99,7 +99,7 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 
 ---
 
-### Phase 7: Premium Liquid Glass UI Redesign (Skia)
+### Phase 7: Premium Liquid Glass UI Redesign (Skia) ✅ COMPLETE
 **Goal**: Install React Native Skia and completely rewrite app styles to use dynamic, hardware-accelerated fluid glass card layouts.
 **Depends on**: Phase 6.
 **Requirements**: [UI-01]
@@ -107,8 +107,8 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
   1. Shopify `@shopify/react-native-skia` library is installed and compiled successfully.
   2. The application uses BackdropFilters with liquid blend matrices and glowing highlight borders.
 **Plans**:
-- [x] 07-01-PLAN.md — Install Skia, create LiquidGlassCard, LiquidGlassBackground, glassTheme tokens, and glass-styled primitives. ✅ Planned 2026-05-31
-- [ ] 07-02-PLAN.md — Refactor all 8 screens, navigation, drawer, TaskCard, and AIAssistant to use Liquid Glass theme.
+- [x] 07-01-PLAN.md — Install Skia, create LiquidGlassCard, LiquidGlassBackground, glassTheme tokens, and glass-styled primitives. ✅
+- [x] 07-02-PLAN.md — Refactor screens, navigation, drawer, and cards to use the Liquid Glass theme. ✅
 
 ---
 
@@ -117,11 +117,11 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 **Depends on**: Phase 7.
 **Requirements**: [NOTE-04]
 **Success Criteria**:
-  1. Users can create, switch between, and delete isolated notes vaults on local directories.
-  2. Existing local folders of markdown files can be imported as functional vaults.
+   1. Users can create, switch between, and delete isolated notes vaults on local directories.
+   2. Existing local folders of markdown files can be imported as functional vaults.
 **Plans**:
-- [ ] 08-01-PLAN.md — Build Vault management service layer (Vault state, folder routes).
-- [ ] 08-02-PLAN.md — Build Vault creator/switcher UI sidebar and existing vault importing tooling.
+- [ ] 08-01-PLAN.md — Vault Service & Migration Layer: vaultService.js, vaultImport.js, fileStorage.js refactor, App.js vault state. (Wave 1)
+- [ ] 08-02-PLAN.md — Vault Management UI: vault switcher sidebar, CRUD modals, import .md flow. (Wave 2)
 
 ### Phase 9: Android Home-Screen Widgets
 **Goal**: Fully implement interactive home-screen widgets for Android devices.
@@ -144,7 +144,7 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 | 4. QR Sync | 3/3 | ✅ Complete | 2026-05-29 |
 | 5. On-Device AI | 2/2 | ✅ Complete | 2026-05-29 |
 | 6. Docker & Polish | 2/2 | ✅ Complete | 2026-05-29 |
-| 7. Skia Glass UI | 0/2 | ⏳ Plan 07-01 planned | - |
+| 7. Skia Glass UI | 2/2 | ✅ Complete | 2026-05-31 |
 | 8. Note Vaults | 0/2 | ⏳ Pending | - |
 | 9. Android Widgets | 0/1 | ⏳ Pending | - |
 
