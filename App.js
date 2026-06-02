@@ -64,6 +64,12 @@ import { DailyTasksWidget } from './widgets/DailyTasksWidget';
 // Configuration
 const FORCE_CLEAR_ALL_STORAGE = false;
 
+const VALID_THEME_MODES = ["light", "dark", "amoled"];
+const VALID_THEME_NAMES = ["clean", "blue", "green", "purple", "dribbble"];
+
+const resolveThemeMode = (value) => (VALID_THEME_MODES.includes(value) ? value : "light");
+const resolveThemeName = (value) => (VALID_THEME_NAMES.includes(value) ? value : "dribbble");
+
 const App = () => {
   console.log("🚀 KWESTUP MAIN APP COMPONENT LOADING...");
 
@@ -117,7 +123,10 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   // Define currentTheme with fallback to prevent undefined errors
-  const currentTheme = themes[selectedThemeName]?.[themeMode] || themes.dribbble.light;
+  const resolvedThemeName = resolveThemeName(selectedThemeName);
+  const resolvedThemeMode = resolveThemeMode(themeMode);
+
+  const currentTheme = themes[resolvedThemeName]?.[resolvedThemeMode] || themes.dribbble.light;
 
   const initializeApp = useCallback(async () => {
     setIsLoading(true);
@@ -198,8 +207,8 @@ const App = () => {
         ]);
         const fsNotes = await getAllNotesFromFilesystem(activeId);
         setNotes(fsNotes);
-        setThemeMode(parsedData.themeMode || "light");
-        setSelectedThemeName(parsedData.selectedThemeName || "dribbble");
+        setThemeMode(resolveThemeMode(parsedData.themeMode));
+        setSelectedThemeName(resolveThemeName(parsedData.selectedThemeName));
         setLastSynced(parsedData.lastSynced || null);
         if (storedUserName) setUserName(storedUserName);
         else setUserName(parsedData.userName || "");
@@ -650,8 +659,8 @@ const App = () => {
         setTaskLists(result.taskLists || [
           { id: "default_inbox", name: "My Tasks", createdAt: new Date().toISOString() }
         ]);
-        setThemeMode(result.themeMode || "light");
-        setSelectedThemeName(result.selectedThemeName || "dribbble");
+        setThemeMode(resolveThemeMode(result.themeMode));
+        setSelectedThemeName(resolveThemeName(result.selectedThemeName));
         setUserName(result.userName || "");
         
         // 7. Load merged notes array from active vault filesystem

@@ -1,13 +1,12 @@
 import React from "react";
 import { StyleSheet, View, ImageBackground } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 
-export const LiquidGlassBackground = ({ children, theme }) => {
+export const LiquidGlassBackground = ({ children, theme, themeMode }) => {
   const currentTheme = theme || { background: "#131313", text: "#FFFFFF" };
 
-  const isDark = currentTheme.background === "#131313";
-  const isAmoled = currentTheme.background === "#000000";
-  const isLight = !isDark && !isAmoled;
+  const isAmoled = themeMode === "amoled" || currentTheme.background === "#000000";
+  const isDark = themeMode === "dark" || currentTheme.background === "#131313";
+  const isLight = themeMode === "light" || (!isDark && !isAmoled);
 
   // Stardust noise transparent grain overlay (applied globally)
   const grainTextureUrl = "https://www.transparenttextures.com/patterns/stardust.png";
@@ -23,21 +22,16 @@ export const LiquidGlassBackground = ({ children, theme }) => {
   );
 
   if (isDark) {
-    // Brushed Dark Steel plate horizontally grooved gradient reflection
     return (
-      <LinearGradient
-        colors={["#131313", "#20201f", "#2a2a2a", "#20201f", "#131313"]}
-        start={{ x: 0, y: 0.5 }}
-        end={{ x: 1, y: 0.5 }}
-        style={styles.container}
-      >
+      <View style={[styles.container, { backgroundColor: "#131313" }]}>
+        <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.darkReflection]} />
+        <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.darkSheen]} />
         {renderBackgroundContent()}
-      </LinearGradient>
+      </View>
     );
   }
 
   if (isLight) {
-    // Warm industrial concrete / recycled paper desk background
     const lightPaperUrl = "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?q=80&w=1200&auto=format&fit=crop";
     return (
       <ImageBackground
@@ -45,8 +39,7 @@ export const LiquidGlassBackground = ({ children, theme }) => {
         style={[styles.container, { backgroundColor: "#E4E2E1" }]}
         resizeMode="cover"
       >
-        {/* Subtle warming overlay */}
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(228, 226, 225, 0.25)" }]} />
+        <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.lightWash]} />
         {renderBackgroundContent()}
       </ImageBackground>
     );
@@ -64,5 +57,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     overflow: "hidden",
+  },
+  darkReflection: {
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    transform: [{ scaleX: 1.05 }],
+  },
+  darkSheen: {
+    backgroundColor: "rgba(255, 255, 255, 0.02)",
+    top: "15%",
+    bottom: "15%",
+  },
+  lightWash: {
+    backgroundColor: "rgba(228, 226, 225, 0.22)",
   },
 });
