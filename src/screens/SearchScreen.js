@@ -30,7 +30,7 @@ export const SearchScreen = ({
       {/* Page Header */}
       <View style={styles.headerSection}>
         <View style={[styles.badge, { backgroundColor: currentTheme.primary, borderColor: currentTheme.primary }]}>
-          <Text style={[styles.badgeText, { color: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000" }]}>
+          <Text style={[styles.badgeText, { color: currentTheme.onPrimary }]}>
             SEARCH_QUERY_SYS
           </Text>
         </View>
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: "800",
-    fontFamily: "HankenGrotesk-ExtraBold",
+    fontFamily: "JetBrainsMono-Bold",
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },

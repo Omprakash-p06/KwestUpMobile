@@ -1,11 +1,12 @@
 export const dribbbleColors = {
   light: {
-    primary: "#000000", // Ink-black primary for high contrast
-    background: "#E4E2E1", // Warm industrial paper/concrete background
-    cardBackground: "#FFFFFF", // Crisp white ledger sheet
+    primary: "#000000",
+    onPrimary: "#FFFFFF",
+    background: "#E4E2E1",
+    cardBackground: "#FFFFFF",
     text: "#000000",
     secondaryText: "#474747",
-    border: "#8E9192", // Defined metallic border boundaries
+    border: "#8E9192",
     accent: "#666666",
     success: "#333333",
     error: "#FF0000",
@@ -16,9 +17,10 @@ export const dribbbleColors = {
     cardGreen: "#E4E2E1",
   },
   dark: {
-    primary: "#FFFFFF", // Pure white for structural active items
-    background: "#131313", // Industrial obsidian base console
-    cardBackground: "#20201F", // Machined dark slate console plate
+    primary: "#FFFFFF",
+    onPrimary: "#000000",
+    background: "#131313",
+    cardBackground: "#20201F",
     text: "#FFFFFF",
     secondaryText: "#C4C7C8",
     border: "#8E9192",
@@ -33,8 +35,9 @@ export const dribbbleColors = {
   },
   amoled: {
     primary: "#FFFFFF",
-    background: "#000000", // True battery-saving black depth
-    cardBackground: "#0E0E0E", // Extremely dark gray plates
+    onPrimary: "#000000",
+    background: "#000000",
+    cardBackground: "#0E0E0E",
     text: "#E5E2E1",
     secondaryText: "#8E9192",
     border: "#353535",
@@ -56,19 +59,19 @@ export const themes = {
     amoled: { ...dribbbleColors.amoled, primary: "#FFFFFF" },
   },
   blue: {
-    light: { ...dribbbleColors.light, primary: "#2196F3" },
-    dark: { ...dribbbleColors.dark, primary: "#64B5F6" },
-    amoled: { ...dribbbleColors.amoled, primary: "#64B5F6" },
+    light: { ...dribbbleColors.light, primary: "#2196F3", onPrimary: "#FFFFFF" },
+    dark: { ...dribbbleColors.dark, primary: "#64B5F6", onPrimary: "#000000" },
+    amoled: { ...dribbbleColors.amoled, primary: "#64B5F6", onPrimary: "#000000" },
   },
   green: {
-    light: { ...dribbbleColors.light, primary: "#4CAF50" },
-    dark: { ...dribbbleColors.dark, primary: "#81C784" },
-    amoled: { ...dribbbleColors.amoled, primary: "#81C784" },
+    light: { ...dribbbleColors.light, primary: "#4CAF50", onPrimary: "#FFFFFF" },
+    dark: { ...dribbbleColors.dark, primary: "#81C784", onPrimary: "#000000" },
+    amoled: { ...dribbbleColors.amoled, primary: "#81C784", onPrimary: "#000000" },
   },
   purple: {
-    light: { ...dribbbleColors.light, primary: "#9C27B0" },
-    dark: { ...dribbbleColors.dark, primary: "#BA68C8" },
-    amoled: { ...dribbbleColors.amoled, primary: "#BA68C8" },
+    light: { ...dribbbleColors.light, primary: "#9C27B0", onPrimary: "#FFFFFF" },
+    dark: { ...dribbbleColors.dark, primary: "#BA68C8", onPrimary: "#000000" },
+    amoled: { ...dribbbleColors.amoled, primary: "#BA68C8", onPrimary: "#000000" },
   },
   dribbble: {
     light: dribbbleColors.light,

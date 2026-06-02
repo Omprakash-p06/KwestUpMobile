@@ -382,7 +382,7 @@ export const NotesScreen = ({
         const indent = checkedMatch[1];
         const taskText = checkedMatch[2];
         const indentWidth = (indent.match(/ /g) || []).length * 4;
-        const xColor = currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000";
+        const xColor = currentTheme.onPrimary;
         return (
           <View key={index} style={[styles.mdTodoRow, { paddingLeft: Math.max(0, indentWidth) }]}>
             <TouchableOpacity
@@ -887,9 +887,9 @@ export const NotesScreen = ({
                   <MaterialCommunityIcons 
                     name="plus" 
                     size={20} 
-                    color={currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000"} 
+                    color={currentTheme.onPrimary} 
                   />
-                  <Text style={[styles.createButtonText, { color: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000" }]}>Note</Text>
+                  <Text style={[styles.createButtonText, { color: currentTheme.onPrimary }]}>Note</Text>
                 </TouchableOpacity>
               </View>
 
@@ -982,7 +982,7 @@ export const NotesScreen = ({
                 <View style={[
                   styles.editorToggle, 
                   { 
-                    backgroundColor: currentTheme.background === "#E4E2E1" ? "#DCDAD9" : "#0E0E0E",
+                    backgroundColor: currentTheme.cardBackground === "#FFFFFF" ? "#DCDAD9" : "#0E0E0E",
                     borderColor: currentTheme.border
                   }
                 ]}>
@@ -993,7 +993,7 @@ export const NotesScreen = ({
                         styles.toggleActive, 
                         { 
                           backgroundColor: currentTheme.primary,
-                          borderColor: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000"
+                          borderColor: currentTheme.onPrimary
                         }
                       ]
                     ]}
@@ -1004,7 +1004,7 @@ export const NotesScreen = ({
                         styles.toggleText, 
                         { 
                           color: editorTab === "preview" 
-                            ? (currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000") 
+                            ? (currentTheme.onPrimary) 
                             : currentTheme.secondaryText,
                           fontFamily: "JetBrainsMono-Bold"
                         }
@@ -1020,7 +1020,7 @@ export const NotesScreen = ({
                         styles.toggleActive, 
                         { 
                           backgroundColor: currentTheme.primary,
-                          borderColor: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000"
+                          borderColor: currentTheme.onPrimary
                         }
                       ]
                     ]}
@@ -1031,7 +1031,7 @@ export const NotesScreen = ({
                         styles.toggleText, 
                         { 
                           color: editorTab === "edit" 
-                            ? (currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000") 
+                            ? (currentTheme.onPrimary) 
                             : currentTheme.secondaryText,
                           fontFamily: "JetBrainsMono-Bold"
                         }
@@ -1865,10 +1865,10 @@ const rawStyles = {
 };
 
 const injectFontFamily = (obj) => {
-  const fontRegular = "HankenGrotesk-Regular";
-  const fontMedium = "HankenGrotesk-Medium";
-  const fontSemiBold = "HankenGrotesk-Bold";
-  const fontBold = "HankenGrotesk-ExtraBold";
+  const fontRegular = "JetBrainsMono-Regular";
+  const fontMedium = "JetBrainsMono-Medium";
+  const fontSemiBold = "JetBrainsMono-Bold";
+  const fontBold = "JetBrainsMono-Bold";
   const fontMono = "JetBrainsMono-Medium";
 
   for (const key in obj) {

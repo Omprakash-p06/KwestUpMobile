@@ -70,6 +70,17 @@
               "targetCellHeight": 2,
               "previewImage": "./assets/widget-preview/daily-tasks-preview.png",
               "updatePeriodMillis": 1800000
+            },
+            {
+              "name": "ImportantTasks",
+              "label": "Important Tasks",
+              "description": "Shows your important unfinished tasks",
+              "minWidth": "250dp",
+              "minHeight": "100dp",
+              "targetCellWidth": 3,
+              "targetCellHeight": 2,
+              "previewImage": "./assets/widget-preview/important-tasks-preview.png",
+              "updatePeriodMillis": 1800000
             }
           ]
         }

@@ -1,173 +1,59 @@
 import React, { useCallback, useEffect, useRef } from "react";
-import { ScrollView, View, Text, StyleSheet, TouchableOpacity, Animated, Platform } from "react-native";
+import { ScrollView, View, Text, StyleSheet, TouchableOpacity, Animated } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
 import { LiquidGlassCard } from "../components/LiquidGlassCard";
-import { CustomButton } from "../components/CustomButton";
+
+const DAYS = 7;
+const dayLabels = ["S", "M", "T", "W", "T", "F", "S"];
+
+const getDailyCompletions = (tasks) => {
+  const now = new Date();
+  const buckets = Array.from({ length: DAYS }, (_, i) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    return d.toDateString();
+  }).reverse();
+
+  const counts = buckets.map((dayStr) => {
+    return tasks.filter((t) => {
+      if (!t.completed) return false;
+      const date = t.completedAt || t.updatedAt;
+      if (!date) return false;
+      return new Date(date).toDateString() === dayStr;
+    }).length;
+  });
+
+  const max = Math.max(...counts, 1);
+  return { labels: buckets.map((b) => dayLabels[new Date(b).getDay()]), counts, max };
+};
 
 export const DashboardScreen = ({
   tasks = [],
   notes = [],
+  birthdays = [],
   currentTheme,
-  handleCompleteTask,
   setSelectedTask,
   setModalVisible,
   toggleTaskComplete,
-  deleteTask,
-  setTasks,
-  // Linked Timer parameters passed from state
-  timerRemaining = 25 * 60,
-  isTimerRunning = false,
-  setIsTimerRunning,
-  setTimerRemaining,
 }) => {
   const navigation = useNavigation();
 
-  // Looping laser scan animation for AI Bento insights panel
-  const scanAnim = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const scan = Animated.loop(
-      Animated.timing(scanAnim, {
-        toValue: 1,
-        duration: 3000,
-        useNativeDriver: false,
-      })
-    );
-    scan.start();
-    return () => scan.stop();
-  }, [scanAnim]);
+  const priorityTasks = tasks.filter(t => !t.completed).slice(0, 5);
 
-  const laserY = scanAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0%", "100%"],
-  });
+  const upcomingBirthdays = [...birthdays]
+    .filter(b => b.daysRemaining !== undefined && b.daysRemaining <= 30)
+    .sort((a, b) => a.daysRemaining - b.daysRemaining)
+    .slice(0, 5);
 
-  // Helper to format remaining timer: MM:SS
-  const formatTime = (seconds) => {
-    const m = Math.floor(seconds / 60).toString().padStart(2, "0");
-    const s = (seconds % 60).toString().padStart(2, "0");
-    return `${m}:${s}`;
-  };
-
-  const handleToggleTimer = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (setIsTimerRunning) {
-      setIsTimerRunning(!isTimerRunning);
-    }
-  };
-
-  const handleToggleSubtask = (taskId, subtaskIdx) => {
-    setTasks(prevTasks => prevTasks.map(task => {
-      if (task.id === taskId) {
-        const newSubtasks = task.subtasks.map((st, idx) => idx === subtaskIdx ? { ...st, completed: !st.completed } : st);
-        return { ...task, subtasks: newSubtasks };
-      }
-      return task;
-    }));
-  };
-
-  // Filter top 3 incomplete priority tasks
-  const priorityTasks = tasks.filter(t => !t.completed).slice(0, 3);
-
-  // Filter 3 most recently updated notes
-  const recentNotes = [...notes]
-    .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
-    .slice(0, 3);
+  const { labels, counts, max } = getDailyCompletions(tasks);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      
-      {/* ─── BENTO GRID LAYOUT ─── */}
       <View style={styles.gridStack}>
-        
-        {/* 1. Hero Focus Section */}
-        <LiquidGlassCard theme={currentTheme} style={styles.heroCard}>
-          <View style={styles.heroHeader}>
-            <View style={[styles.badge, { backgroundColor: currentTheme.primary, borderColor: currentTheme.primary }]}>
-              <Text style={[styles.badgeText, { color: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000" }]}>
-                {isTimerRunning ? "ACTIVE_SESSION" : "STANDBY_SESSION"}
-              </Text>
-            </View>
-            <Text style={[styles.heroTimerText, { color: currentTheme.text }]}>
-              {formatTime(timerRemaining)}
-            </Text>
-          </View>
-          
-          <Text style={[styles.heroTitle, { color: currentTheme.text }]}>
-            Deep Work Cycle: Project Alpha
-          </Text>
-          <Text style={[styles.heroDesc, { color: currentTheme.secondaryText }]}>
-            Systems are nominal. Priority tasks are locked. Maintain flow state for optimized output.
-          </Text>
 
-          <View style={styles.heroActions}>
-            <TouchableOpacity
-              onPress={handleToggleTimer}
-              activeOpacity={0.8}
-              style={[
-                styles.invertBtn,
-                {
-                  backgroundColor: isTimerRunning ? currentTheme.error + "22" : currentTheme.primary,
-                  borderColor: isTimerRunning ? currentTheme.error : currentTheme.border,
-                }
-              ]}
-            >
-              <MaterialCommunityIcons 
-                name={isTimerRunning ? "pause" : "play"} 
-                size={18} 
-                color={isTimerRunning ? currentTheme.error : (currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000")} 
-              />
-              <Text 
-                style={[
-                  styles.invertBtnText, 
-                  { color: isTimerRunning ? currentTheme.error : (currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000") }
-                ]}
-              >
-                {isTimerRunning ? "PAUSE FOCUS" : "RESUME FOCUS"}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => navigation.navigate("Focus")}
-              style={[styles.outlineBtn, { borderColor: currentTheme.border }]}
-            >
-              <Text style={[styles.outlineBtnText, { color: currentTheme.text }]}>
-                OPEN DIAL
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </LiquidGlassCard>
-
-        {/* 2. AI Assist Feature (Glassmorphic) */}
-        <View style={[styles.glassPanel, { borderColor: currentTheme.primary + "40" }]}>
-          <Animated.View style={[styles.scanLine, { top: laserY, backgroundColor: currentTheme.primary, shadowColor: currentTheme.primary }]} />
-          
-          <View style={styles.aiHeader}>
-            <MaterialCommunityIcons name="psychology" size={24} color={currentTheme.primary} />
-            <View style={[styles.tagOutline, { borderColor: currentTheme.primary }]}>
-              <Text style={[styles.tagOutlineText, { color: currentTheme.primary }]}>AI_READY</Text>
-            </View>
-          </View>
-
-          <View>
-            <Text style={[styles.aiTitle, { color: currentTheme.text }]}>NEURAL INSIGHTS</Text>
-            <Text style={[styles.aiDesc, { color: currentTheme.secondaryText }]}>
-              I've detected 3 blockers in your active sprint. Shall we execute system optimizations?
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            style={[styles.glassBtn, { borderColor: currentTheme.primary }]}
-            onPress={() => navigation.navigate("Notes")}
-          >
-            <Text style={[styles.glassBtnText, { color: currentTheme.primary }]}>
-              EXECUTE OPTIMIZATION
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* 3. Upcoming Tasks (Priority Queue) */}
+        {/* 1. Upcoming Tasks (Priority Queue) */}
         <LiquidGlassCard theme={currentTheme} style={styles.listCard}>
           <View style={styles.listCardHeader}>
             <View style={styles.listTitleContainer}>
@@ -188,7 +74,7 @@ export const DashboardScreen = ({
               priorityTasks.map((task) => (
                 <View key={task.id} style={[styles.taskItemRow, { borderColor: currentTheme.border + "30" }]}>
                   <TouchableOpacity
-                    onPress={() => handleCompleteTask(task.id)}
+                    onPress={() => toggleTaskComplete(task.id)}
                     style={[styles.squareCheck, { borderColor: currentTheme.primary }]}
                   />
                   <View style={{ flex: 1 }}>
@@ -199,7 +85,7 @@ export const DashboardScreen = ({
                       {task.dueDate ? `DUE: ${new Date(task.dueDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : "LOGGED IN QUEUE"}
                     </Text>
                   </View>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={() => {
                       setSelectedTask(task);
                       setModalVisible(true);
@@ -213,41 +99,81 @@ export const DashboardScreen = ({
           </View>
         </LiquidGlassCard>
 
-        {/* 4. Recent Notes (Knowledge Base) */}
+        {/* 2. Consistency Graph */}
         <LiquidGlassCard theme={currentTheme} style={styles.listCard}>
           <View style={styles.listCardHeader}>
             <View style={styles.listTitleContainer}>
-              <MaterialCommunityIcons name="description" size={18} color={currentTheme.primary} style={{ marginRight: 6 }} />
-              <Text style={[styles.listCardTitle, { color: currentTheme.text }]}>KNOWLEDGE_BASE</Text>
+              <MaterialCommunityIcons name="chart-bar" size={18} color={currentTheme.primary} style={{ marginRight: 6 }} />
+              <Text style={[styles.listCardTitle, { color: currentTheme.text }]}>CONSISTENCY_METRICS</Text>
             </View>
             <Text style={[styles.listCardSticker, { color: currentTheme.secondaryText }]}>
-              {notes.length} DOCUMENTS
+              {DAYS}-DAY TREND
+            </Text>
+          </View>
+
+          <View style={styles.graphContainer}>
+            {counts.map((count, idx) => {
+              const barHeight = (count / max) * 100;
+              return (
+                <View key={idx} style={styles.graphCol}>
+                  <Text style={[styles.graphBarLabel, { color: currentTheme.secondaryText }]}>
+                    {count}
+                  </Text>
+                  <View style={[styles.graphBarWrapper, { borderColor: currentTheme.border + "40" }]}>
+                    <View
+                      style={[
+                        styles.graphBar,
+                        {
+                          height: `${Math.max(barHeight, 4)}%`,
+                          backgroundColor: currentTheme.primary,
+                        },
+                      ]}
+                    />
+                  </View>
+                  <Text style={[styles.graphDayLabel, { color: currentTheme.secondaryText }]}>
+                    {labels[idx]}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        </LiquidGlassCard>
+
+        {/* 3. Upcoming Birthdays */}
+        <LiquidGlassCard theme={currentTheme} style={styles.listCard}>
+          <View style={styles.listCardHeader}>
+            <View style={styles.listTitleContainer}>
+              <MaterialCommunityIcons name="cake-variant" size={18} color={currentTheme.primary} style={{ marginRight: 6 }} />
+              <Text style={[styles.listCardTitle, { color: currentTheme.text }]}>BIRTHDAY_LOG</Text>
+            </View>
+            <Text style={[styles.listCardSticker, { color: currentTheme.secondaryText }]}>
+              {upcomingBirthdays.length} UPCOMING
             </Text>
           </View>
 
           <View style={styles.taskQueue}>
-            {recentNotes.length === 0 ? (
+            {upcomingBirthdays.length === 0 ? (
               <Text style={[styles.emptyListLabel, { color: currentTheme.secondaryText }]}>
-                KNOWLEDGE BASE UNINITIALIZED
+                NO BIRTHDAYS LOGGED IN SYSTEMS
               </Text>
             ) : (
-              recentNotes.map((note) => (
-                <TouchableOpacity
-                  key={note.id}
-                  style={[styles.taskItemRow, { borderColor: currentTheme.border + "30" }]}
-                  onPress={() => navigation.navigate("Notes")}
-                >
-                  <MaterialCommunityIcons name="note-text-outline" size={18} color={currentTheme.primary} style={{ marginRight: 10 }} />
+              upcomingBirthdays.map((bday) => (
+                <View key={bday.id} style={[styles.taskItemRow, { borderColor: currentTheme.border + "30" }]}>
+                  <MaterialCommunityIcons name="cake-variant" size={18} color={currentTheme.primary} style={{ marginRight: 6 }} />
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.taskItemText, { color: currentTheme.text }]} numberOfLines={1}>
-                      {note.title}
+                      {bday.name}
                     </Text>
                     <Text style={[styles.taskItemMeta, { color: currentTheme.secondaryText }]}>
-                      {note.folder || "UNCATEGORIZED"} • {new Date(note.updatedAt).toLocaleDateString()}
+                      {bday.birthDate || bday.date}
                     </Text>
                   </View>
-                  <MaterialCommunityIcons name="chevron-right" size={20} color={currentTheme.secondaryText} />
-                </TouchableOpacity>
+                  <View style={[styles.badgeSmall, { backgroundColor: bday.daysRemaining === 0 ? currentTheme.error + "22" : currentTheme.primary + "18", borderColor: bday.daysRemaining === 0 ? currentTheme.error : currentTheme.primary }]}>
+                    <Text style={[styles.badgeSmallText, { color: bday.daysRemaining === 0 ? currentTheme.error : currentTheme.primary }]}>
+                      {bday.daysRemaining === 0 ? "TODAY" : `${bday.daysRemaining}D`}
+                    </Text>
+                  </View>
+                </View>
               ))
             )}
           </View>
@@ -269,148 +195,6 @@ const styles = StyleSheet.create({
   gridStack: {
     flexDirection: "column",
     gap: 16,
-  },
-  heroCard: {
-    padding: 20,
-    borderWidth: 2,
-  },
-  heroHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  badge: {
-    borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 0,
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 1,
-    fontFamily: "JetBrainsMono-Bold",
-  },
-  heroTimerText: {
-    fontSize: 22,
-    fontWeight: "800",
-    fontFamily: "JetBrainsMono-Bold",
-  },
-  heroTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    fontFamily: "HankenGrotesk-ExtraBold",
-    lineHeight: 28,
-    marginBottom: 8,
-    textTransform: "uppercase",
-  },
-  heroDesc: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontFamily: "HankenGrotesk-Regular",
-    marginBottom: 20,
-  },
-  heroActions: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  invertBtn: {
-    flex: 1.2,
-    height: 48,
-    borderWidth: 2,
-    borderTopWidth: 1,
-    borderLeftWidth: 1,
-    borderBottomWidth: 3,
-    borderRightWidth: 3,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  invertBtnText: {
-    fontSize: 13,
-    fontWeight: "900",
-    fontFamily: "HankenGrotesk-ExtraBold",
-    letterSpacing: 0.5,
-  },
-  outlineBtn: {
-    flex: 0.8,
-    height: 48,
-    borderWidth: 2,
-    borderTopWidth: 1,
-    borderLeftWidth: 1,
-    borderBottomWidth: 3,
-    borderRightWidth: 3,
-    backgroundColor: "transparent",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  outlineBtnText: {
-    fontSize: 13,
-    fontWeight: "900",
-    fontFamily: "HankenGrotesk-ExtraBold",
-  },
-  glassPanel: {
-    borderWidth: 2,
-    padding: 20,
-    position: "relative",
-    overflow: "hidden",
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-    backdropFilter: "blur(32px)", // styled visual parameter
-  },
-  scanLine: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    height: 2,
-    opacity: 0.4,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  aiHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  tagOutline: {
-    borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  tagOutlineText: {
-    fontSize: 10,
-    fontFamily: "JetBrainsMono-Bold",
-    fontWeight: "900",
-  },
-  aiTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    fontFamily: "HankenGrotesk-ExtraBold",
-    marginBottom: 4,
-    letterSpacing: 0.5,
-  },
-  aiDesc: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontFamily: "HankenGrotesk-Regular",
-    marginBottom: 16,
-  },
-  glassBtn: {
-    borderWidth: 2,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "transparent",
-  },
-  glassBtnText: {
-    fontSize: 12,
-    fontWeight: "900",
-    fontFamily: "HankenGrotesk-ExtraBold",
-    letterSpacing: 0.5,
   },
   listCard: {
     padding: 16,
@@ -466,12 +250,56 @@ const styles = StyleSheet.create({
   taskItemText: {
     fontSize: 14,
     fontWeight: "800",
-    fontFamily: "HankenGrotesk-Bold",
+    fontFamily: "JetBrainsMono-Bold",
   },
   taskItemMeta: {
     fontSize: 11,
     fontFamily: "JetBrainsMono-Regular",
     marginTop: 2,
     opacity: 0.8,
+  },
+  graphContainer: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    height: 140,
+    paddingTop: 16,
+  },
+  graphCol: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "flex-end",
+    height: "100%",
+  },
+  graphBarLabel: {
+    fontSize: 9,
+    fontFamily: "JetBrainsMono-Bold",
+    marginBottom: 4,
+  },
+  graphBarWrapper: {
+    width: 24,
+    flex: 1,
+    justifyContent: "flex-end",
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    maxHeight: 90,
+  },
+  graphBar: {
+    width: "100%",
+  },
+  graphDayLabel: {
+    fontSize: 9,
+    fontFamily: "JetBrainsMono-Bold",
+    marginTop: 4,
+  },
+  badgeSmall: {
+    borderWidth: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  badgeSmallText: {
+    fontSize: 9,
+    fontFamily: "JetBrainsMono-Bold",
+    fontWeight: "900",
   },
 });

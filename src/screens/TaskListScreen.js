@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, Animated, StyleSheet, TextInp
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Modal from "react-native-modal";
 import * as Haptics from "expo-haptics";
+import { useNavigation } from "@react-navigation/native";
 import { LiquidGlassCard } from "../components/LiquidGlassCard";
 import { CustomTextInput } from "../components/CustomTextInput";
 import { CustomButton } from "../components/CustomButton";
@@ -23,6 +24,7 @@ export const TaskListScreen = ({
   setModalVisible,
   showConfirmation
 }) => {
+  const navigation = useNavigation();
   const [activeIndex, setActiveIndex] = useState(0);
 
   // List CRUD Modals state
@@ -144,7 +146,7 @@ export const TaskListScreen = ({
           <View style={styles.glassAiInner}>
             <View>
               <View style={styles.glassAiHeader}>
-                <MaterialCommunityIcons name="auto-awesome" size={18} color={currentTheme.primary} style={{ marginRight: 6 }} />
+                <MaterialCommunityIcons name="auto-fix" size={18} color={currentTheme.primary} style={{ marginRight: 6 }} />
                 <Text style={[styles.glassAiTitle, { color: currentTheme.text }]}>AI_TASK_OPTIMIZER</Text>
               </View>
               <Text style={[styles.glassAiDesc, { color: currentTheme.secondaryText }]}>
@@ -153,9 +155,9 @@ export const TaskListScreen = ({
             </View>
             <TouchableOpacity 
               style={[styles.glassAiBtn, { backgroundColor: currentTheme.primary }]}
-              onPress={() => navigation?.navigate("Notes")}
+              onPress={() => navigation.navigate("Notes")}
             >
-              <Text style={[styles.glassAiBtnText, { color: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000" }]}>
+              <Text style={[styles.glassAiBtnText, { color: currentTheme.onPrimary }]}>
                 PLAN
               </Text>
             </TouchableOpacity>
@@ -166,7 +168,7 @@ export const TaskListScreen = ({
         <LiquidGlassCard theme={currentTheme} style={styles.projectChassis}>
           <View style={styles.chassisHeader}>
             <View style={[styles.chassisBadge, { backgroundColor: currentTheme.primary }]}>
-              <Text style={[styles.chassisBadgeText, { color: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000" }]}>
+              <Text style={[styles.chassisBadgeText, { color: currentTheme.onPrimary }]}>
                 PROJECT // {activeList.name.toUpperCase()}
               </Text>
             </View>
@@ -204,7 +206,7 @@ export const TaskListScreen = ({
               listTasks.map((task) => (
                 <View key={task.id} style={[styles.taskRowItem, { borderColor: currentTheme.border + "20" }]}>
                   <TouchableOpacity
-                    onPress={() => handleCompleteTask(task.id)}
+                    onPress={() => toggleTaskComplete(task.id)}
                     style={[
                       styles.squareCheck, 
                       { 
@@ -217,7 +219,7 @@ export const TaskListScreen = ({
                       <MaterialCommunityIcons 
                         name="close" 
                         size={12} 
-                        color={currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000"} 
+                        color={currentTheme.onPrimary} 
                       />
                     )}
                   </TouchableOpacity>
@@ -236,7 +238,7 @@ export const TaskListScreen = ({
                       {task.title}
                     </Text>
                     <Text style={[styles.taskRowMeta, { color: currentTheme.secondaryText }]}>
-                      PRIORITY: {task.important ? "HIGH" : "NORMAL"}
+                      PRIORITY: {(task.priority || (task.important ? "high" : "normal")).toUpperCase()}
                     </Text>
                   </View>
 
@@ -299,7 +301,7 @@ export const TaskListScreen = ({
           setModalVisible(true);
         }}
       >
-        <MaterialCommunityIcons name="plus" size={24} color={currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000"} />
+        <MaterialCommunityIcons name="plus" size={24} color={currentTheme.onPrimary} />
       </TouchableOpacity>
 
       {/* Create List Modal */}
@@ -338,7 +340,7 @@ export const TaskListScreen = ({
               disabled={!newListName.trim()}
               style={[styles.dialogBtnPrimary, { backgroundColor: currentTheme.primary }]}
             >
-              <Text style={[styles.dialogBtnPrimaryText, { color: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000" }]}>CREATE</Text>
+              <Text style={[styles.dialogBtnPrimaryText, { color: currentTheme.onPrimary }]}>CREATE</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -380,7 +382,7 @@ export const TaskListScreen = ({
               disabled={!renameListName.trim()}
               style={[styles.dialogBtnPrimary, { backgroundColor: currentTheme.primary }]}
             >
-              <Text style={[styles.dialogBtnPrimaryText, { color: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000" }]}>RENAME</Text>
+              <Text style={[styles.dialogBtnPrimaryText, { color: currentTheme.onPrimary }]}>RENAME</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -468,7 +470,7 @@ const styles = StyleSheet.create({
   },
   glassAiDesc: {
     fontSize: 11,
-    fontFamily: "HankenGrotesk-Regular",
+    fontFamily: "JetBrainsMono-Regular",
   },
   glassAiBtn: {
     borderWidth: 3,
@@ -537,7 +539,7 @@ const styles = StyleSheet.create({
   taskRowTitle: {
     fontSize: 14,
     fontWeight: "800",
-    fontFamily: "HankenGrotesk-Bold",
+    fontFamily: "JetBrainsMono-Bold",
   },
   taskRowMeta: {
     fontSize: 10,
@@ -579,7 +581,7 @@ const styles = StyleSheet.create({
   velocityNumber: {
     fontSize: 32,
     fontWeight: "900",
-    fontFamily: "HankenGrotesk-ExtraBold",
+    fontFamily: "JetBrainsMono-Bold",
     marginBottom: 6,
   },
   velocityProgressTrack: {
@@ -656,7 +658,7 @@ const styles = StyleSheet.create({
   dialogBtnText: {
     fontSize: 12,
     fontWeight: "900",
-    fontFamily: "HankenGrotesk-ExtraBold",
+    fontFamily: "JetBrainsMono-Bold",
   },
   dialogBtnPrimary: {
     borderWidth: 3,
@@ -669,6 +671,6 @@ const styles = StyleSheet.create({
   dialogBtnPrimaryText: {
     fontSize: 12,
     fontWeight: "900",
-    fontFamily: "HankenGrotesk-ExtraBold",
+    fontFamily: "JetBrainsMono-Bold",
   },
 });

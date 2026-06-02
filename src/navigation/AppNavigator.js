@@ -127,7 +127,7 @@ export const AppNavigator = ({
           fontWeight: "600",
           fontSize: 20,
           color: currentTheme.text,
-          fontFamily: "Inter-SemiBold",
+          fontFamily: "JetBrainsMono-Bold",
         },
         drawerType: "front",
         drawerPosition: "left",
@@ -145,17 +145,11 @@ export const AppNavigator = ({
           <DashboardScreen
             tasks={tasks}
             notes={notes}
+            birthdays={birthdays}
             currentTheme={currentTheme}
-            handleCompleteTask={handleCompleteTask}
             setSelectedTask={setSelectedTask}
             setModalVisible={setModalVisible}
             toggleTaskComplete={toggleTaskComplete}
-            deleteTask={deleteTask}
-            setTasks={setTasks}
-            timerRemaining={timerRemaining}
-            isTimerRunning={isTimerRunning}
-            setIsTimerRunning={setIsTimerRunning}
-            setTimerRemaining={setTimerRemaining}
           />
         )}
       </Drawer.Screen>

@@ -46,7 +46,6 @@ export const FocusTimerScreen = ({
     if (!isTimerRunning && timerRemaining > 0) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       setIsTimerRunning(true);
-      setShowTimerLockout(true);
     }
   };
 
@@ -78,9 +77,16 @@ export const FocusTimerScreen = ({
     }
   };
 
-  // Calculate elapsed progress rotation angle (0 to 360 degrees)
-  const elapsedRatio = timerDuration > 0 ? (timerDuration - timerRemaining) / timerDuration : 0;
-  const rotationAngle = elapsedRatio * 360;
+  // Animated second hand rotation
+  const needleRotation = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const target = timerDuration > 0 ? ((timerDuration - timerRemaining) / timerDuration) * 360 : 0;
+    Animated.timing(needleRotation, {
+      toValue: target,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+  }, [timerRemaining, timerDuration, needleRotation]);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
@@ -89,7 +95,7 @@ export const FocusTimerScreen = ({
       <View style={styles.statusRow}>
         <View style={[styles.badge, { backgroundColor: currentTheme.primary, borderColor: currentTheme.primary }]}>
           <View style={[styles.dot, { backgroundColor: isTimerRunning ? currentTheme.error : currentTheme.success }]} />
-          <Text style={[styles.badgeText, { color: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000" }]}>
+          <Text style={[styles.badgeText, { color: currentTheme.onPrimary }]}>
             {isTimerRunning ? "DEEP_WORK_PHASE" : "TIMER_STANDBY"}
           </Text>
         </View>
@@ -116,16 +122,20 @@ export const FocusTimerScreen = ({
           <Text style={[styles.dialNumberText, { color: currentTheme.secondaryText }]}>30</Text>
         </View>
 
-        {/* Rotatable Hand/Needle */}
-        <View 
+        {/* Animated Second Hand */}
+        <Animated.View 
           style={[
             styles.dialNeedleWrapper, 
-            { transform: [{ rotate: `${rotationAngle}deg` }] }
+            { transform: [{ rotate: needleRotation.interpolate({
+              inputRange: [0, 360],
+              outputRange: ['0deg', '360deg']
+            })}] }
           ]}
           pointerEvents="none"
         >
           <View style={[styles.dialNeedle, { backgroundColor: currentTheme.primary, shadowColor: currentTheme.primary }]} />
-        </View>
+          <View style={[styles.dialNeedleTip, { backgroundColor: currentTheme.primary }]} />
+        </Animated.View>
 
         {/* Central Hub Viewport */}
         <View style={[styles.dialCentralHub, { backgroundColor: currentTheme.background, borderColor: currentTheme.border }]}>
@@ -178,12 +188,12 @@ export const FocusTimerScreen = ({
           <MaterialCommunityIcons 
             name={isTimerRunning ? "pause" : "play"} 
             size={20} 
-            color={currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000"} 
+            color={currentTheme.onPrimary} 
           />
           <Text 
             style={[
               styles.controlBtnPrimaryText, 
-              { color: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000" }
+              { color: currentTheme.onPrimary }
             ]}
           >
             {isTimerRunning ? "PAUSE" : "START"}
@@ -316,13 +326,20 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
   },
   dialNeedle: {
-    width: 3,
-    height: 60,
-    marginTop: 20,
+    width: 2,
+    height: 80,
+    marginTop: 10,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.6,
     shadowRadius: 4,
     elevation: 2,
+  },
+  dialNeedleTip: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    position: 'absolute',
+    top: 82,
   },
   dialCentralHub: {
     width: 200,
@@ -332,7 +349,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
-    shadowOffset: { width: inset => 4, height: 4 }, // simulate etched inward shadow
+    shadowOffset: { width: 4, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 5,
     elevation: 4,
@@ -393,7 +410,7 @@ const styles = StyleSheet.create({
   },
   controlBtnText: {
     fontSize: 10,
-    fontFamily: "HankenGrotesk-ExtraBold",
+    fontFamily: "JetBrainsMono-Bold",
     fontWeight: "900",
   },
   controlBtnPrimary: {
@@ -413,7 +430,7 @@ const styles = StyleSheet.create({
   controlBtnPrimaryText: {
     fontSize: 12,
     fontWeight: "950",
-    fontFamily: "HankenGrotesk-ExtraBold",
+    fontFamily: "JetBrainsMono-Bold",
   },
   glassCoachCard: {
     borderWidth: 2,
@@ -454,6 +471,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontStyle: "italic",
     lineHeight: 18,
-    fontFamily: "HankenGrotesk-Regular",
+    fontFamily: "JetBrainsMono-Regular",
   },
 });

@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Modal from "react-native-modal";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as Haptics from "expo-haptics";
+import { useNavigation } from "@react-navigation/native";
 import { LiquidGlassCard } from "../components/LiquidGlassCard";
 import { scheduleDailyTaskNotification, cancelDueDateNotification } from "../utils/notifications";
 
@@ -15,6 +16,7 @@ export const DailyTasksScreen = ({
   setDailyTasks,
   showConfirmation
 }) => {
+  const navigation = useNavigation();
   const [newTaskName, setNewTaskName] = useState("");
   const [newTaskTime, setNewTaskTime] = useState("");
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -110,7 +112,7 @@ export const DailyTasksScreen = ({
       <View style={styles.headerSection}>
         <View style={styles.headerMetaRow}>
           <View style={[styles.badge, { backgroundColor: currentTheme.primary, borderColor: currentTheme.primary }]}>
-            <Text style={[styles.badgeText, { color: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000" }]}>
+            <Text style={[styles.badgeText, { color: currentTheme.onPrimary }]}>
               DAILY_LOG_V1.0
             </Text>
           </View>
@@ -156,7 +158,7 @@ export const DailyTasksScreen = ({
                     <MaterialCommunityIcons 
                       name="close" 
                       size={14} 
-                      color={currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000"} 
+                      color={currentTheme.onPrimary} 
                       style={{ fontWeight: "bold" }} 
                     />
                   )}
@@ -231,19 +233,19 @@ export const DailyTasksScreen = ({
         <TouchableOpacity
           style={[styles.aiActivator, { backgroundColor: currentTheme.primary, borderColor: currentTheme.border }]}
           activeOpacity={0.9}
-          onPress={() => setModalVisible(true)}
+          onPress={() => navigation.navigate("Notes")}
         >
-          <Animated.View style={[styles.scanLine, { top: laserY, backgroundColor: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000" }]} />
+          <Animated.View style={[styles.scanLine, { top: laserY, backgroundColor: currentTheme.onPrimary }]} />
           <View style={styles.aiActivatorInner}>
             <MaterialCommunityIcons 
               name="robot-outline" 
               size={24} 
-              color={currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000"} 
+              color={currentTheme.onPrimary} 
             />
             <Text 
               style={[
                 styles.aiActivatorText, 
-                { color: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000" }
+                { color: currentTheme.onPrimary }
               ]}
             >
               AI ASSIST_ACTIVATE
@@ -254,7 +256,7 @@ export const DailyTasksScreen = ({
         {/* 2. Insights Card (Brushed Metal) */}
         <View style={[styles.insightsCard, { backgroundColor: currentTheme.cardBackground, borderColor: currentTheme.border }]}>
           <View style={styles.insightsHeader}>
-            <MaterialCommunityIcons name="analytics" size={18} color={currentTheme.primary} />
+            <MaterialCommunityIcons name="chart-bar" size={18} color={currentTheme.primary} />
             <Text style={[styles.insightsHeaderTitle, { color: currentTheme.text }]}>SYSTEM INSIGHTS</Text>
           </View>
           
@@ -326,7 +328,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: "800",
-    fontFamily: "HankenGrotesk-ExtraBold",
+    fontFamily: "JetBrainsMono-Bold",
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
@@ -383,7 +385,7 @@ const styles = StyleSheet.create({
   objectiveText: {
     fontSize: 15,
     fontWeight: "800",
-    fontFamily: "HankenGrotesk-Bold",
+    fontFamily: "JetBrainsMono-Bold",
     lineHeight: 20,
   },
   objectiveMeta: {
@@ -435,7 +437,7 @@ const styles = StyleSheet.create({
   stampBrand: {
     fontSize: 16,
     fontWeight: "900",
-    fontFamily: "HankenGrotesk-ExtraBold",
+    fontFamily: "JetBrainsMono-Bold",
     letterSpacing: 0.5,
   },
   stampVer: {
@@ -500,7 +502,7 @@ const styles = StyleSheet.create({
   insightsDesc: {
     fontSize: 13,
     lineHeight: 18,
-    fontFamily: "HankenGrotesk-Regular",
+    fontFamily: "JetBrainsMono-Regular",
     marginBottom: 12,
   },
   progressTrack: {

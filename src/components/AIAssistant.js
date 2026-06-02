@@ -1013,10 +1013,10 @@ const rawStyles = {
 };
 
 const injectFontFamily = (obj) => {
-  const fontRegular = "HankenGrotesk-Regular";
-  const fontMedium = "HankenGrotesk-Medium";
-  const fontSemiBold = "HankenGrotesk-Bold";
-  const fontBold = "HankenGrotesk-ExtraBold";
+  const fontRegular = "JetBrainsMono-Regular";
+  const fontMedium = "JetBrainsMono-Medium";
+  const fontSemiBold = "JetBrainsMono-Bold";
+  const fontBold = "JetBrainsMono-Bold";
 
   const monoRegular = "JetBrainsMono-Regular";
   const monoMedium = "JetBrainsMono-Medium";

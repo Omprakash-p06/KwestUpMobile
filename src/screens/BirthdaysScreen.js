@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ScrollView, View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Modal from "react-native-modal";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -153,7 +153,7 @@ export const BirthdaysScreen = ({
         {/* Header Title */}
         <View style={styles.headerSection}>
           <View style={[styles.badge, { backgroundColor: currentTheme.primary, borderColor: currentTheme.primary }]}>
-            <Text style={[styles.badgeText, { color: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000" }]}>
+            <Text style={[styles.badgeText, { color: currentTheme.onPrimary }]}>
               REGISTRY_SYS_V1.1
             </Text>
           </View>
@@ -213,7 +213,7 @@ export const BirthdaysScreen = ({
                   <MaterialCommunityIcons 
                     name="close" 
                     size={14} 
-                    color={currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000"} 
+                    color={currentTheme.onPrimary} 
                   />
                 )}
               </View>
@@ -244,7 +244,7 @@ export const BirthdaysScreen = ({
                     style={[
                       styles.chipBtnText, 
                       { 
-                        color: isSelected ? (currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000") : currentTheme.text,
+                        color: isSelected ? (currentTheme.onPrimary) : currentTheme.text,
                         fontWeight: isSelected ? "900" : "500",
                       }
                     ]}
@@ -268,8 +268,8 @@ export const BirthdaysScreen = ({
               }
             ]}
           >
-            <MaterialCommunityIcons name="plus" size={18} color={currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000"} style={{ marginRight: 6 }} />
-            <Text style={[styles.submitBtnText, { color: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000" }]}>
+            <MaterialCommunityIcons name="plus" size={18} color={currentTheme.onPrimary} style={{ marginRight: 6 }} />
+            <Text style={[styles.submitBtnText, { color: currentTheme.onPrimary }]}>
               ADD TO REGISTRY
             </Text>
           </TouchableOpacity>
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: "800",
-    fontFamily: "HankenGrotesk-ExtraBold",
+    fontFamily: "JetBrainsMono-Bold",
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
@@ -486,7 +486,7 @@ const styles = StyleSheet.create({
   },
   checkboxLabel: {
     fontSize: 10,
-    fontFamily: "HankenGrotesk-Bold",
+    fontFamily: "JetBrainsMono-Bold",
     fontWeight: "900",
   },
   stickerLabel: {
@@ -520,7 +520,7 @@ const styles = StyleSheet.create({
   submitBtnText: {
     fontSize: 13,
     fontWeight: "950",
-    fontFamily: "HankenGrotesk-ExtraBold",
+    fontFamily: "JetBrainsMono-Bold",
   },
   listStack: {
     flexDirection: "column",
@@ -547,7 +547,7 @@ const styles = StyleSheet.create({
   bdayNameText: {
     fontSize: 16,
     fontWeight: "900",
-    fontFamily: "HankenGrotesk-ExtraBold",
+    fontFamily: "JetBrainsMono-Bold",
     marginBottom: 2,
   },
   metaRow: {

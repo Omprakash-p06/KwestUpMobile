@@ -146,14 +146,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 17,
     fontWeight: "900",
-    fontFamily: "HankenGrotesk-ExtraBold",
+    fontFamily: "JetBrainsMono-Bold",
     letterSpacing: -0.5,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 12,
     fontWeight: "500",
-    fontFamily: "HankenGrotesk-Medium",
+    fontFamily: "JetBrainsMono-Medium",
     marginBottom: 10,
   },
   redMarginLine: {

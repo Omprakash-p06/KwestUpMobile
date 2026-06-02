@@ -31,8 +31,8 @@ export const TimerLockoutOverlay = ({ show, remainingTime, onExitAttempt, curren
           title="Attempt Exit (Warning)"
           icon="close"
           onPress={onExitAttempt}
-          style={{ backgroundColor: currentTheme.error, marginTop: 20 }}
-          textStyle={{ color: "#FFFFFF" }}
+          color={currentTheme.error}
+          style={{ marginTop: 20 }}
         />
       </View>
     </View>

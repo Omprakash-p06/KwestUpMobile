@@ -47,7 +47,14 @@ export const CustomDrawerContent = (props) => {
         {/* Logo row */}
         <View style={localStyles.logoRow}>
           <View style={[localStyles.logoIconBox, { backgroundColor: currentTheme.primary }]}>
-            <MaterialCommunityIcons name="lightning-bolt" size={18} color="#FFFFFF" />
+            <View style={localStyles.logoK}>
+              <View style={[localStyles.logoKStem, { backgroundColor: currentTheme.onPrimary }]} />
+              <View style={[localStyles.logoKDiag1, { backgroundColor: currentTheme.onPrimary }]} />
+              <View style={[localStyles.logoKDiag2, { backgroundColor: currentTheme.onPrimary }]} />
+            </View>
+            <View style={localStyles.logoU}>
+              <View style={[localStyles.logoULine, { backgroundColor: currentTheme.onPrimary }]} />
+            </View>
           </View>
           <Text style={[localStyles.logoText, { color: currentTheme.text }]}>KwestUp</Text>
           <TouchableOpacity
@@ -114,7 +121,7 @@ export const CustomDrawerContent = (props) => {
                   {
                     color: isActive ? currentTheme.primary : currentTheme.text,
                     fontWeight: isActive ? "700" : "500",
-                    fontFamily: isActive ? "Inter-Bold" : "Inter-Medium",
+                    fontFamily: isActive ? "JetBrainsMono-Bold" : "JetBrainsMono-Medium",
                   },
                 ]}
               >
@@ -165,18 +172,60 @@ const localStyles = StyleSheet.create({
     marginBottom: 20,
   },
   logoIconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 4,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
+    flexDirection: "row",
+    gap: 2,
+  },
+  logoK: {
+    width: 14,
+    height: 24,
+    flexDirection: "row",
+    alignItems: "center",
+    position: "relative",
+  },
+  logoKStem: {
+    width: 3,
+    height: 24,
+    borderRadius: 0,
+  },
+  logoKDiag1: {
+    width: 3,
+    height: 3,
+    position: "absolute",
+    top: 9,
+    left: 3,
+    transform: [{ rotate: "45deg" }],
+  },
+  logoKDiag2: {
+    width: 3,
+    height: 3,
+    position: "absolute",
+    top: 13,
+    left: 5,
+    transform: [{ rotate: "-45deg" }],
+  },
+  logoU: {
+    width: 14,
+    height: 24,
+    alignItems: "center",
+  },
+  logoULine: {
+    width: 3,
+    height: 18,
+    borderRadius: 0,
+    position: "absolute",
+    top: 3,
   },
   logoText: {
     flex: 1,
     fontSize: 22,
     fontWeight: "800",
-    fontFamily: "Inter-Bold",
+    fontFamily: "JetBrainsMono-Bold",
     letterSpacing: -0.5,
   },
   closeBtn: {
@@ -200,7 +249,7 @@ const localStyles = StyleSheet.create({
   avatarText: {
     fontSize: 16,
     fontWeight: "800",
-    fontFamily: "Inter-Bold",
+    fontFamily: "JetBrainsMono-Bold",
   },
   userInfo: {
     flex: 1,
@@ -208,13 +257,13 @@ const localStyles = StyleSheet.create({
   userName: {
     fontSize: 16,
     fontWeight: "700",
-    fontFamily: "Inter-Bold",
+    fontFamily: "JetBrainsMono-Bold",
     marginBottom: 2,
   },
   userSubtitle: {
     fontSize: 12,
     fontWeight: "500",
-    fontFamily: "Inter-Medium",
+    fontFamily: "JetBrainsMono-Medium",
   },
 
   /* ── Nav list ──────────────────────────────────────────────── */
@@ -267,6 +316,6 @@ const localStyles = StyleSheet.create({
     marginLeft: 12,
     fontSize: 15,
     fontWeight: "600",
-    fontFamily: "Inter-SemiBold",
+    fontFamily: "JetBrainsMono-Bold",
   },
 });
