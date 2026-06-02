@@ -76,7 +76,7 @@ export const TaskCard = ({ task, onPress, onComplete, onUncomplete, onDelete, th
       const upcomingAge = nextBday.getFullYear() - birthYear;
       const currentAge = upcomingAge - 1;
       if (diffDays === 0) {
-        ageText = `Turns ${upcomingAge} today! 🍰`;
+        ageText = `Turns ${upcomingAge} today!`;
       } else {
         ageText = `Turns ${upcomingAge} (Age: ${currentAge})`;
       }
@@ -84,7 +84,7 @@ export const TaskCard = ({ task, onPress, onComplete, onUncomplete, onDelete, th
 
     let countdownText = "";
     if (diffDays === 0) {
-      countdownText = "TODAY! 🎉🎂";
+      countdownText = "TODAY!";
     } else if (diffDays === 1) {
       countdownText = "tomorrow!";
     } else {

@@ -1,6 +1,6 @@
 import { StyleSheet, Platform } from "react-native";
 
-export const styles = StyleSheet.create({
+const rawStyles = {
   container: {
     flex: 1,
   },
@@ -816,4 +816,52 @@ export const styles = StyleSheet.create({
   settingsActionText: {
     fontSize: 16,
   },
-});
+};
+
+const injectFontFamily = (obj) => {
+  const fontRegular = "Inter-Regular";
+  const fontMedium = "Inter-Medium";
+  const fontSemiBold = "Inter-SemiBold";
+  const fontBold = "Inter-Bold";
+
+  for (const key in obj) {
+    if (obj[key] && typeof obj[key] === "object") {
+      const style = obj[key];
+      // Check if this style has any text-related properties
+      const hasTextProp =
+        style.fontSize !== undefined ||
+        style.color !== undefined ||
+        style.lineHeight !== undefined ||
+        style.textAlign !== undefined ||
+        style.fontStyle !== undefined ||
+        style.fontWeight !== undefined;
+
+      if (hasTextProp) {
+        // Exclude monospace timers or specific code styling
+        if (style.fontFamily && (style.fontFamily === "monospace" || style.fontFamily === "Menlo")) {
+          continue;
+        }
+
+        // Determine weight
+        if (style.fontWeight) {
+          const weight = String(style.fontWeight);
+          if (weight === "bold" || weight === "700" || weight === "800" || weight === "900") {
+            style.fontFamily = fontBold;
+          } else if (weight === "600") {
+            style.fontFamily = fontSemiBold;
+          } else if (weight === "500") {
+            style.fontFamily = fontMedium;
+          } else {
+            style.fontFamily = fontRegular;
+          }
+        } else {
+          style.fontFamily = fontRegular;
+        }
+      }
+    }
+  }
+};
+
+injectFontFamily(rawStyles);
+
+export const styles = StyleSheet.create(rawStyles);

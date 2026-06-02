@@ -26,26 +26,32 @@ import { LiquidGlassCard } from "../components/LiquidGlassCard";
 
 export const NotesScreen = ({
   currentTheme,
-  notes,
+  notes = [],
   setNotes,
   showConfirmation,
-  tasks,
+  tasks = [],
   setTasks,
   vaults = [],
   setVaults,
-  activeVaultId = "default",
+  activeVaultId,
   handleSetActiveVault,
+  activeNote,
+  setActiveNote,
+  onTaskCreated,
+  onBirthdayCreated,
 }) => {
-  const [selectedNote, setSelectedNote] = useState(null);
+  const [activeFolder, setActiveFolder] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTag, setSelectedTag] = useState("All");
+
+  // Current active note state passed from App.js
+  const selectedNote = activeNote;
+  const setSelectedNote = setActiveNote;
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
   const [editFolder, setEditFolder] = useState("Uncategorized");
   const [editTags, setEditTags] = useState("");
-
-  const [activeFolder, setActiveFolder] = useState("All");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTag, setSelectedTag] = useState("All");
 
   const [isFolderModalVisible, setIsFolderModalVisible] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
@@ -152,6 +158,7 @@ export const NotesScreen = ({
     setEditTags(note.tags || "");
     setIsEditing(true);
     setEditorTab("preview"); // View mode by default
+    setIsSidebarVisible(false); // Close sidebar for maximum note-taking space
   };
 
   const handleSaveNote = async () => {
@@ -261,6 +268,7 @@ export const NotesScreen = ({
     }
     setSelectedNote(null);
     setIsEditing(false);
+    setIsSidebarVisible(true); // Restore sidebar on returning to list
   };
 
   const handleAddFolder = () => {
@@ -398,12 +406,12 @@ export const NotesScreen = ({
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={[styles.container, { backgroundColor: currentTheme.background }]}
+      style={[styles.container, { backgroundColor: "transparent" }]}
     >
       <View style={styles.rowContainer}>
         {/* SIDEBAR EXPLORER */}
-        {isSidebarVisible && !selectedNote && (
-          <View style={[styles.sidebar, { borderRightColor: currentTheme.border, backgroundColor: currentTheme.cardBackground }]}>
+        {isSidebarVisible && (
+          <View style={[styles.sidebar, { borderRightColor: currentTheme.border, backgroundColor: "rgba(255, 255, 255, 0.06)" }]}>
             <View style={styles.sidebarHeader}>
               <Text style={[styles.sidebarTitle, { color: currentTheme.text }]}>Explorer</Text>
               <TouchableOpacity onPress={() => setIsFolderModalVisible(true)}>
@@ -634,6 +642,16 @@ export const NotesScreen = ({
             <View style={styles.flexOne}>
               {/* Toolbar */}
               <View style={styles.listHeader}>
+                <TouchableOpacity
+                  onPress={() => setIsSidebarVisible(!isSidebarVisible)}
+                  style={{ marginRight: 10, padding: 5 }}
+                >
+                  <MaterialCommunityIcons
+                    name={isSidebarVisible ? "menu-open" : "menu"}
+                    size={24}
+                    color={currentTheme.text}
+                  />
+                </TouchableOpacity>
                 <View style={styles.searchBarContainer}>
                   <MaterialCommunityIcons name="magnify" size={20} color={currentTheme.secondaryText} style={styles.searchIcon} />
                   <TextInput
@@ -668,9 +686,9 @@ export const NotesScreen = ({
                 contentContainerStyle={styles.listScroll}
                 renderItem={({ item }) => (
                   <TouchableOpacity
-                    style={[styles.noteCard, { backgroundColor: currentTheme.cardBackground }]}
                     onPress={() => handleSelectNote(item)}
                   >
+                    <LiquidGlassCard theme={currentTheme} style={{ marginVertical: 4 }}>
                     <View style={styles.noteCardHeader}>
                       <Text style={[styles.noteCardTitle, { color: currentTheme.text }]} numberOfLines={1}>
                         {item.title || "Untitled Note"}
@@ -698,7 +716,8 @@ export const NotesScreen = ({
                         {new Date(item.updatedAt).toLocaleDateString()}
                       </Text>
                     </View>
-                  </TouchableOpacity>
+                  </LiquidGlassCard>
+                </TouchableOpacity>
                 )}
                 ListEmptyComponent={
                   <View style={styles.emptyStateContainer}>
@@ -715,13 +734,26 @@ export const NotesScreen = ({
             <View style={styles.flexOne}>
               {/* Editor Header */}
               <View style={[styles.editorHeader, { borderBottomColor: currentTheme.border }]}>
-                <TouchableOpacity
-                  style={styles.backButton}
-                  onPress={handleBack}
-                >
-                  <MaterialCommunityIcons name="arrow-left" size={24} color={currentTheme.text} />
-                  <Text style={[styles.backText, { color: currentTheme.text }]}>Back</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <TouchableOpacity
+                    style={styles.backButton}
+                    onPress={handleBack}
+                  >
+                    <MaterialCommunityIcons name="arrow-left" size={24} color={currentTheme.text} />
+                    <Text style={[styles.backText, { color: currentTheme.text }]}>Back</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => setIsSidebarVisible(!isSidebarVisible)}
+                    style={{ marginLeft: 15, padding: 5 }}
+                  >
+                    <MaterialCommunityIcons
+                      name={isSidebarVisible ? "menu-open" : "menu"}
+                      size={24}
+                      color={currentTheme.text}
+                    />
+                  </TouchableOpacity>
+                </View>
 
                 {/* Edit vs Preview Toggle */}
                 <View style={[styles.editorToggle, { backgroundColor: currentTheme.primary + "10" }]}>
@@ -880,6 +912,26 @@ export const NotesScreen = ({
             }));
             setTasks((prev) => [...prev, ...newTasks]);
           }}
+          onUpdateNoteContent={async (newContent) => {
+            setEditContent(newContent);
+            const result = await saveNoteFile(activeVaultId, editFolder || selectedNote.folder, editTitle || selectedNote.title, newContent);
+            if (result.success) {
+              const freshNotes = await getAllNotesFromFilesystem(activeVaultId);
+              setNotes(freshNotes);
+              const savedNote = freshNotes.find((n) => n.id === result.filePath) || {
+                id: result.filePath,
+                title: editTitle || selectedNote.title,
+                content: newContent,
+                folder: editFolder || selectedNote.folder,
+                tags: extractHashtags(newContent).join(", "),
+                createdAt: selectedNote.createdAt,
+                updatedAt: new Date().toISOString(),
+              };
+              setSelectedNote(savedNote);
+            }
+          }}
+          onTaskCreated={onTaskCreated}
+          onBirthdayCreated={onBirthdayCreated}
         />
       )}
 
@@ -1005,7 +1057,7 @@ export const NotesScreen = ({
   );
 };
 
-const styles = StyleSheet.create({
+const rawStyles = {
   container: {
     flex: 1,
   },
@@ -1428,4 +1480,49 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 10,
   },
-});
+};
+
+const injectFontFamily = (obj) => {
+  const fontRegular = "Inter-Regular";
+  const fontMedium = "Inter-Medium";
+  const fontSemiBold = "Inter-SemiBold";
+  const fontBold = "Inter-Bold";
+
+  for (const key in obj) {
+    if (obj[key] && typeof obj[key] === "object") {
+      const style = obj[key];
+      const hasTextProp =
+        style.fontSize !== undefined ||
+        style.color !== undefined ||
+        style.lineHeight !== undefined ||
+        style.textAlign !== undefined ||
+        style.fontStyle !== undefined ||
+        style.fontWeight !== undefined;
+
+      if (hasTextProp) {
+        if (style.fontFamily && (style.fontFamily === "monospace" || style.fontFamily === "Menlo")) {
+          continue;
+        }
+
+        if (style.fontWeight) {
+          const weight = String(style.fontWeight);
+          if (weight === "bold" || weight === "700" || weight === "800" || weight === "900") {
+            style.fontFamily = fontBold;
+          } else if (weight === "600") {
+            style.fontFamily = fontSemiBold;
+          } else if (weight === "500") {
+            style.fontFamily = fontMedium;
+          } else {
+            style.fontFamily = fontRegular;
+          }
+        } else {
+          style.fontFamily = fontRegular;
+        }
+      }
+    }
+  }
+};
+
+injectFontFamily(rawStyles);
+
+const styles = StyleSheet.create(rawStyles);

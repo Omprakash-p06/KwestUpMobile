@@ -96,7 +96,7 @@ export const BirthdaysScreen = ({
 
   const celebrateBirthday = (id) => {
     const birthday = birthdays.find((b) => b.id === id);
-    showConfirmation(`Wish a happy birthday to ${birthday.name}! 🎂🎉`, () => {
+    showConfirmation(`Wish a happy birthday to ${birthday.name}!`, () => {
       setConfettiVisible(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       console.log("🎉 Birthday celebrated:", birthday.name);

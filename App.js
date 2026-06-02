@@ -9,6 +9,13 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NavigationContainer } from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import { useFonts } from "expo-font";
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+} from "@expo-google-fonts/inter";
 
 // Component imports
 import { CustomButton } from "./src/components/CustomButton";
@@ -16,6 +23,7 @@ import { CustomTextInput } from "./src/components/CustomTextInput";
 import { TaskEditModal } from "./src/components/TaskEditModal";
 import { TimerLockoutOverlay } from "./src/components/TimerLockoutOverlay";
 import { LiquidGlassBackground } from "./src/components/LiquidGlassBackground";
+import { AIAssistant } from "./src/components/AIAssistant";
 
 // Theme and Navigation imports
 import { themes } from "./src/theme/colors";
@@ -47,6 +55,13 @@ const FORCE_CLEAR_ALL_STORAGE = false;
 const App = () => {
   console.log("🚀 KWESTUP MAIN APP COMPONENT LOADING...");
 
+  const [fontsLoaded] = useFonts({
+    "Inter-Regular": Inter_400Regular,
+    "Inter-Medium": Inter_500Medium,
+    "Inter-SemiBold": Inter_600SemiBold,
+    "Inter-Bold": Inter_700Bold,
+  });
+
   const [dailyTasks, setDailyTasks] = useState([]);
   const [birthdays, setBirthdays] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -77,6 +92,7 @@ const App = () => {
 
   const [vaults, setVaults] = useState([]);
   const [activeVaultId, setActiveVaultIdState] = useState("default");
+  const [activeNote, setActiveNote] = useState(null);
 
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -675,7 +691,7 @@ const App = () => {
     );
   };
 
-  if (isLoading) {
+  if (isLoading || !fontsLoaded) {
     return (
       <SafeAreaProvider>
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: currentTheme.background }}>
@@ -738,8 +754,61 @@ const App = () => {
                 setVaults={setVaults}
                 activeVaultId={activeVaultId}
                 handleSetActiveVault={handleSetActiveVault}
+                activeNote={activeNote}
+                setActiveNote={setActiveNote}
               />
             </NavigationContainer>
+
+            {/* Global Unified AI Assistant — shown only when no active note is open to prevent duplicate FAB */}
+            {!activeNote && (
+              <AIAssistant
+                currentTheme={currentTheme}
+                noteContent={activeNote ? activeNote.content : ""}
+                noteTitle={activeNote ? activeNote.title : ""}
+                onTasksExtracted={(extractedTaskTitles) => {
+                  const newTasks = extractedTaskTitles.map((title) => ({
+                    id: Date.now().toString() + Math.random().toString(36).slice(2),
+                    title,
+                    listId: "default_inbox",
+                    completed: false,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                  }));
+                  setTasks((prev) => [...prev, ...newTasks]);
+                }}
+                onTaskCreated={(taskData) => {
+                  const newTask = {
+                    id: Date.now().toString(),
+                    title: taskData.title,
+                    description: taskData.description || "",
+                    dueDate: taskData.dueDate || null,
+                    listId: "default_inbox",
+                    completed: false,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                  };
+                  setTasks((prev) => [...prev, newTask]);
+                  if (newTask.dueDate) {
+                    scheduleDueDateNotification(newTask).then(notificationId => {
+                      setTasks(prev => prev.map(t => t.id === newTask.id ? { ...t, notificationId } : t));
+                    });
+                  }
+                }}
+                onBirthdayCreated={async (birthdayData) => {
+                  const newBday = {
+                    id: Date.now().toString(),
+                    name: birthdayData.name,
+                    birthDate: birthdayData.date,
+                    remindAtTime: "09:00",
+                    advanceReminder: "none",
+                    notificationIds: []
+                  };
+                  const notificationIds = await scheduleCustomBirthdayReminders(newBday);
+                  const finalBday = { ...newBday, notificationIds };
+                  setBirthdays((prev) => [...prev, finalBday]);
+                }}
+              />
+            )}
 
             {/* Confirmation Modal */}
             <Modal

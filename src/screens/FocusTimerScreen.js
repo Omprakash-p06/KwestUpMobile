@@ -84,7 +84,7 @@ export const FocusTimerScreen = ({
             style={[
               styles.timerDisplayContainer,
               {
-                backgroundColor: isTimerRunning ? currentTheme.success + "20" : currentTheme.background,
+                backgroundColor: isTimerRunning ? currentTheme.success + "20" : "rgba(255, 255, 255, 0.08)",
                 borderColor: isTimerRunning ? currentTheme.success : currentTheme.primary,
                 borderWidth: isTimerRunning ? 4 : 3,
               },
@@ -134,7 +134,7 @@ export const FocusTimerScreen = ({
           </View>
         </CustomCard>
 
-        <View style={[styles.infoTextContainer, { backgroundColor: currentTheme.cardBackground }]}>
+        <View style={[styles.infoTextContainer, { backgroundColor: "rgba(255, 255, 255, 0.08)" }]}>
           <MaterialCommunityIcons
             name="information-outline"
             color={currentTheme.secondaryText}

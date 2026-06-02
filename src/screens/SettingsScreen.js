@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ScrollView, View, Text, TouchableOpacity, Linking, ActivityIndicator } from "react-native";
+import { ScrollView, View, Text, TouchableOpacity, Linking, ActivityIndicator, StyleSheet } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { CustomTextInput } from "../components/CustomTextInput";
 import { CustomSegmentedButtons } from "../components/CustomSegmentedButtons";
@@ -35,8 +35,8 @@ export const SettingsScreen = ({
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: currentTheme.background }}>
-      <ScrollView style={[styles.settingsContainer, { backgroundColor: currentTheme.background }]}>
+    <View style={{ flex: 1, backgroundColor: "transparent" }}>
+      <ScrollView style={[styles.settingsContainer, { backgroundColor: "transparent" }]}>
         <Text style={[styles.settingsHeader, { color: currentTheme.text }]}>Settings</Text>
 
         {/* User Profile Section */}

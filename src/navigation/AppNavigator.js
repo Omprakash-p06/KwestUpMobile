@@ -10,6 +10,10 @@ import { FocusTimerScreen } from "../screens/FocusTimerScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import { SearchScreen } from "../screens/SearchScreen";
 import { NotesScreen } from "../screens/NotesScreen";
+import {
+  scheduleDueDateNotification,
+  scheduleCustomBirthdayReminders,
+} from "../utils/notifications";
 
 const Drawer = createDrawerNavigator();
 
@@ -58,8 +62,43 @@ export const AppNavigator = ({
   setVaults,
   activeVaultId,
   handleSetActiveVault,
+  activeNote,
+  setActiveNote,
 }) => {
   const { width } = useWindowDimensions();
+
+  const onTaskCreated = (taskData) => {
+    const newTask = {
+      id: Date.now().toString(),
+      title: taskData.title,
+      description: taskData.description || "",
+      dueDate: taskData.dueDate || null,
+      listId: "default_inbox",
+      completed: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setTasks((prev) => [...prev, newTask]);
+    if (newTask.dueDate) {
+      scheduleDueDateNotification(newTask).then(notificationId => {
+        setTasks(prev => prev.map(t => t.id === newTask.id ? { ...t, notificationId } : t));
+      });
+    }
+  };
+
+  const onBirthdayCreated = async (birthdayData) => {
+    const newBday = {
+      id: Date.now().toString(),
+      name: birthdayData.name,
+      birthDate: birthdayData.date,
+      remindAtTime: "09:00",
+      advanceReminder: "none",
+      notificationIds: []
+    };
+    const notificationIds = await scheduleCustomBirthdayReminders(newBday);
+    const finalBday = { ...newBday, notificationIds };
+    setBirthdays((prev) => [...prev, finalBday]);
+  };
 
   return (
     <Drawer.Navigator
@@ -73,10 +112,11 @@ export const AppNavigator = ({
           setThemeMode={setThemeMode}
         />
       )}
+      sceneContainerStyle={{ backgroundColor: "transparent" }}
       screenOptions={{
         headerShown: true,
         headerStyle: {
-          backgroundColor: currentTheme.cardBackground,
+          backgroundColor: themeMode === "light" ? "rgba(255, 255, 255, 0.5)" : "rgba(12, 15, 23, 0.5)",
           borderBottomWidth: 1,
           borderBottomColor: currentTheme.border,
           elevation: 0,
@@ -87,6 +127,7 @@ export const AppNavigator = ({
           fontWeight: "600",
           fontSize: 20,
           color: currentTheme.text,
+          fontFamily: "Inter-SemiBold",
         },
         drawerType: "front",
         drawerPosition: "left",
@@ -171,6 +212,10 @@ export const AppNavigator = ({
             setVaults={setVaults}
             activeVaultId={activeVaultId}
             handleSetActiveVault={handleSetActiveVault}
+            activeNote={activeNote}
+            setActiveNote={setActiveNote}
+            onTaskCreated={onTaskCreated}
+            onBirthdayCreated={onBirthdayCreated}
           />
         )}
       </Drawer.Screen>

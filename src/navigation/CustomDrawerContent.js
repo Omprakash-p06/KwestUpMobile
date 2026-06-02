@@ -1,9 +1,8 @@
 import React from "react";
-import { View, Text, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { styles } from "../theme/styles";
 
 export const CustomDrawerContent = (props) => {
   const { state, currentTheme, userName, themeMode, setThemeMode } = props;
@@ -11,92 +10,263 @@ export const CustomDrawerContent = (props) => {
   const currentRouteName = state?.routes?.[state?.index]?.name || "Dashboard";
 
   const drawerItems = [
-    { key: "Dashboard", title: "Dashboard", icon: "view-dashboard", route: "Dashboard" },
-    { key: "Daily", title: "Daily Tasks", icon: "bell", route: "Daily" },
-    { key: "Birthdays", title: "Birthdays", icon: "cake", route: "Birthdays" },
-    { key: "Tasks", title: "Task List", icon: "clipboard-list", route: "Tasks" },
-    { key: "Notes", title: "Notes", icon: "notebook", route: "Notes" },
-    { key: "Focus", title: "Focus Timer", icon: "timer", route: "Focus" },
-    { key: "Settings", title: "Settings", icon: "cog", route: "Settings" },
-    { key: "Search", title: "Search", icon: "magnify", route: "Search" },
+    { key: "Dashboard", title: "Dashboard",    icon: "view-dashboard-outline", activeIcon: "view-dashboard",    route: "Dashboard" },
+    { key: "Daily",     title: "Daily Tasks",   icon: "bell-outline",            activeIcon: "bell",              route: "Daily" },
+    { key: "Birthdays", title: "Birthdays",     icon: "cake-variant-outline",    activeIcon: "cake-variant",      route: "Birthdays" },
+    { key: "Tasks",     title: "Task List",     icon: "clipboard-list-outline",  activeIcon: "clipboard-list",    route: "Tasks" },
+    { key: "Notes",     title: "Notes",         icon: "notebook-outline",        activeIcon: "notebook",          route: "Notes" },
+    { key: "Focus",     title: "Focus Timer",   icon: "timer-outline",           activeIcon: "timer",             route: "Focus" },
+    { key: "Search",    title: "Search",        icon: "magnify",                 activeIcon: "magnify",           route: "Search" },
+    { key: "Settings",  title: "Settings",      icon: "cog-outline",             activeIcon: "cog",               route: "Settings" },
   ];
 
+  const themeConfig = {
+    light:  { icon: "weather-sunny",  label: "Light Mode" },
+    dark:   { icon: "weather-night",  label: "Dark Mode" },
+    amoled: { icon: "monitor",        label: "AMOLED" },
+  };
+
+  const cycleTheme = () => {
+    const modes = ["light", "dark", "amoled"];
+    setThemeMode(modes[(modes.indexOf(themeMode) + 1) % modes.length]);
+  };
+
+  const getInitials = (name) => {
+    if (!name) return "K";
+    const parts = name.trim().split(" ");
+    return parts.length >= 2
+      ? (parts[0][0] + parts[1][0]).toUpperCase()
+      : parts[0].slice(0, 2).toUpperCase();
+  };
+
   return (
-    <SafeAreaView style={[styles.drawerContent, { backgroundColor: currentTheme.cardBackground }]}>
-      <View style={styles.drawerHeader}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-          <Text style={[styles.drawerHeaderText, { color: currentTheme.primary }]}>
-            KwestUp
-          </Text>
-          <TouchableOpacity 
-            onPress={() => {
-              if (navigation && typeof navigation.closeDrawer === 'function') {
-                navigation.closeDrawer();
-              }
-            }}
-            style={{ padding: 5 }}
+    <SafeAreaView style={[localStyles.root, { backgroundColor: currentTheme.cardBackground }]}>
+
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <View style={[localStyles.header, { borderBottomColor: currentTheme.border }]}>
+        {/* Logo row */}
+        <View style={localStyles.logoRow}>
+          <View style={[localStyles.logoIconBox, { backgroundColor: currentTheme.primary }]}>
+            <MaterialCommunityIcons name="lightning-bolt" size={18} color="#FFFFFF" />
+          </View>
+          <Text style={[localStyles.logoText, { color: currentTheme.text }]}>KwestUp</Text>
+          <TouchableOpacity
+            onPress={() => navigation?.closeDrawer?.()}
+            style={localStyles.closeBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <MaterialCommunityIcons name="close" size={24} color={currentTheme.text} />
+            <MaterialCommunityIcons name="close" size={22} color={currentTheme.secondaryText} />
           </TouchableOpacity>
         </View>
-        {userName && (
-          <Text style={[styles.drawerUserName, { color: currentTheme.secondaryText }]}>Welcome, {userName}!</Text>
-        )}
-      </View>
-      <ScrollView style={styles.drawerItemsContainer}>
-        {drawerItems.map((item) => (
-          <TouchableOpacity
-            key={item.key}
-            style={[
-              styles.drawerItem,
-              currentRouteName === item.route && { backgroundColor: currentTheme.primary + "20" },
-            ]}
-            onPress={() => {
-              if (navigation && typeof navigation.navigate === 'function') {
-                navigation.navigate(item.route);
-                if (typeof navigation.closeDrawer === 'function') {
-                  navigation.closeDrawer();
-                }
-              }
-            }}
-          >
-            <MaterialCommunityIcons
-              name={item.icon}
-              size={24}
-              color={currentRouteName === item.route ? currentTheme.primary : currentTheme.text}
-              style={styles.drawerItemIcon}
-            />
-            <Text
-              style={[
-                styles.drawerItemText,
-                { color: currentRouteName === item.route ? currentTheme.primary : currentTheme.text },
-              ]}
-            >
-              {item.title}
+
+        {/* User identity block */}
+        <View style={localStyles.userRow}>
+          <View style={[localStyles.avatar, { backgroundColor: currentTheme.primary + "22", borderColor: currentTheme.primary + "55" }]}>
+            <Text style={[localStyles.avatarText, { color: currentTheme.primary }]}>
+              {getInitials(userName)}
             </Text>
-          </TouchableOpacity>
-        ))}
+          </View>
+          <View style={localStyles.userInfo}>
+            <Text style={[localStyles.userName, { color: currentTheme.text }]}>
+              {userName || "Guest"}
+            </Text>
+            <Text style={[localStyles.userSubtitle, { color: currentTheme.secondaryText }]}>
+              KwestUp User
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* ── Navigation Items ────────────────────────────────────────────────── */}
+      <ScrollView
+        style={localStyles.navList}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 12 }}
+      >
+        {drawerItems.map((item) => {
+          const isActive = currentRouteName === item.route;
+          return (
+            <TouchableOpacity
+              key={item.key}
+              style={[
+                localStyles.navItem,
+                isActive && { backgroundColor: currentTheme.primary + "18" },
+              ]}
+              onPress={() => {
+                navigation?.navigate?.(item.route);
+                navigation?.closeDrawer?.();
+              }}
+              activeOpacity={0.75}
+            >
+              {/* Active indicator bar */}
+              {isActive && (
+                <View style={[localStyles.activeBar, { backgroundColor: currentTheme.primary }]} />
+              )}
+              <MaterialCommunityIcons
+                name={isActive ? item.activeIcon : item.icon}
+                size={22}
+                color={isActive ? currentTheme.primary : currentTheme.secondaryText}
+                style={localStyles.navIcon}
+              />
+              <Text
+                style={[
+                  localStyles.navLabel,
+                  {
+                    color: isActive ? currentTheme.primary : currentTheme.text,
+                    fontWeight: isActive ? "700" : "500",
+                    fontFamily: isActive ? "Inter-Bold" : "Inter-Medium",
+                  },
+                ]}
+              >
+                {item.title}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
-      <View style={styles.drawerFooter}>
+
+      {/* ── Footer: Theme Toggle ─────────────────────────────────────────────── */}
+      <View style={[localStyles.footer, { borderTopColor: currentTheme.border }]}>
         <TouchableOpacity
-          onPress={() => {
-            const modes = ["light", "dark", "amoled"];
-            const currentIndex = modes.indexOf(themeMode);
-            const nextIndex = (currentIndex + 1) % modes.length;
-            setThemeMode(modes[nextIndex]);
-          }}
-          style={styles.drawerFooterButton}
+          onPress={cycleTheme}
+          style={[localStyles.themeBtn, { backgroundColor: currentTheme.primary + "12" }]}
+          activeOpacity={0.8}
         >
           <MaterialCommunityIcons
-            name={themeMode === "amoled" ? "monitor" : themeMode === "dark" ? "weather-night" : "weather-sunny"}
-            size={24}
-            color={currentTheme.text}
+            name={themeConfig[themeMode]?.icon || "weather-sunny"}
+            size={20}
+            color={currentTheme.primary}
           />
-          <Text style={[styles.drawerFooterText, { color: currentTheme.text }]}>
-            {themeMode === "amoled" ? "AMOLED" : themeMode === "dark" ? "Dark Mode" : "Light Mode"}
+          <Text style={[localStyles.themeLabel, { color: currentTheme.text }]}>
+            {themeConfig[themeMode]?.label || "Light Mode"}
           </Text>
+          <MaterialCommunityIcons name="chevron-right" size={18} color={currentTheme.secondaryText} />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 };
+
+const localStyles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+
+  /* ── Header ────────────────────────────────────────────────── */
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 20,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  logoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  logoIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  logoText: {
+    flex: 1,
+    fontSize: 22,
+    fontWeight: "800",
+    fontFamily: "Inter-Bold",
+    letterSpacing: -0.5,
+  },
+  closeBtn: {
+    padding: 4,
+  },
+
+  /* ── User row ──────────────────────────────────────────────── */
+  userRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  avatarText: {
+    fontSize: 16,
+    fontWeight: "800",
+    fontFamily: "Inter-Bold",
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: "700",
+    fontFamily: "Inter-Bold",
+    marginBottom: 2,
+  },
+  userSubtitle: {
+    fontSize: 12,
+    fontWeight: "500",
+    fontFamily: "Inter-Medium",
+  },
+
+  /* ── Nav list ──────────────────────────────────────────────── */
+  navList: {
+    flex: 1,
+    paddingTop: 8,
+    paddingHorizontal: 12,
+  },
+  navItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 2,
+    position: "relative",
+    overflow: "hidden",
+  },
+  activeBar: {
+    position: "absolute",
+    left: 0,
+    top: "20%",
+    bottom: "20%",
+    width: 3,
+    borderRadius: 2,
+  },
+  navIcon: {
+    marginRight: 14,
+    marginLeft: 6,
+  },
+  navLabel: {
+    fontSize: 15,
+  },
+
+  /* ── Footer ────────────────────────────────────────────────── */
+  footer: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  themeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  themeLabel: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 15,
+    fontWeight: "600",
+    fontFamily: "Inter-SemiBold",
+  },
+});

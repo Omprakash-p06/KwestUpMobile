@@ -60,7 +60,7 @@ export const TaskListScreen = ({
 
   return (
     <View
-      style={{ flex: 1, backgroundColor: currentTheme.background }}
+      style={{ flex: 1, backgroundColor: "transparent" }}
       onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
     >
       {/* 1. Header & List Controls */}
