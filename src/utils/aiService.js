@@ -445,7 +445,19 @@ ${clampedContent}
 export const assistWritingCustom = async (noteContent, userInstruction, onToken) => {
   const ctx = await loadModel();
 
-  const systemPrompt = `You are a helpful writing assistant. You must perform the following instruction on the provided text: "${userInstruction}". Follow the instruction precisely. Output ONLY the final processed text, with no preamble, explanations, or surrounding quotes.`;
+  const systemPrompt = `You are a helpful writing assistant. You must perform the following instruction on the provided text: "${userInstruction}". Follow the instruction precisely.
+
+CRITICAL DESIGN & INTERACTIVE GUIDELINES:
+1. CLICKABLE CHECKLIST FORMATTING: If the instruction implies or requests creating actionable work tasks, checklists, to-dos, or goals, you MUST format each task strictly as a standard markdown checklist item: '- [ ] Task description'.
+   - Ensure there is exactly one space between '-' and '[ ]', and exactly one space after '[ ]'.
+   - Format: '- [ ] Eat healthy food'
+   - Never output checked checkboxes like '- [x]' or '- [X]'. All generated tasks must start as unchecked: '- [ ]'.
+   - Keep task descriptions concise, action-oriented, clear, and professional.
+   - Output each checklist item on a completely new, separate line.
+2. HEADER STRUCTURE: Group tasks or sections logically using standard markdown headers ('#', '##', '###') to provide a clear, professional hierarchy.
+3. CONCISE WRITING: Avoid wordiness. Keep the tone professional, objective, and direct.
+4. EMOJI PURGE: Under no circumstances should you output emojis (e.g., no ✅, ✨, 📝, 🚀). Use clean, professional text formatting.
+5. NO CHAT PREAMBLE: Output ONLY the final processed or modified text. Do NOT include any chatty preambles, intros, explanations, out-of-character remarks, or surrounding quotes. Start directly with the formatted note content.`;
 
   // Budget: 2048 total - 512 reserved for response - ~250 for system+user template = ~1286 tokens for input
   const MAX_INPUT_CHARS = 5000;

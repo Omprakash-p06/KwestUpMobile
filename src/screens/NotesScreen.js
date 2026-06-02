@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Modal from "react-native-modal";
+import * as Haptics from "expo-haptics";
 import {
   saveNoteFile,
   deleteNoteFile,
@@ -283,6 +284,43 @@ export const NotesScreen = ({
     setEditContent((prev) => prev + syntax);
   };
 
+  const toggleMarkdownCheckbox = async (lineIndex) => {
+    const lines = (editContent || selectedNote.content || "").split("\n");
+    const targetLine = lines[lineIndex];
+    if (!targetLine) return;
+    
+    const uncheckedRegex = /^(\s*[-*]\s*)\[\s*\]\s*(.*)$/;
+    const checkedRegex = /^(\s*[-*]\s*)\[[xX]\]\s*(.*)$/;
+    
+    if (uncheckedRegex.test(targetLine)) {
+      lines[lineIndex] = targetLine.replace(uncheckedRegex, "$1[x] $2");
+    } else if (checkedRegex.test(targetLine)) {
+      lines[lineIndex] = targetLine.replace(checkedRegex, "$1[ ] $2");
+    } else {
+      return;
+    }
+    
+    const newContent = lines.join("\n");
+    setEditContent(newContent);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    const result = await saveNoteFile(activeVaultId, editFolder || selectedNote.folder, editTitle || selectedNote.title, newContent);
+    if (result.success) {
+      const freshNotes = await getAllNotesFromFilesystem(activeVaultId);
+      setNotes(freshNotes);
+      const savedNote = freshNotes.find((n) => n.id === result.filePath) || {
+        id: result.filePath,
+        title: editTitle || selectedNote.title,
+        content: newContent,
+        folder: editFolder || selectedNote.folder,
+        tags: extractHashtags(newContent).join(", "),
+        createdAt: selectedNote.createdAt,
+        updatedAt: new Date().toISOString(),
+      };
+      setSelectedNote(savedNote);
+    }
+  };
+
   // 6. Local Markdown parser
   const renderMarkdown = (text) => {
     if (!text) {
@@ -318,23 +356,36 @@ export const NotesScreen = ({
         );
       }
 
-      // Checkboxes / Tasks
-      if (line.startsWith("- [ ] ")) {
+      // Checkboxes / Tasks (with support for indentation and * or - bullets)
+      const uncheckedMatch = line.match(/^(\s*[-*]\s*)\[\s*\]\s*(.*)$/);
+      if (uncheckedMatch) {
+        const indent = uncheckedMatch[1];
+        const taskText = uncheckedMatch[2];
+        const indentWidth = (indent.match(/ /g) || []).length * 4;
         return (
-          <View key={index} style={styles.mdTodoRow}>
-            <MaterialCommunityIcons name="checkbox-blank-outline" size={20} color={currentTheme.primary} />
+          <View key={index} style={[styles.mdTodoRow, { paddingLeft: Math.max(0, indentWidth) }]}>
+            <TouchableOpacity onPress={() => toggleMarkdownCheckbox(index)} activeOpacity={0.7} style={{ flexDirection: "row", alignItems: "center" }}>
+              <MaterialCommunityIcons name="checkbox-blank-outline" size={20} color={currentTheme.primary} style={{ marginRight: 8 }} />
+            </TouchableOpacity>
             <Text style={[styles.mdTodoText, { color: currentTheme.text }]}>
-              {line.substring(6)}
+              {taskText}
             </Text>
           </View>
         );
       }
-      if (line.startsWith("- [x] ") || line.startsWith("- [X] ")) {
+
+      const checkedMatch = line.match(/^(\s*[-*]\s*)\[[xX]\]\s*(.*)$/);
+      if (checkedMatch) {
+        const indent = checkedMatch[1];
+        const taskText = checkedMatch[2];
+        const indentWidth = (indent.match(/ /g) || []).length * 4;
         return (
-          <View key={index} style={styles.mdTodoRow}>
-            <MaterialCommunityIcons name="checkbox-marked" size={20} color={currentTheme.primary} />
+          <View key={index} style={[styles.mdTodoRow, { paddingLeft: Math.max(0, indentWidth) }]}>
+            <TouchableOpacity onPress={() => toggleMarkdownCheckbox(index)} activeOpacity={0.7} style={{ flexDirection: "row", alignItems: "center" }}>
+              <MaterialCommunityIcons name="checkbox-marked" size={20} color={currentTheme.primary} style={{ marginRight: 8 }} />
+            </TouchableOpacity>
             <Text style={[styles.mdTodoText, styles.mdTodoDone, { color: currentTheme.secondaryText }]}>
-              {line.substring(6)}
+              {taskText}
             </Text>
           </View>
         );
