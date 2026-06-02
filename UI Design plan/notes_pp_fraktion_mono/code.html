@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>KWESTUP | Notes</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Replacing Google Fonts with a local-style font declaration for PP Fraktion Mono -->
+<style>
+        @font-face {
+            font-family: 'PP Fraktion Mono';
+            src: url('https://fonts.cdnfonts.com/s/93437/PPFraktionMono-Regular.woff') format('woff');
+            font-weight: 400;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'PP Fraktion Mono';
+            src: url('https://fonts.cdnfonts.com/s/93437/PPFraktionMono-Bold.woff') format('woff');
+            font-weight: 700;
+            font-style: normal;
+        }
+
+        body {
+            background-color: #131313;
+            color: #e5e2e1;
+            font-family: 'PP Fraktion Mono', monospace;
+            overflow-x: hidden;
+        }
+
+        .grain-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.05;
+            background-image: url("https://www.transparenttextures.com/patterns/stardust.png");
+        }
+
+        .etched-input {
+            box-shadow: inset 2px 2px 4px rgba(0,0,0,0.5), inset -1px -1px 1px rgba(255,255,255,0.05);
+        }
+
+        .bevel-raised {
+            box-shadow: 1px 1px 0px rgba(255,255,255,0.1) inset, -1px -1px 0px rgba(0,0,0,0.5) inset;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        .ai-scan-line {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #ffffff, transparent);
+            width: 100%;
+            position: absolute;
+            top: 0;
+            animation: scan 3s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { top: 0; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        .folder-texture {
+            background-image: url("https://www.transparenttextures.com/patterns/leather.png");
+            background-color: #2a2a2a;
+        }
+
+        .rough-fabric {
+            background-image: url("https://www.transparenttextures.com/patterns/pinstriped-suit.png");
+            background-color: #20201f;
+        }
+    </style>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-fixed": "#1a1c1c",
+                    "on-secondary-container": "#b5b5b5",
+                    "inverse-on-surface": "#313030",
+                    "inverse-primary": "#5d5f5f",
+                    "on-error-container": "#ffdad6",
+                    "tertiary": "#ffffff",
+                    "error-container": "#93000a",
+                    "on-secondary-fixed": "#1b1b1b",
+                    "surface-variant": "#353535",
+                    "background": "#131313",
+                    "tertiary-fixed": "#e4e2e1",
+                    "surface-dim": "#131313",
+                    "on-error": "#690005",
+                    "primary-container": "#e2e2e2",
+                    "surface-container-high": "#2a2a2a",
+                    "surface-container": "#20201f",
+                    "secondary-fixed-dim": "#c6c6c6",
+                    "surface-container-highest": "#353535",
+                    "surface-tint": "#c6c6c7",
+                    "on-primary-fixed-variant": "#454747",
+                    "on-surface-variant": "#c4c7c8",
+                    "on-tertiary-fixed-variant": "#474747",
+                    "on-tertiary-container": "#656464",
+                    "on-tertiary": "#303030",
+                    "secondary-container": "#474747",
+                    "primary-fixed": "#e2e2e2",
+                    "outline-variant": "#444748",
+                    "secondary": "#c6c6c6",
+                    "surface": "#131313",
+                    "surface-bright": "#393939",
+                    "on-tertiary-fixed": "#1b1c1c",
+                    "on-primary-container": "#636565",
+                    "on-secondary-fixed-variant": "#474747",
+                    "surface-container-low": "#1c1b1b",
+                    "inverse-surface": "#e5e2e1",
+                    "on-primary": "#2f3131",
+                    "tertiary-container": "#e4e2e1",
+                    "secondary-fixed": "#e2e2e2",
+                    "on-secondary": "#303030",
+                    "outline": "#8e9192",
+                    "primary-fixed-dim": "#c6c6c7",
+                    "on-surface": "#e5e2e1",
+                    "error": "#ffb4ab",
+                    "surface-container-lowest": "#0e0e0e",
+                    "tertiary-fixed-dim": "#c8c6c6",
+                    "primary": "#ffffff",
+                    "on-background": "#e5e2e1"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "md": "16px",
+                    "sm": "8px",
+                    "margin": "20px",
+                    "xs": "4px",
+                    "unit": "4px",
+                    "xl": "32px",
+                    "gutter": "16px",
+                    "lg": "24px"
+            },
+            "fontFamily": {
+                    "display-lg": ["PP Fraktion Mono", "monospace"],
+                    "label-md": ["PP Fraktion Mono", "monospace"],
+                    "body-lg": ["PP Fraktion Mono", "monospace"],
+                    "headline-lg-mobile": ["PP Fraktion Mono", "monospace"],
+                    "headline-lg": ["PP Fraktion Mono", "monospace"],
+                    "label-sm": ["PP Fraktion Mono", "monospace"],
+                    "body-md": ["PP Fraktion Mono", "monospace"]
+            },
+            "fontSize": {
+                    "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "800"}],
+                    "label-md": ["14px", {"lineHeight": "1.4", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-sm": ["12px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+          min-height: max(884px, 100dvh);
+        }
+    </style>
+</head>
+<body class="bg-background">
+<div class="grain-overlay"></div>
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-background border-b-2 border-outline shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)] flex justify-between items-center h-16 px-margin">
+<div class="flex items-center gap-sm active:scale-95 transition-transform duration-75">
+<span class="material-symbols-outlined text-primary" data-icon="bolt">bolt</span>
+<h1 class="font-display-lg text-display-lg font-black tracking-tighter text-primary">KWESTUP</h1>
+</div>
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-on-surface-variant hover:bg-on-surface-variant hover:text-on-primary p-xs cursor-pointer active:scale-95 transition-transform" data-icon="smart_toy">smart_toy</span>
+</div>
+</header>
+<main class="pt-24 pb-32 px-margin max-w-7xl mx-auto">
+<!-- Header Section -->
+<section class="mb-xl flex flex-col md:flex-row md:items-end justify-between gap-md">
+<div>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest block mb-xs">KWEST_FS_01</span>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-primary">PROJECT_ARCHIVE</h2>
+</div>
+<div class="flex gap-sm">
+<button class="bg-primary text-on-primary font-label-md text-label-md px-lg py-sm flex items-center gap-xs active:invert transition-all border-2 border-primary">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+                NEW_ENTRY
+            </button>
+</div>
+</section>
+<!-- Search Bar -->
+<div class="mb-xl relative group">
+<input class="w-full bg-surface-container-low etched-input border-2 border-outline py-md px-lg pl-12 font-label-md text-label-md focus:border-primary focus:ring-0 text-primary placeholder:text-on-surface-variant" placeholder="QUERY_SYSTEM_LOGS..." type="text"/>
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant" data-icon="search">search</span>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Folders Section (Left Column) -->
+<div class="md:col-span-4 flex flex-col gap-gutter">
+<h3 class="font-label-md text-label-md text-on-surface-variant border-b-2 border-outline pb-xs">DIRECTORIES</h3>
+<!-- Folder 1: Leather Texture -->
+<div class="folder-texture p-md border-2 border-outline group cursor-pointer hover:border-primary active:scale-95 transition-all">
+<div class="flex items-start justify-between">
+<span class="material-symbols-outlined text-primary text-4xl" data-icon="folder" style="font-variation-settings: 'FILL' 1;">folder</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">12_FILES</span>
+</div>
+<p class="mt-md font-label-md text-label-md text-primary font-bold uppercase">Strategy_Drafts</p>
+<div class="mt-xs h-1 w-0 bg-primary group-hover:w-full transition-all duration-300"></div>
+</div>
+<!-- Folder 2: Fabric Texture -->
+<div class="rough-fabric p-md border-2 border-outline group cursor-pointer hover:border-primary active:scale-95 transition-all">
+<div class="flex items-start justify-between">
+<span class="material-symbols-outlined text-on-secondary-container text-4xl" data-icon="folder" style="font-variation-settings: 'FILL' 1;">folder</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">04_FILES</span>
+</div>
+<p class="mt-md font-label-md text-label-md text-primary font-bold uppercase">System_Specs</p>
+<div class="mt-xs h-1 w-0 bg-primary group-hover:w-full transition-all duration-300"></div>
+</div>
+<!-- Folder 3: Leather Texture Alternative -->
+<div class="folder-texture opacity-80 grayscale p-md border-2 border-outline group cursor-pointer hover:border-primary hover:grayscale-0 active:scale-95 transition-all">
+<div class="flex items-start justify-between">
+<span class="material-symbols-outlined text-secondary text-4xl" data-icon="folder_zip" style="font-variation-settings: 'FILL' 1;">folder_zip</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">ARCHIVED</span>
+</div>
+<p class="mt-md font-label-md text-label-md text-primary font-bold uppercase">Legacy_Dump</p>
+</div>
+</div>
+<!-- Individual Notes Section (Right Column) -->
+<div class="md:col-span-8 flex flex-col gap-gutter">
+<div class="flex justify-between items-center border-b-2 border-outline pb-xs">
+<h3 class="font-label-md text-label-md text-on-surface-variant">INDIVIDUAL_RECORDS</h3>
+<div class="flex gap-xs">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary" data-icon="grid_view">grid_view</span>
+<span class="material-symbols-outlined text-primary cursor-pointer" data-icon="reorder">reorder</span>
+</div>
+</div>
+<!-- Note Card 1 -->
+<div class="bg-surface-container-high border-2 border-outline p-lg relative group overflow-hidden">
+<div class="flex justify-between items-start mb-md">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant mb-xs">MODIFIED: 2024.10.12</span>
+<h4 class="font-headline-lg-mobile text-headline-lg-mobile text-primary">Terminal_Interface_Refactor</h4>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="more_vert">more_vert</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2">Initial pass on the tactile interface shaders. The grain effect needs to be subtle but physical. Investigating leather mapping for folder icons...</p>
+<div class="mt-lg flex gap-sm">
+<span class="bg-surface-variant text-on-surface-variant font-label-sm text-label-sm px-sm py-xs border border-outline">#UI_UX</span>
+<span class="bg-surface-variant text-on-surface-variant font-label-sm text-label-sm px-sm py-xs border border-outline">#SHADERS</span>
+</div>
+</div>
+<!-- Note Card 2 (Pinned) -->
+<div class="bg-surface-bright border-4 border-primary p-lg relative group overflow-hidden bevel-raised">
+<div class="absolute top-0 right-0 p-xs bg-primary text-on-primary">
+<span class="material-symbols-outlined text-sm" data-icon="push_pin" style="font-variation-settings: 'FILL' 1;">push_pin</span>
+</div>
+<div class="flex justify-between items-start mb-md">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-primary-fixed-variant mb-xs">MODIFIED: 2024.10.10</span>
+<h4 class="font-headline-lg-mobile text-headline-lg-mobile text-primary">CRITICAL_TASKS_Q4</h4>
+</div>
+</div>
+<ul class="font-body-md text-body-md text-primary space-y-xs">
+<li class="flex items-center gap-xs"><span class="material-symbols-outlined text-sm" data-icon="close">close</span> Deploy v1.0.4 Shell</li>
+<li class="flex items-center gap-xs"><span class="material-symbols-outlined text-sm" data-icon="close">close</span> Audit AI latency</li>
+</ul>
+</div>
+<!-- AI Assist Callout -->
+<div class="relative bg-surface-container-lowest border-2 border-primary/40 backdrop-blur-xl p-lg overflow-hidden group">
+<div class="ai-scan-line"></div>
+<div class="flex flex-col md:flex-row items-center justify-between gap-md relative z-10">
+<div class="flex items-center gap-md">
+<div class="w-12 h-12 bg-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-3xl" data-icon="psychology">psychology</span>
+</div>
+<div>
+<h4 class="font-label-md text-label-md text-primary font-black uppercase">AI_SYNC_ACTIVE</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">3 patterns detected in recent notes. Generate summary?</p>
+</div>
+</div>
+<button class="bg-primary text-on-primary px-lg py-sm font-label-md text-label-md font-bold hover:scale-105 active:invert transition-all">EXECUTE_SYNC</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- FAB -->
+<div class="fixed bottom-24 right-margin z-50">
+<button class="w-16 h-16 bg-primary text-on-primary border-4 border-background flex items-center justify-center shadow-xl active:invert transition-all">
+<span class="material-symbols-outlined text-4xl" data-icon="edit">edit</span>
+</button>
+</div>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 bg-surface-container-lowest border-t-2 border-outline bg-background shadow-[0_-4px_0px_0px_rgba(0,0,0,1)] flex justify-around items-stretch h-20 w-full">
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-2 hover:bg-surface-variant active:invert duration-100" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-sm text-label-sm">Dash</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-2 hover:bg-surface-variant active:invert duration-100" href="#">
+<span class="material-symbols-outlined" data-icon="event_upcoming">event_upcoming</span>
+<span class="font-label-sm text-label-sm">Daily</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-2 hover:bg-surface-variant active:invert duration-100" href="#">
+<span class="material-symbols-outlined" data-icon="format_list_bulleted">format_list_bulleted</span>
+<span class="font-label-sm text-label-sm">Tasks</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary text-on-primary rounded-none h-full border-x-2 border-outline px-2 active:invert duration-100" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+<span class="font-label-sm text-label-sm">Notes</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-2 hover:bg-surface-variant active:invert duration-100" href="#">
+<span class="material-symbols-outlined" data-icon="timer">timer</span>
+<span class="font-label-sm text-label-sm">Focus</span>
+</a>
+</nav>
+<!-- SideNav (Visible on desktop) -->
+<aside class="hidden md:flex fixed left-0 top-16 h-[calc(100vh-64px)] w-20 bg-background border-r-2 border-outline flex-col items-center py-xl gap-lg z-40">
+<div class="w-12 h-12 flex items-center justify-center text-primary border-2 border-primary cursor-pointer hover:bg-primary hover:text-on-primary transition-all">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</div>
+<div class="w-12 h-12 flex items-center justify-center text-on-surface-variant border-2 border-outline cursor-pointer hover:border-primary hover:text-primary transition-all">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</div>
+<div class="mt-auto w-12 h-12 flex items-center justify-center text-on-surface-variant border-2 border-outline cursor-pointer hover:border-error hover:text-error transition-all">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+</div>
+</aside>
+<script>
+    // Simple micro-interaction for folder hover
+    document.querySelectorAll('.folder-texture, .rough-fabric').forEach(folder => {
+        folder.addEventListener('mouseenter', () => {
+            const label = folder.querySelector('p');
+            label.style.letterSpacing = '0.1em';
+            label.style.transition = 'all 0.3s ease';
+        });
+        folder.addEventListener('mouseleave', () => {
+            const label = folder.querySelector('p');
+            label.style.letterSpacing = 'normal';
+        });
+    });
+</script>
+</body></html>

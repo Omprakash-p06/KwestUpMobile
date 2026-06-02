@@ -68,6 +68,7 @@ export const AIAssistant = ({
   const [customNotePrompt, setCustomNotePrompt] = useState("");
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const scanAnim = useRef(new Animated.Value(0)).current;
 
   // Premium subtle breathing animation for FAB button
   useEffect(() => {
@@ -80,6 +81,24 @@ export const AIAssistant = ({
     pulse.start();
     return () => pulse.stop();
   }, [pulseAnim]);
+
+  // Tactile digital scanning sweep loop (runs continuously)
+  useEffect(() => {
+    const scan = Animated.loop(
+      Animated.timing(scanAnim, {
+        toValue: 1,
+        duration: 3000,
+        useNativeDriver: false,
+      })
+    );
+    scan.start();
+    return () => scan.stop();
+  }, [scanAnim]);
+
+  const laserY = scanAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0%", "100%"],
+  });
 
   const resetState = () => {
     setMode(null);
@@ -331,11 +350,23 @@ export const AIAssistant = ({
                 backgroundColor: currentTheme.primary + "12",
                 borderColor: currentTheme.primary + "40",
                 borderWidth: 1.5,
+                overflow: "hidden", // Clips the sliding scan line inside card boundaries
               }
             ]}
             onPress={() => handleAssist("improvise")}
             activeOpacity={0.8}
           >
+            {/* Sliding industrial neon scanner laser */}
+            <Animated.View
+              style={[
+                styles.scanLine,
+                {
+                  top: laserY,
+                  backgroundColor: currentTheme.primary,
+                  shadowColor: currentTheme.primary,
+                }
+              ]}
+            />
             <View style={styles.featuredIconContainer}>
               <MaterialCommunityIcons name="creation" size={24} color={currentTheme.primary} />
             </View>
@@ -801,7 +832,7 @@ const rawStyles = {
   fabInner: {
     width: 58,
     height: 58,
-    borderRadius: 29,
+    borderRadius: 0, // perfect 90-degree square corners
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#8E7BEF",
@@ -813,8 +844,8 @@ const rawStyles = {
   fabLabel: { fontSize: 10, color: "#FFF", fontWeight: "800", marginTop: 2 },
   modal: { justifyContent: "flex-end", margin: 0 },
   sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 0, // perfect sharp console bounds
+    borderTopRightRadius: 0,
     paddingTop: 16,
     paddingBottom: 36,
     paddingHorizontal: 20,
@@ -834,7 +865,7 @@ const rawStyles = {
   actionRow: { flexDirection: "row", gap: 12 },
   actionCard: {
     flex: 1,
-    borderRadius: 16,
+    borderRadius: 0,
     borderWidth: 1.5,
     padding: 14,
     alignItems: "center",
@@ -847,7 +878,7 @@ const rawStyles = {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1.5,
-    borderRadius: 14,
+    borderRadius: 0,
     paddingHorizontal: 12,
     height: 52,
     overflow: "hidden",
@@ -859,7 +890,7 @@ const rawStyles = {
     paddingVertical: 0,
   },
   sendBtn: {
-    borderRadius: 8,
+    borderRadius: 0,
     paddingHorizontal: 12,
     paddingVertical: 8,
     marginLeft: 8,
@@ -881,7 +912,7 @@ const rawStyles = {
   },
   aiBanner: {
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 0,
     padding: 10,
     marginTop: 10,
     alignItems: "center",
@@ -889,13 +920,13 @@ const rawStyles = {
 
   closeButton: {
     borderWidth: 1.5,
-    borderRadius: 12,
+    borderRadius: 0,
     padding: 12,
     alignItems: "center",
     marginTop: 12,
   },
   primaryButton: {
-    borderRadius: 14,
+    borderRadius: 0,
     paddingVertical: 14,
     alignItems: "center",
     marginBottom: 12,
@@ -904,11 +935,11 @@ const rawStyles = {
   primaryButtonText: { color: "#FFF", fontWeight: "800", fontSize: 15 },
   progressBarTrack: {
     height: 8,
-    borderRadius: 4,
+    borderRadius: 0,
     marginBottom: 8,
     overflow: "hidden",
   },
-  progressBarFill: { height: "100%", borderRadius: 4 },
+  progressBarFill: { height: "100%", borderRadius: 0 },
   progressLabel: { fontSize: 13, textAlign: "center", marginBottom: 12 },
   loadingRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 20, gap: 12 },
   loadingLabel: { fontSize: 14 },
@@ -930,7 +961,7 @@ const rawStyles = {
   },
   actionGridCard: {
     width: "23%", // 4 columns layout
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1.5,
     paddingVertical: 10,
     paddingHorizontal: 4,
@@ -946,14 +977,14 @@ const rawStyles = {
   featuredCard: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 16,
+    borderRadius: 0,
     padding: 12,
     marginBottom: 12,
   },
   featuredIconContainer: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 0,
     backgroundColor: "rgba(255, 255, 255, 0.12)",
     alignItems: "center",
     justifyContent: "center",
@@ -968,17 +999,33 @@ const rawStyles = {
     fontSize: 11,
     lineHeight: 15,
   },
+  scanLine: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    height: 2,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 4,
+    zIndex: 5,
+  },
 };
 
 const injectFontFamily = (obj) => {
-  const fontRegular = "Inter-Regular";
-  const fontMedium = "Inter-Medium";
-  const fontSemiBold = "Inter-SemiBold";
-  const fontBold = "Inter-Bold";
+  const fontRegular = "HankenGrotesk-Regular";
+  const fontMedium = "HankenGrotesk-Medium";
+  const fontSemiBold = "HankenGrotesk-Bold";
+  const fontBold = "HankenGrotesk-ExtraBold";
+
+  const monoRegular = "JetBrainsMono-Regular";
+  const monoMedium = "JetBrainsMono-Medium";
+  const monoBold = "JetBrainsMono-Bold";
 
   for (const key in obj) {
     if (obj[key] && typeof obj[key] === "object") {
       const style = obj[key];
+      // Check if this style has any text-related properties
       const hasTextProp =
         style.fontSize !== undefined ||
         style.color !== undefined ||
@@ -988,10 +1035,27 @@ const injectFontFamily = (obj) => {
         style.fontWeight !== undefined;
 
       if (hasTextProp) {
-        if (style.fontFamily && (style.fontFamily === "monospace" || style.fontFamily === "Menlo")) {
+        const isMono = 
+          (style.fontFamily && (style.fontFamily === "monospace" || style.fontFamily === "Menlo")) ||
+          key.toLowerCase().includes("timer") || 
+          key.toLowerCase().includes("mono") || 
+          key.toLowerCase().includes("label") || 
+          key.toLowerCase().includes("technical") || 
+          key.toLowerCase().includes("code") ||
+          key.toLowerCase().includes("logs") ||
+          key.toLowerCase().includes("tag") ||
+          key.toLowerCase().includes("version");
+
+        if (isMono) {
+          if (style.fontWeight && (style.fontWeight === "bold" || style.fontWeight === "700" || style.fontWeight === "800" || style.fontWeight === "900")) {
+            style.fontFamily = monoBold;
+          } else {
+            style.fontFamily = monoMedium;
+          }
           continue;
         }
 
+        // Determine weight
         if (style.fontWeight) {
           const weight = String(style.fontWeight);
           if (weight === "bold" || weight === "700" || weight === "800" || weight === "900") {

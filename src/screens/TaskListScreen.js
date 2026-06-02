@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Dimensions, Modal, StyleSheet } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, Animated, StyleSheet, TextInput } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { TaskCard } from "../components/TaskCard";
-import { CustomButton } from "../components/CustomButton";
+import Modal from "react-native-modal";
+import * as Haptics from "expo-haptics";
+import { LiquidGlassCard } from "../components/LiquidGlassCard";
 import { CustomTextInput } from "../components/CustomTextInput";
+import { CustomButton } from "../components/CustomButton";
 
 export const TaskListScreen = ({
-  tasks,
+  tasks = [],
   setTasks,
   taskLists = [],
   handleCreateList,
@@ -22,7 +24,6 @@ export const TaskListScreen = ({
   showConfirmation
 }) => {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [containerWidth, setContainerWidth] = useState(Dimensions.get("window").width);
 
   // List CRUD Modals state
   const [createModalVisible, setCreateModalVisible] = useState(false);
@@ -32,101 +33,65 @@ export const TaskListScreen = ({
   const [renameListName, setRenameListName] = useState("");
   const [selectedListId, setSelectedListId] = useState("");
 
-  const scrollViewRef = useRef(null);
-
-  // Safeguard index if lists are deleted
+  // AI Task Optimizer scanning loop
+  const scanAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    if (activeIndex >= taskLists.length && taskLists.length > 0) {
-      const nextIdx = taskLists.length - 1;
-      setActiveIndex(nextIdx);
-      scrollViewRef.current?.scrollTo({ x: nextIdx * containerWidth, animated: false });
-    }
-  }, [taskLists, activeIndex, containerWidth]);
+    const scan = Animated.loop(
+      Animated.timing(scanAnim, {
+        toValue: 1,
+        duration: 3000,
+        useNativeDriver: false,
+      })
+    );
+    scan.start();
+    return () => scan.stop();
+  }, [scanAnim]);
 
-  const handleTabPress = (index) => {
-    setActiveIndex(index);
-    scrollViewRef.current?.scrollTo({ x: index * containerWidth, animated: true });
-  };
-
-  const handleScroll = (event) => {
-    const xOffset = event.nativeEvent.contentOffset.x;
-    const nextIndex = Math.round(xOffset / containerWidth);
-    if (nextIndex !== activeIndex && nextIndex >= 0 && nextIndex < taskLists.length) {
-      setActiveIndex(nextIndex);
-    }
-  };
+  const laserY = scanAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0%", "100%"],
+  });
 
   const activeList = taskLists[activeIndex] || taskLists[0] || { id: "default_inbox", name: "My Tasks" };
+  const listTasks = tasks.filter((t) => (t.listId || "default_inbox") === activeList.id);
+  const activeTasks = listTasks.filter((t) => !t.completed);
+  const completedTasks = listTasks.filter((t) => t.completed);
+
+  // Calculate list progress/velocity
+  const totalTasksCount = listTasks.length;
+  const completedTasksCount = completedTasks.length;
+  const velocity = totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0;
+
+  const handleTabPress = (index) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setActiveIndex(index);
+  };
+
+  const handleAddQuickTask = (title) => {
+    if (!title.trim()) return;
+    const newTask = {
+      id: Date.now().toString(),
+      title: title.trim(),
+      description: "",
+      dueDate: null,
+      listId: activeList.id,
+      completed: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setTasks((prev) => [...prev, newTask]);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
 
   return (
-    <View
-      style={{ flex: 1, backgroundColor: "transparent" }}
-      onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
-    >
-      {/* 1. Header & List Controls */}
-      <View style={{
-        paddingHorizontal: 20,
-        paddingTop: 16,
-        paddingBottom: 8,
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-      }}>
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <Text style={{
-            fontSize: 24,
-            fontWeight: "800",
-            color: currentTheme.text,
-            marginRight: 10,
-          }}>
-            {activeList.name}
-          </Text>
-          {activeList.id !== "default_inbox" && (
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <TouchableOpacity
-                onPress={() => {
-                  setSelectedListId(activeList.id);
-                  setRenameListName(activeList.name);
-                  setRenameModalVisible(true);
-                }}
-                style={{ padding: 4, marginRight: 4 }}
-              >
-                <MaterialCommunityIcons name="pencil-outline" size={20} color={currentTheme.secondaryText} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => {
-                  handleDeleteList(activeList.id);
-                }}
-                style={{ padding: 4 }}
-              >
-                <MaterialCommunityIcons name="trash-can-outline" size={20} color={currentTheme.error || "#F44336"} />
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        <TouchableOpacity
-          onPress={() => setCreateModalVisible(true)}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            backgroundColor: currentTheme.primary + "16",
-            paddingHorizontal: 12,
-            paddingVertical: 6,
-            borderRadius: 12,
-          }}
-        >
-          <MaterialCommunityIcons name="plus" size={18} color={currentTheme.primary} style={{ marginRight: 2 }} />
-          <Text style={{ color: currentTheme.primary, fontWeight: "700", fontSize: 13 }}>New List</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* 2. Top Navigation Tabs */}
-      <View style={{ borderBottomWidth: 1, borderBottomColor: currentTheme.border || "#E5EAF1" }}>
+    <View style={styles.container}>
+      
+      {/* 1. Category Tabs Section */}
+      <View style={[styles.tabBarContainer, { borderBottomColor: currentTheme.border }]}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8 }}
+          contentContainerStyle={styles.tabBarScroll}
         >
           {taskLists.map((list, index) => {
             const isActive = index === activeIndex;
@@ -134,223 +99,289 @@ export const TaskListScreen = ({
               <TouchableOpacity
                 key={list.id}
                 onPress={() => handleTabPress(index)}
-                style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 8,
-                  borderRadius: 18,
-                  backgroundColor: isActive ? currentTheme.primary : "transparent",
-                  marginRight: 8,
-                }}
+                style={[
+                  styles.tabButton,
+                  isActive && {
+                    backgroundColor: currentTheme.cardBackground,
+                    borderColor: currentTheme.border,
+                    borderBottomColor: currentTheme.cardBackground,
+                    borderWidth: 2,
+                    borderTopWidth: 3,
+                    borderBottomWidth: 0,
+                  }
+                ]}
                 activeOpacity={0.8}
               >
-                <Text style={{
-                  color: isActive ? "#FFFFFF" : currentTheme.secondaryText,
-                  fontWeight: isActive ? "800" : "600",
-                  fontSize: 13,
-                }}>
-                  {list.name}
+                <Text 
+                  style={[
+                    styles.tabButtonText, 
+                    { 
+                      color: isActive ? currentTheme.primary : currentTheme.secondaryText,
+                      fontFamily: isActive ? "JetBrainsMono-Bold" : "JetBrainsMono-Regular",
+                    }
+                  ]}
+                >
+                  {list.name.toUpperCase()}
                 </Text>
               </TouchableOpacity>
             );
           })}
         </ScrollView>
+        <TouchableOpacity
+          style={[styles.newListBadge, { borderColor: currentTheme.primary }]}
+          onPress={() => setCreateModalVisible(true)}
+        >
+          <MaterialCommunityIcons name="plus" size={16} color={currentTheme.primary} />
+          <Text style={[styles.newListBadgeText, { color: currentTheme.primary }]}>NEW</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* 3. Horizontal Paging Sheets */}
-      <ScrollView
-        ref={scrollViewRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={handleScroll}
-        decelerationRate="fast"
-        keyboardShouldPersistTaps="handled"
-        style={{ flex: 1 }}
-      >
-        {taskLists.map((list) => {
-          const listTasks = tasks.filter((t) => (t.listId || "default_inbox") === list.id);
-          const activeTasks = listTasks.filter((t) => !t.completed);
-          const completedTasks = listTasks
-            .filter((t) => t.completed)
-            .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+      <ScrollView style={styles.contentScroll} contentContainerStyle={styles.scrollPadding}>
+        
+        {/* 2. AI Task Optimizer (Glass AI) */}
+        <View style={[styles.glassAi, { borderColor: currentTheme.primary + "40" }]}>
+          <Animated.View style={[styles.scanLine, { top: laserY, backgroundColor: currentTheme.primary, shadowColor: currentTheme.primary }]} />
+          <View style={styles.glassAiInner}>
+            <View>
+              <View style={styles.glassAiHeader}>
+                <MaterialCommunityIcons name="auto-awesome" size={18} color={currentTheme.primary} style={{ marginRight: 6 }} />
+                <Text style={[styles.glassAiTitle, { color: currentTheme.text }]}>AI_TASK_OPTIMIZER</Text>
+              </View>
+              <Text style={[styles.glassAiDesc, { color: currentTheme.secondaryText }]}>
+                Analyzing {activeTasks.length} objectives in queue. Systems nominal.
+              </Text>
+            </View>
+            <TouchableOpacity 
+              style={[styles.glassAiBtn, { backgroundColor: currentTheme.primary }]}
+              onPress={() => navigation?.navigate("Notes")}
+            >
+              <Text style={[styles.glassAiBtnText, { color: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000" }]}>
+                PLAN
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
-          return (
-            <View key={list.id} style={{ width: containerWidth, flex: 1 }}>
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 120 }}
-                keyboardShouldPersistTaps="handled"
-              >
-                {activeTasks.length > 0 ? (
-                  activeTasks.map((task) => (
-                    <TaskCard
-                      key={task.id}
-                      task={task}
-                      onPress={() => {
-                        setSelectedTask(task);
-                        setModalVisible(true);
-                      }}
-                      onComplete={() => handleCompleteTask(task.id)}
-                      onUncomplete={() => toggleTaskComplete(task.id)}
-                      onDelete={deleteTask}
-                      theme={currentTheme}
-                      accent={task.color || currentTheme.primary}
-                      onToggleSubtask={handleToggleSubtask}
-                    />
-                  ))
-                ) : (
-                  <View style={styles.emptyStateContainer}>
-                    <Text style={{ color: currentTheme.secondaryText, fontWeight: "600", textAlign: "center", marginTop: 40 }}>
-                      No active tasks in this list. Good job!
+        {/* 3. Project Chassis Box */}
+        <LiquidGlassCard theme={currentTheme} style={styles.projectChassis}>
+          <View style={styles.chassisHeader}>
+            <View style={[styles.chassisBadge, { backgroundColor: currentTheme.primary }]}>
+              <Text style={[styles.chassisBadgeText, { color: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000" }]}>
+                PROJECT // {activeList.name.toUpperCase()}
+              </Text>
+            </View>
+            <View style={styles.chassisActions}>
+              {activeList.id !== "default_inbox" && (
+                <>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectedListId(activeList.id);
+                      setRenameListName(activeList.name);
+                      setRenameModalVisible(true);
+                    }}
+                    style={{ marginRight: 8 }}
+                  >
+                    <MaterialCommunityIcons name="pencil-outline" size={16} color={currentTheme.primary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => {
+                      handleDeleteList(activeList.id);
+                    }}
+                  >
+                    <MaterialCommunityIcons name="trash-can-outline" size={16} color={currentTheme.error} />
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </View>
+
+          <View style={styles.taskListQueue}>
+            {listTasks.length === 0 ? (
+              <Text style={[styles.emptyLabelText, { color: currentTheme.secondaryText }]}>
+                NO OBJECTIVES LOGGED IN SYSTEMS.
+              </Text>
+            ) : (
+              listTasks.map((task) => (
+                <View key={task.id} style={[styles.taskRowItem, { borderColor: currentTheme.border + "20" }]}>
+                  <TouchableOpacity
+                    onPress={() => handleCompleteTask(task.id)}
+                    style={[
+                      styles.squareCheck, 
+                      { 
+                        borderColor: currentTheme.primary,
+                        backgroundColor: task.completed ? currentTheme.primary : "transparent"
+                      }
+                    ]}
+                  >
+                    {task.completed && (
+                      <MaterialCommunityIcons 
+                        name="close" 
+                        size={12} 
+                        color={currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000"} 
+                      />
+                    )}
+                  </TouchableOpacity>
+
+                  <View style={{ flex: 1 }}>
+                    <Text 
+                      style={[
+                        styles.taskRowTitle, 
+                        { 
+                          color: task.completed ? currentTheme.secondaryText : currentTheme.text,
+                          textDecorationLine: task.completed ? "line-through" : "none",
+                          opacity: task.completed ? 0.6 : 1
+                        }
+                      ]}
+                    >
+                      {task.title}
+                    </Text>
+                    <Text style={[styles.taskRowMeta, { color: currentTheme.secondaryText }]}>
+                      PRIORITY: {task.important ? "HIGH" : "NORMAL"}
                     </Text>
                   </View>
-                )}
 
-                {completedTasks.length > 0 && (
-                  <>
-                    <View style={styles.completedDivider}>
-                      <View style={[styles.dividerLine, { backgroundColor: currentTheme.border }]} />
-                      <Text style={{ color: currentTheme.secondaryText, fontSize: 13, fontWeight: "600", marginHorizontal: 8 }}>
-                        Completed
-                      </Text>
-                      <View style={[styles.dividerLine, { backgroundColor: currentTheme.border }]} />
-                    </View>
+                  <TouchableOpacity 
+                    onPress={() => {
+                      setSelectedTask(task);
+                      setModalVisible(true);
+                    }}
+                  >
+                    <MaterialCommunityIcons name="chevron-right" size={20} color={currentTheme.secondaryText} />
+                  </TouchableOpacity>
+                </View>
+              ))
+            )}
 
-                    {completedTasks.map((task) => (
-                      <View key={task.id} style={{ opacity: 0.7 }}>
-                        <TaskCard
-                          task={task}
-                          theme={currentTheme}
-                          accent={task.color || currentTheme.secondaryText}
-                          onDelete={deleteTask}
-                          onUncomplete={() => toggleTaskComplete(task.id)}
-                          onToggleSubtask={handleToggleSubtask}
-                        />
-                      </View>
-                    ))}
-                  </>
-                )}
-              </ScrollView>
+            {/* Inline Quick Add Typewriter Objective Row */}
+            <View style={[styles.quickAddRow, { borderTopColor: currentTheme.border + "30" }]}>
+              <MaterialCommunityIcons name="plus" size={16} color={currentTheme.secondaryText} style={{ marginRight: 8 }} />
+              <TextInput
+                style={[styles.quickAddInput, { color: currentTheme.text }]}
+                placeholder="ADD OBJECTIVE..."
+                placeholderTextColor={currentTheme.secondaryText + "60"}
+                onSubmitEditing={(e) => {
+                  handleAddQuickTask(e.nativeEvent.text);
+                  e.currentTarget.clear();
+                }}
+                returnKeyType="done"
+              />
             </View>
-          );
-        })}
+          </View>
+        </LiquidGlassCard>
+
+        {/* 4. Asymmetric Velocity & Terminal Card */}
+        <LiquidGlassCard theme={currentTheme} style={styles.velocityCard}>
+          <View style={[styles.velocityStatsColumn, { borderRightColor: currentTheme.border + "30" }]}>
+            <Text style={[styles.velocitySticker, { color: currentTheme.secondaryText }]}>TOTAL_VELOCITY</Text>
+            <Text style={[styles.velocityNumber, { color: currentTheme.text }]}>{velocity}%</Text>
+            <View style={[styles.velocityProgressTrack, { backgroundColor: currentTheme.border + "20" }]}>
+              <View style={[styles.velocityProgressFill, { width: `${velocity}%`, backgroundColor: currentTheme.primary }]} />
+            </View>
+          </View>
+
+          <View style={styles.terminalMessageColumn}>
+            <Text style={[styles.terminalLabel, { color: currentTheme.primary }]}>NETWORK_STATUS: OPTIMAL</Text>
+            <View style={[styles.terminalConsole, { backgroundColor: "rgba(0,0,0,0.1)", borderColor: currentTheme.border + "20" }]}>
+              <Text style={[styles.terminalText, { color: currentTheme.secondaryText }]}>
+                SYSTEM_MESSAGE: Objective pipeline synced with KWEST_SYS_V1 controller.
+              </Text>
+            </View>
+          </View>
+        </LiquidGlassCard>
+
       </ScrollView>
 
-      {/* 4. Floating Action Button to Add Task */}
+      {/* Floating Action Button (FAB) */}
       <TouchableOpacity
-        style={[
-          styles.fab,
-          {
-            backgroundColor: currentTheme.primary,
-            position: "absolute",
-            bottom: 30,
-            right: 20,
-            width: 56,
-            height: 56,
-            borderRadius: 28,
-            justifyContent: "center",
-            alignItems: "center",
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 6,
-            elevation: 8,
-          },
-        ]}
+        style={[styles.fab, { backgroundColor: currentTheme.primary, borderColor: "#000000" }]}
         onPress={() => {
           setSelectedTask({ listId: activeList.id });
           setModalVisible(true);
         }}
       >
-        <MaterialCommunityIcons name="plus" size={30} color="#FFFFFF" />
+        <MaterialCommunityIcons name="plus" size={24} color={currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000"} />
       </TouchableOpacity>
 
-      {/* 5. Create List Modal */}
+      {/* Create List Modal */}
       <Modal
-        visible={createModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setCreateModalVisible(false)}
+        isVisible={createModalVisible}
+        onBackdropPress={() => setCreateModalVisible(false)}
+        style={styles.modalAlign}
       >
-        <View style={styles.modalBg}>
-          <View style={[styles.modalCard, { backgroundColor: currentTheme.cardBackground }]}>
-            <Text style={{ fontSize: 18, fontWeight: "700", color: currentTheme.text, marginBottom: 12 }}>
-              Create New Task List
-            </Text>
-            <CustomTextInput
-              value={newListName}
-              onChangeText={setNewListName}
-              placeholder="List name (e.g. Work, Shopping)"
-              theme={currentTheme}
-              placeholderTextColor={currentTheme.secondaryText}
-            />
-            <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 16 }}>
-              <CustomButton
-                title="Cancel"
-                outline
-                color={currentTheme.primary}
-                onPress={() => {
-                  setNewListName("");
-                  setCreateModalVisible(false);
-                }}
-                style={{ marginRight: 8 }}
-              />
-              <CustomButton
-                title="Create"
-                color={currentTheme.primary}
-                disabled={!newListName.trim()}
-                onPress={() => {
-                  handleCreateList(newListName);
-                  setNewListName("");
-                  setCreateModalVisible(false);
-                }}
-              />
-            </View>
+        <View style={[styles.dialogCard, { backgroundColor: currentTheme.cardBackground, borderColor: currentTheme.border }]}>
+          <Text style={[styles.dialogTitle, { color: currentTheme.text }]}>
+            CREATE NEW OBJECTIVE QUEUE
+          </Text>
+          <CustomTextInput
+            value={newListName}
+            onChangeText={setNewListName}
+            placeholder="Queue Label (e.g. WORK, SYSTEM)"
+            theme={currentTheme}
+            placeholderTextColor={currentTheme.secondaryText}
+          />
+          <View style={styles.dialogActions}>
+            <TouchableOpacity
+              onPress={() => {
+                setNewListName("");
+                setCreateModalVisible(false);
+              }}
+              style={[styles.dialogBtn, { borderColor: currentTheme.border }]}
+            >
+              <Text style={[styles.dialogBtnText, { color: currentTheme.text }]}>CANCEL</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                handleCreateList(newListName);
+                setNewListName("");
+                setCreateModalVisible(false);
+              }}
+              disabled={!newListName.trim()}
+              style={[styles.dialogBtnPrimary, { backgroundColor: currentTheme.primary }]}
+            >
+              <Text style={[styles.dialogBtnPrimaryText, { color: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000" }]}>CREATE</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
-      {/* 6. Rename List Modal */}
+      {/* Rename List Modal */}
       <Modal
-        visible={renameModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setRenameModalVisible(false)}
+        isVisible={renameModalVisible}
+        onBackdropPress={() => setRenameModalVisible(false)}
+        style={styles.modalAlign}
       >
-        <View style={styles.modalBg}>
-          <View style={[styles.modalCard, { backgroundColor: currentTheme.cardBackground }]}>
-            <Text style={{ fontSize: 18, fontWeight: "700", color: currentTheme.text, marginBottom: 12 }}>
-              Rename Task List
-            </Text>
-            <CustomTextInput
-              value={renameListName}
-              onChangeText={setRenameListName}
-              placeholder="New list name"
-              theme={currentTheme}
-              placeholderTextColor={currentTheme.secondaryText}
-            />
-            <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 16 }}>
-              <CustomButton
-                title="Cancel"
-                outline
-                color={currentTheme.primary}
-                onPress={() => {
-                  setRenameListName("");
-                  setRenameModalVisible(false);
-                }}
-                style={{ marginRight: 8 }}
-              />
-              <CustomButton
-                title="Rename"
-                color={currentTheme.primary}
-                disabled={!renameListName.trim()}
-                onPress={() => {
-                  handleRenameList(selectedListId, renameListName);
-                  setRenameListName("");
-                  setRenameModalVisible(false);
-                }}
-              />
-            </View>
+        <View style={[styles.dialogCard, { backgroundColor: currentTheme.cardBackground, borderColor: currentTheme.border }]}>
+          <Text style={[styles.dialogTitle, { color: currentTheme.text }]}>
+            RENAME OBJECTIVE QUEUE
+          </Text>
+          <CustomTextInput
+            value={renameListName}
+            onChangeText={setRenameListName}
+            placeholder="New Label"
+            theme={currentTheme}
+            placeholderTextColor={currentTheme.secondaryText}
+          />
+          <View style={styles.dialogActions}>
+            <TouchableOpacity
+              onPress={() => {
+                setRenameListName("");
+                setRenameModalVisible(false);
+              }}
+              style={[styles.dialogBtn, { borderColor: currentTheme.border }]}
+            >
+              <Text style={[styles.dialogBtnText, { color: currentTheme.text }]}>CANCEL</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                handleRenameList(selectedListId, renameListName);
+                setRenameListName("");
+                setRenameModalVisible(false);
+              }}
+              disabled={!renameListName.trim()}
+              style={[styles.dialogBtnPrimary, { backgroundColor: currentTheme.primary }]}
+            >
+              <Text style={[styles.dialogBtnPrimaryText, { color: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000" }]}>RENAME</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -359,44 +390,285 @@ export const TaskListScreen = ({
 };
 
 const styles = StyleSheet.create({
-  emptyStateContainer: {
+  container: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 60,
   },
-  completedDivider: {
+  tabBarContainer: {
+    borderBottomWidth: 2,
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 20,
-    paddingHorizontal: 10,
+    paddingLeft: 12,
+    backgroundColor: "transparent",
   },
-  dividerLine: {
-    flex: 1,
-    height: 1.5,
-    opacity: 0.5,
+  tabBarScroll: {
+    paddingVertical: 10,
+    alignItems: "flex-end",
   },
-  modalBg: {
+  tabButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginRight: 4,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  tabButtonText: {
+    fontSize: 12,
+    letterSpacing: 0.5,
+  },
+  newListBadge: {
+    borderWidth: 1.5,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginRight: 16,
+  },
+  newListBadgeText: {
+    fontSize: 9,
+    fontFamily: "JetBrainsMono-Bold",
+    fontWeight: "900",
+    marginLeft: 2,
+  },
+  contentScroll: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  scrollPadding: {
+    padding: 16,
+    paddingBottom: 60,
+    gap: 16,
+  },
+  glassAi: {
+    borderWidth: 2,
+    padding: 16,
+    position: "relative",
+    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+  scanLine: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    height: 1,
+    opacity: 0.3,
+  },
+  glassAiInner: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  glassAiHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 2,
+  },
+  glassAiTitle: {
+    fontSize: 13,
+    fontWeight: "950",
+    fontFamily: "JetBrainsMono-Bold",
+  },
+  glassAiDesc: {
+    fontSize: 11,
+    fontFamily: "HankenGrotesk-Regular",
+  },
+  glassAiBtn: {
+    borderWidth: 3,
+    borderColor: "#000000",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  glassAiBtnText: {
+    fontSize: 11,
+    fontFamily: "JetBrainsMono-Bold",
+    fontWeight: "900",
+  },
+  projectChassis: {
+    padding: 16,
+    borderWidth: 2,
+  },
+  chassisHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottomWidth: 1.5,
+    borderBottomColor: "#000000",
+    paddingBottom: 8,
+    marginBottom: 12,
+  },
+  chassisBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  chassisBadgeText: {
+    fontSize: 10,
+    fontFamily: "JetBrainsMono-Bold",
+    fontWeight: "900",
+    letterSpacing: 0.5,
+  },
+  chassisActions: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  taskListQueue: {
+    flexDirection: "column",
+    gap: 8,
+  },
+  emptyLabelText: {
+    fontSize: 12,
+    fontFamily: "JetBrainsMono-Regular",
+    textAlign: "center",
+    paddingVertical: 20,
+    opacity: 0.6,
+  },
+  taskRowItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    padding: 12,
+    gap: 12,
+    backgroundColor: "rgba(0,0,0,0.02)",
+  },
+  squareCheck: {
+    width: 20,
+    height: 20,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  taskRowTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    fontFamily: "HankenGrotesk-Bold",
+  },
+  taskRowMeta: {
+    fontSize: 10,
+    fontFamily: "JetBrainsMono-Regular",
+    marginTop: 2,
+    opacity: 0.8,
+  },
+  quickAddRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderTopWidth: 1,
+    paddingTop: 12,
+    marginTop: 8,
+  },
+  quickAddInput: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: "900",
+    fontFamily: "JetBrainsMono-Bold",
+    padding: 0,
+  },
+  velocityCard: {
+    borderWidth: 2,
+    flexDirection: "row",
+    padding: 0,
+    overflow: "hidden",
+  },
+  velocityStatsColumn: {
+    flex: 1,
+    padding: 16,
+    borderRightWidth: 1.5,
+    justifyContent: "center",
+  },
+  velocitySticker: {
+    fontSize: 9,
+    fontFamily: "JetBrainsMono-Bold",
+    marginBottom: 4,
+  },
+  velocityNumber: {
+    fontSize: 32,
+    fontWeight: "900",
+    fontFamily: "HankenGrotesk-ExtraBold",
+    marginBottom: 6,
+  },
+  velocityProgressTrack: {
+    height: 6,
+    overflow: "hidden",
+  },
+  velocityProgressFill: {
+    height: "100%",
+  },
+  terminalMessageColumn: {
+    flex: 1.5,
+    padding: 16,
+    justifyContent: "center",
+  },
+  terminalLabel: {
+    fontSize: 9,
+    fontFamily: "JetBrainsMono-Bold",
+    fontWeight: "900",
+    marginBottom: 6,
+  },
+  terminalConsole: {
+    borderWidth: 1,
+    padding: 8,
+  },
+  terminalText: {
+    fontSize: 10,
+    fontFamily: "JetBrainsMono-Regular",
+    lineHeight: 14,
+  },
+  fab: {
+    position: "absolute",
+    bottom: 24,
+    right: 20,
+    width: 52,
+    height: 52,
+    borderWidth: 3,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 40,
+    shadowColor: "#000",
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 0,
+    elevation: 6,
+  },
+  modalAlign: {
+    justifyContent: "center",
+    margin: 20,
+  },
+  dialogCard: {
+    borderWidth: 2.5,
+    padding: 24,
+    borderRadius: 0,
+  },
+  dialogTitle: {
+    fontSize: 16,
+    fontWeight: "900",
+    fontFamily: "JetBrainsMono-Bold",
+    marginBottom: 16,
+  },
+  dialogActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 12,
+    marginTop: 16,
+  },
+  dialogBtn: {
+    borderWidth: 1.5,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     justifyContent: "center",
     alignItems: "center",
   },
-  modalCard: {
-    width: "85%",
-    borderRadius: 16,
-    padding: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 10,
+  dialogBtnText: {
+    fontSize: 12,
+    fontWeight: "900",
+    fontFamily: "HankenGrotesk-ExtraBold",
   },
-  fab: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 8,
+  dialogBtnPrimary: {
+    borderWidth: 3,
+    borderColor: "#000000",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  dialogBtnPrimaryText: {
+    fontSize: 12,
+    fontWeight: "900",
+    fontFamily: "HankenGrotesk-ExtraBold",
   },
 });

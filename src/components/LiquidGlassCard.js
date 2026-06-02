@@ -14,14 +14,14 @@ export const LiquidGlassCard = ({ title, subtitle, children, style, theme }) => 
       : screenWidth - 40;
 
   const currentTheme = theme || { 
-    text: "#333333", 
-    secondaryText: "#666666", 
-    cardBackground: "#FFFFFF", 
-    border: "#E0E0E0",
-    primary: "#8E7BEF"
+    text: "#FFFFFF", 
+    secondaryText: "#C4C7C8", 
+    cardBackground: "#20201F", 
+    border: "#8E9192",
+    primary: "#FFFFFF"
   };
 
-  const isDark = currentTheme.background === "#282A36";
+  const isDark = currentTheme.background === "#131313";
   const isAmoled = currentTheme.background === "#000000";
   const isLightNotePaper = !isDark && !isAmoled;
 
@@ -35,41 +35,54 @@ export const LiquidGlassCard = ({ title, subtitle, children, style, theme }) => 
     cardTextureUrl = "https://www.transparenttextures.com/patterns/brushed-alum-dark.png";
   }
 
-  // Card Skeuomorphic Shadows and Borders
+  // Industrial Raised Bevel Styles (Sharp Perfect Rectangles, borderRadius: 0)
   const cardStyles = {
     backgroundColor: currentTheme.cardBackground,
-    borderColor: currentTheme.border,
-    borderWidth: 2,
-    borderRadius: 18,
-    // Realistic 3D deep drop shadow
-    shadowColor: isDark || isAmoled ? "#000000" : "rgba(0, 0, 0, 0.4)",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: isDark ? 0.35 : 0.14,
-    shadowRadius: 10,
-    elevation: isDark ? 8 : 5,
+    borderRadius: 0, // Enforce strict perfect square edges
+    
+    // Outward physical bevel shadow outlines
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
+    
+    borderTopColor: isLightNotePaper ? "rgba(255, 255, 255, 0.75)" : "rgba(255, 255, 255, 0.18)",
+    borderLeftColor: isLightNotePaper ? "rgba(255, 255, 255, 0.75)" : "rgba(255, 255, 255, 0.18)",
+    borderBottomColor: isLightNotePaper ? "rgba(0, 0, 0, 0.22)" : "rgba(0, 0, 0, 0.75)",
+    borderRightColor: isLightNotePaper ? "rgba(0, 0, 0, 0.22)" : "rgba(0, 0, 0, 0.75)",
+
+    // Shadow profile
+    shadowColor: "#000000",
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: isLightNotePaper ? 0.08 : 0.45,
+    shadowRadius: 0, // Sharp shadow drop
+    elevation: isLightNotePaper ? 3 : 8,
   };
 
   if (isAmoled) {
-    cardStyles.borderColor = currentTheme.primary + "50"; // Glowing neon borders
-    cardStyles.borderWidth = 1.5;
+    cardStyles.borderTopWidth = 1;
+    cardStyles.borderLeftWidth = 1;
+    cardStyles.borderBottomWidth = 1;
+    cardStyles.borderRightWidth = 1;
+    cardStyles.borderColor = currentTheme.primary + "33"; // subtle glowing border
     cardStyles.shadowColor = currentTheme.primary;
-    cardStyles.shadowOpacity = 0.15;
-    cardStyles.shadowRadius = 8;
+    cardStyles.shadowOpacity = 0.1;
+    cardStyles.shadowRadius = 4;
   }
 
   // Decorative corner screw rivets for tactile Dark Mode plate
   const renderScrewRivets = () => (
     <>
-      <View style={[styles.screwOuter, { top: 10, left: 10 }]}>
+      <View style={[styles.screwOuter, { top: 8, left: 8 }]}>
         <View style={styles.screwInner}><View style={styles.screwThread} /></View>
       </View>
-      <View style={[styles.screwOuter, { top: 10, right: 10 }]}>
+      <View style={[styles.screwOuter, { top: 8, right: 8 }]}>
         <View style={styles.screwInner}><View style={[styles.screwThread, { transform: [{ rotate: "135deg" }] }]} /></View>
       </View>
-      <View style={[styles.screwOuter, { bottom: 10, left: 10 }]}>
+      <View style={[styles.screwOuter, { bottom: 8, left: 8 }]}>
         <View style={styles.screwInner}><View style={[styles.screwThread, { transform: [{ rotate: "90deg" }] }]} /></View>
       </View>
-      <View style={[styles.screwOuter, { bottom: 10, right: 10 }]}>
+      <View style={[styles.screwOuter, { bottom: 8, right: 8 }]}>
         <View style={styles.screwInner}><View style={[styles.screwThread, { transform: [{ rotate: "45deg" }] }]} /></View>
       </View>
     </>
@@ -106,7 +119,7 @@ export const LiquidGlassCard = ({ title, subtitle, children, style, theme }) => 
       <ImageBackground
         source={{ uri: cardTextureUrl }}
         style={[styles.cardFrame, cardStyles, { width: cardWidth }, style]}
-        imageStyle={{ opacity: isLightNotePaper ? 0.35 : 0.15 }}
+        imageStyle={{ opacity: isLightNotePaper ? 0.35 : 0.08, borderRadius: 0 }}
       >
         {renderCardInner()}
       </ImageBackground>
@@ -132,15 +145,15 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 17,
-    fontWeight: "800",
-    fontFamily: "Inter-Bold",
-    letterSpacing: 0.5,
+    fontWeight: "900",
+    fontFamily: "HankenGrotesk-ExtraBold",
+    letterSpacing: -0.5,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 12,
     fontWeight: "500",
-    fontFamily: "Inter-Medium",
+    fontFamily: "HankenGrotesk-Medium",
     marginBottom: 10,
   },
   redMarginLine: {

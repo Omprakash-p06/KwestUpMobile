@@ -1,32 +1,47 @@
-import React, { useState } from "react";
-import { ScrollView, View, Text } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import { ScrollView, View, Text, StyleSheet, TextInput, TouchableOpacity, Animated, Platform } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Modal from "react-native-modal";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { CustomCard } from "../components/CustomCard";
-import { CustomTextInput } from "../components/CustomTextInput";
-import { CustomButton } from "../components/CustomButton";
-import { TaskCard } from "../components/TaskCard";
+import * as Haptics from "expo-haptics";
+import { LiquidGlassCard } from "../components/LiquidGlassCard";
 import { scheduleDailyTaskNotification, cancelDueDateNotification } from "../utils/notifications";
-import { styles } from "../theme/styles";
 
 export const DailyTasksScreen = ({
   currentTheme,
   setSelectedTask,
   setModalVisible,
-  dailyTasks,
+  dailyTasks = [],
   setDailyTasks,
   showConfirmation
 }) => {
   const [newTaskName, setNewTaskName] = useState("");
   const [newTaskTime, setNewTaskTime] = useState("");
   const [showTimePicker, setShowTimePicker] = useState(false);
-  const [pickerMode, setPickerMode] = useState("time");
-  const [pickerTarget, setPickerTarget] = useState("daily");
   const today = new Date().toISOString().slice(0, 10);
+
+  // AI activator sweep animation
+  const scanAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const scan = Animated.loop(
+      Animated.timing(scanAnim, {
+        toValue: 1,
+        duration: 3000,
+        useNativeDriver: false,
+      })
+    );
+    scan.start();
+    return () => scan.stop();
+  }, [scanAnim]);
+
+  const laserY = scanAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0%", "100%"],
+  });
 
   const addDailyTask = () => {
     if (newTaskName.trim()) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       const newDailyTask = {
         id: Date.now(),
         name: newTaskName.trim(),
@@ -36,6 +51,7 @@ export const DailyTasksScreen = ({
         completedDate: null,
         notificationId: null,
       };
+
       if (newDailyTask.time) {
         scheduleDailyTaskNotification(newDailyTask).then(notificationId => {
           setDailyTasks([...dailyTasks, { ...newDailyTask, notificationId }]);
@@ -45,11 +61,11 @@ export const DailyTasksScreen = ({
       }
       setNewTaskName("");
       setNewTaskTime("");
-      console.log("✅ Daily task added:", newDailyTask.name);
     }
   };
 
   const toggleDailyTaskComplete = (id) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setDailyTasks(
       dailyTasks.map((task) => {
         if (task.id === id) {
@@ -64,13 +80,13 @@ export const DailyTasksScreen = ({
         return task;
       })
     );
-    console.log("✅ Daily task toggled:", id);
   };
 
   const deleteDailyTask = (id) => {
     showConfirmation(
-      "Are you sure you want to delete this daily task?",
+      "Confirm deletion of objective from system?",
       () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setDailyTasks(dailyTasks => {
           const taskToDelete = dailyTasks.find(t => t.id === id);
           if (taskToDelete && taskToDelete.notificationId) {
@@ -78,114 +94,425 @@ export const DailyTasksScreen = ({
           }
           return dailyTasks.filter((task) => task.id !== id);
         });
-        console.log("🗑️ Daily task deleted:", id);
-      },
-      () => {},
+      }
     );
   };
 
-  return (
-    <ScrollView style={styles.tabContentScroll}>
-      <View style={styles.tabContent}>
-        <CustomCard style={{ backgroundColor: currentTheme.cardBackground }} theme={currentTheme}>
-          <Text style={[styles.sectionTitle, { color: currentTheme.primary }]}>Add New Daily Task</Text>
-          <View style={styles.inputRow}>
-            <CustomTextInput
-              label="Task Name"
-              value={newTaskName}
-              onChangeText={setNewTaskName}
-              style={styles.textInputFlex}
-              onSubmitEditing={addDailyTask}
-              placeholderTextColor={currentTheme.secondaryText}
-              theme={currentTheme}
-            />
-            <CustomButton
-              title={newTaskTime || "Time"}
-              icon="clock"
-              onPress={() => {
-                setPickerMode("time");
-                setPickerTarget("daily");
-                setShowTimePicker(true);
-              }}
-              outline
-              color={currentTheme.primary}
-              style={styles.textInputTimeButton}
-            />
-          </View>
-          <CustomButton
-            title="Add Daily Task"
-            icon="plus"
-            onPress={addDailyTask}
-            color={currentTheme.primary}
-            style={styles.fullWidthButton}
-          />
-        </CustomCard>
+  // Calculate efficiency
+  const totalCount = dailyTasks.length;
+  const completedCount = dailyTasks.filter(t => t.completed).length;
+  const efficiency = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
-        {dailyTasks.length === 0 ? (
-          <CustomCard style={{ backgroundColor: currentTheme.cardBackground, alignItems: "center" }} theme={currentTheme}>
-            <MaterialCommunityIcons name="bell-outline" size={60} color={currentTheme.secondaryText} />
-            <Text style={[styles.emptyListText, { color: currentTheme.secondaryText }]}>No daily tasks added yet. Start by adding one!</Text>
-          </CustomCard>
-        ) : (
-          <>
-            {/* Incomplete Tasks */}
-            {dailyTasks.filter(t => !t.completed).length > 0 && (
-              dailyTasks.filter(t => !t.completed).map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={{ ...task, title: task.name }}
-                  onComplete={() => toggleDailyTaskComplete(task.id)}
-                  onUncomplete={() => toggleDailyTaskComplete(task.id)}
-                  onDelete={deleteDailyTask}
-                  theme={currentTheme}
-                  accent={currentTheme.primary}
-                />
-              ))
-            )}
-            {/* Completed Divider and Tasks */}
-            {dailyTasks.filter(t => t.completed).length > 0 && (
-              <>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 24 }}>
-                  <View style={[styles.dividerLine, { backgroundColor: currentTheme.border }]} />
-                  <Text style={[styles.completedTitle, { color: currentTheme.secondaryText }]}>Completed</Text>
-                  <View style={[styles.dividerLine, { backgroundColor: currentTheme.border }]} />
-                </View>
-                {dailyTasks.filter(t => t.completed).map((task) => (
-                  <View key={task.id} style={{ opacity: 0.7 }}>
-                    <TaskCard
-                      task={{ ...task, title: task.name }}
-                      onComplete={() => toggleDailyTaskComplete(task.id)}
-                      onUncomplete={() => toggleDailyTaskComplete(task.id)}
-                      onDelete={deleteDailyTask}
-                      theme={currentTheme}
-                      accent={currentTheme.primary}
-                    />
-                  </View>
-                ))}
-              </>
-            )}
-          </>
-        )}
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+      
+      {/* Page Header Section */}
+      <View style={styles.headerSection}>
+        <View style={styles.headerMetaRow}>
+          <View style={[styles.badge, { backgroundColor: currentTheme.primary, borderColor: currentTheme.primary }]}>
+            <Text style={[styles.badgeText, { color: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000" }]}>
+              DAILY_LOG_V1.0
+            </Text>
+          </View>
+          <View style={[styles.glassBadge, { borderColor: currentTheme.border }]}>
+            <MaterialCommunityIcons name="clock-outline" size={12} color={currentTheme.text} style={{ marginRight: 4 }} />
+            <Text style={[styles.glassBadgeText, { color: currentTheme.text }]}>
+              {dailyTasks.filter(t => !t.completed).length} ACTIVE OBJECTIVES
+            </Text>
+          </View>
+        </View>
+        <Text style={[styles.title, { color: currentTheme.text }]}>SYSTEM OBJECTIVES</Text>
       </View>
 
-      <Modal isVisible={showTimePicker && pickerTarget === "daily"} onBackdropPress={() => setShowTimePicker(false)}>
-        <DateTimePicker
-          value={new Date()}
-          mode="time"
-          is24Hour={true}
-          display="spinner"
-          onChange={(event, selectedDate) => {
-            if (event.type === 'set' && selectedDate) {
-              const hours = selectedDate.getHours().toString().padStart(2, "0");
-              const minutes = selectedDate.getMinutes().toString().padStart(2, "0");
-              setNewTaskTime(`${hours}:${minutes}`);
-              setShowTimePicker(false);
-            } else if (event.type === 'dismissed') {
-              setShowTimePicker(false);
-            }
-          }}
-        />
-      </Modal>
+      {/* Task Canvas (Ruled Ledger / Machined Steel Plate) */}
+      <LiquidGlassCard theme={currentTheme} style={styles.canvasCard}>
+        <View style={styles.canvasHeader}>
+          <Text style={[styles.canvasHeaderTitle, { color: currentTheme.text }]}>Active_Tasks.sys</Text>
+          <Text style={[styles.canvasHeaderDate, { color: currentTheme.secondaryText }]}>
+            {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }).toUpperCase()}
+          </Text>
+        </View>
+
+        <View style={styles.taskContainer}>
+          {dailyTasks.length === 0 ? (
+            <Text style={[styles.emptyLabel, { color: currentTheme.secondaryText }]}>
+              NO SYSTEM OBJECTIVES CHARGED. ENTER NEW DIRECTIVE BELOW.
+            </Text>
+          ) : (
+            dailyTasks.map((task) => (
+              <View key={task.id} style={styles.objectiveRow}>
+                <TouchableOpacity
+                  onPress={() => toggleDailyTaskComplete(task.id)}
+                  style={[
+                    styles.squareCheck, 
+                    { 
+                      borderColor: currentTheme.primary,
+                      backgroundColor: task.completed ? currentTheme.primary : "transparent"
+                    }
+                  ]}
+                  activeOpacity={0.7}
+                >
+                  {task.completed && (
+                    <MaterialCommunityIcons 
+                      name="close" 
+                      size={14} 
+                      color={currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000"} 
+                      style={{ fontWeight: "bold" }} 
+                    />
+                  )}
+                </TouchableOpacity>
+
+                <View style={{ flex: 1 }}>
+                  <Text 
+                    style={[
+                      styles.objectiveText, 
+                      { 
+                        color: task.completed ? currentTheme.secondaryText : currentTheme.text,
+                        textDecorationLine: task.completed ? "line-through" : "none",
+                        opacity: task.completed ? 0.6 : 1
+                      }
+                    ]}
+                  >
+                    {task.name}
+                  </Text>
+                  
+                  <View style={styles.objectiveMeta}>
+                    <Text style={[styles.metaSticker, { color: currentTheme.secondaryText, borderColor: currentTheme.border + "40" }]}>
+                      {task.time ? `DUE: ${task.time}` : "OBJECTIVE"}
+                    </Text>
+                    {task.completed && (
+                      <Text style={[styles.metaTime, { color: currentTheme.secondaryText }]}>
+                        DONE
+                      </Text>
+                    )}
+                  </View>
+                </View>
+
+                <TouchableOpacity onPress={() => deleteDailyTask(task.id)}>
+                  <MaterialCommunityIcons name="trash-can-outline" size={18} color={currentTheme.error} />
+                </TouchableOpacity>
+              </View>
+            ))
+          )}
+
+          {/* Borderless Typewriter input for Quick Add */}
+          <View style={[styles.typewriterRow, { borderTopColor: currentTheme.border + "30" }]}>
+            <MaterialCommunityIcons name="plus" size={18} color={currentTheme.secondaryText} style={{ marginRight: 10 }} />
+            <TextInput
+              style={[styles.typewriterInput, { color: currentTheme.text }]}
+              value={newTaskName}
+              onChangeText={setNewTaskName}
+              placeholder="ADD NEW SYSTEM OBJECTIVE..."
+              placeholderTextColor={currentTheme.secondaryText + "80"}
+              onSubmitEditing={addDailyTask}
+              returnKeyType="done"
+            />
+            {newTaskName.trim().length > 0 && (
+              <TouchableOpacity onPress={addDailyTask}>
+                <MaterialCommunityIcons name="check" size={20} color={currentTheme.primary} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Verified Stamp Overlay */}
+        <View style={styles.stampContainer}>
+          <View style={[styles.stampOutline, { borderColor: currentTheme.border + "30" }]}>
+            <Text style={[styles.stampBrand, { color: currentTheme.border + "40" }]}>KWESTUP</Text>
+            <Text style={[styles.stampVer, { color: currentTheme.border + "30" }]}>VERIFIED AUTHENTIC</Text>
+          </View>
+        </View>
+      </LiquidGlassCard>
+
+      {/* Side Actions Area */}
+      <View style={styles.sideArea}>
+        
+        {/* 1. AI Activator Button */}
+        <TouchableOpacity
+          style={[styles.aiActivator, { backgroundColor: currentTheme.primary, borderColor: currentTheme.border }]}
+          activeOpacity={0.9}
+          onPress={() => setModalVisible(true)}
+        >
+          <Animated.View style={[styles.scanLine, { top: laserY, backgroundColor: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000" }]} />
+          <View style={styles.aiActivatorInner}>
+            <MaterialCommunityIcons 
+              name="robot-outline" 
+              size={24} 
+              color={currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000"} 
+            />
+            <Text 
+              style={[
+                styles.aiActivatorText, 
+                { color: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000" }
+              ]}
+            >
+              AI ASSIST_ACTIVATE
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* 2. Insights Card (Brushed Metal) */}
+        <View style={[styles.insightsCard, { backgroundColor: currentTheme.cardBackground, borderColor: currentTheme.border }]}>
+          <View style={styles.insightsHeader}>
+            <MaterialCommunityIcons name="analytics" size={18} color={currentTheme.primary} />
+            <Text style={[styles.insightsHeaderTitle, { color: currentTheme.text }]}>SYSTEM INSIGHTS</Text>
+          </View>
+          
+          <Text style={[styles.insightsDesc, { color: currentTheme.secondaryText }]}>
+            Current productivity cycle is at <Text style={{ color: currentTheme.primary, fontWeight: "900" }}>{efficiency}%</Text> efficiency. Focus on completing objectives to optimize throughput.
+          </Text>
+
+          <View style={[styles.progressTrack, { backgroundColor: currentTheme.border + "20", borderColor: currentTheme.border + "40" }]}>
+            <View 
+              style={[
+                styles.progressFill, 
+                { 
+                  width: `${efficiency}%`, 
+                  backgroundColor: currentTheme.primary,
+                  shadowColor: currentTheme.primary,
+                }
+              ]} 
+            />
+          </View>
+        </View>
+
+      </View>
+
     </ScrollView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  headerSection: {
+    marginBottom: 20,
+  },
+  headerMetaRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 8,
+  },
+  badge: {
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 0,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1,
+    fontFamily: "JetBrainsMono-Bold",
+  },
+  glassBadge: {
+    borderWidth: 1.5,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+  glassBadgeText: {
+    fontSize: 9,
+    fontFamily: "JetBrainsMono-Bold",
+    fontWeight: "900",
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "800",
+    fontFamily: "HankenGrotesk-ExtraBold",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  canvasCard: {
+    padding: 16,
+    borderWidth: 2,
+    minHeight: 350,
+  },
+  canvasHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottomWidth: 2,
+    borderBottomColor: "#000000",
+    paddingBottom: 8,
+    marginBottom: 16,
+  },
+  canvasHeaderTitle: {
+    fontSize: 14,
+    fontWeight: "900",
+    fontFamily: "JetBrainsMono-Bold",
+    textTransform: "uppercase",
+  },
+  canvasHeaderDate: {
+    fontSize: 12,
+    fontFamily: "JetBrainsMono-Bold",
+  },
+  taskContainer: {
+    flexDirection: "column",
+    gap: 12,
+  },
+  emptyLabel: {
+    fontSize: 12,
+    fontFamily: "JetBrainsMono-Regular",
+    textAlign: "center",
+    lineHeight: 18,
+    paddingVertical: 30,
+    opacity: 0.7,
+  },
+  objectiveRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    paddingVertical: 8,
+    gap: 12,
+  },
+  squareCheck: {
+    width: 20,
+    height: 20,
+    borderWidth: 2,
+    marginTop: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  objectiveText: {
+    fontSize: 15,
+    fontWeight: "800",
+    fontFamily: "HankenGrotesk-Bold",
+    lineHeight: 20,
+  },
+  objectiveMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 4,
+  },
+  metaSticker: {
+    fontSize: 9,
+    fontFamily: "JetBrainsMono-Bold",
+    borderWidth: 1,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+  },
+  metaTime: {
+    fontSize: 10,
+    fontFamily: "JetBrainsMono-Regular",
+    opacity: 0.6,
+  },
+  typewriterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderTopWidth: 1,
+    paddingTop: 16,
+    marginTop: 16,
+  },
+  typewriterInput: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "900",
+    fontFamily: "JetBrainsMono-Bold",
+    padding: 0,
+  },
+  stampContainer: {
+    marginTop: 20,
+    flexDirection: "row",
+    justifyContent: "flex-end",
+  },
+  stampOutline: {
+    borderWidth: 3,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    transform: [{ rotate: "12deg" }],
+    alignItems: "center",
+    justifyContent: "center",
+    opacity: 0.35,
+  },
+  stampBrand: {
+    fontSize: 16,
+    fontWeight: "900",
+    fontFamily: "HankenGrotesk-ExtraBold",
+    letterSpacing: 0.5,
+  },
+  stampVer: {
+    fontSize: 8,
+    fontFamily: "JetBrainsMono-Bold",
+    fontWeight: "900",
+  },
+  sideArea: {
+    marginTop: 20,
+    flexDirection: "column",
+    gap: 16,
+  },
+  aiActivator: {
+    borderWidth: 2,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
+    height: 60,
+    overflow: "hidden",
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  scanLine: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    height: 2,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  aiActivatorInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  aiActivatorText: {
+    fontSize: 12,
+    fontFamily: "JetBrainsMono-Bold",
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+  insightsCard: {
+    borderWidth: 2,
+    padding: 16,
+    borderRadius: 0,
+  },
+  insightsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 8,
+  },
+  insightsHeaderTitle: {
+    fontSize: 12,
+    fontWeight: "900",
+    fontFamily: "JetBrainsMono-Bold",
+  },
+  insightsDesc: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontFamily: "HankenGrotesk-Regular",
+    marginBottom: 12,
+  },
+  progressTrack: {
+    height: 8,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+});

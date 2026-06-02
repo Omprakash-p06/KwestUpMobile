@@ -1,9 +1,8 @@
 import React from "react";
-import { View, Text, TouchableOpacity, Platform } from "react-native";
+import { View, Text, TouchableOpacity, Platform, StyleSheet } from "react-native";
 import { useTheme } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Color from "color";
-import { styles } from "../theme/styles";
 import { LiquidGlassCard } from "./LiquidGlassCard";
 
 export const TaskCard = ({ task, onPress, onComplete, onUncomplete, onDelete, theme, accent, type, onToggleSubtask }) => {
@@ -125,19 +124,17 @@ export const TaskCard = ({ task, onPress, onComplete, onUncomplete, onDelete, th
             {task.completed ? (
               <TouchableOpacity 
                 onPress={() => onUncomplete && onUncomplete(task.id)} 
-                style={{ marginLeft: 8, backgroundColor: currentTheme.warning + '22', borderRadius: 8, padding: 8 }}
+                style={[localStyles.taskCheckedBox, { backgroundColor: cardAccent, borderColor: cardAccent }]}
                 activeOpacity={0.7}
               >
-                <MaterialCommunityIcons name="close-circle-outline" size={22} color={currentTheme.warning || '#D32F2F'} />
+                <MaterialCommunityIcons name="close" size={14} color={accentTextColor} />
               </TouchableOpacity>
             ) : (
               <TouchableOpacity 
                 onPress={() => onComplete && onComplete(task.id)} 
-                style={{ backgroundColor: cardAccent, borderRadius: 8, padding: 8 }}
+                style={[localStyles.taskUncheckedBox, { borderColor: cardAccent }]}
                 activeOpacity={0.7}
-              >
-                <MaterialCommunityIcons name="check-circle-outline" size={22} color={accentTextColor} />
-              </TouchableOpacity>
+              />
             )}
             <TouchableOpacity 
               onPress={() => onDelete && onDelete(task.id)} 
@@ -198,12 +195,13 @@ export const TaskCard = ({ task, onPress, onComplete, onUncomplete, onDelete, th
             {task.subtasks.slice(0, 4).map((st, idx) => (
               <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
                 <TouchableOpacity onPress={() => onToggleSubtask && onToggleSubtask(task.id, idx)}>
-                  <MaterialCommunityIcons
-                    name={st.completed ? 'checkbox-marked' : 'checkbox-blank-outline'}
-                    size={17}
-                    color={st.completed ? cardAccent : (currentTheme.secondaryText || '#B0B0B0')}
-                    style={{ marginRight: 6 }}
-                  />
+                  {st.completed ? (
+                    <View style={[localStyles.subtaskCheckedBox, { backgroundColor: cardAccent, borderColor: cardAccent }]}>
+                      <MaterialCommunityIcons name="close" size={10} color={accentTextColor} />
+                    </View>
+                  ) : (
+                    <View style={[localStyles.subtaskUncheckedBox, { borderColor: currentTheme.secondaryText || '#B0B0B0' }]} />
+                  )}
                 </TouchableOpacity>
                 <Text style={{ color: st.completed ? (currentTheme.secondaryText || '#B0B0B0') : textColor, textDecorationLine: st.completed ? 'line-through' : 'none', opacity: st.completed ? 0.6 : 1, fontSize: 14 }} numberOfLines={1}>{st.text}</Text>
               </View>
@@ -217,19 +215,17 @@ export const TaskCard = ({ task, onPress, onComplete, onUncomplete, onDelete, th
           {task.completed ? (
             <TouchableOpacity 
               onPress={() => onUncomplete && onUncomplete(task.id)} 
-              style={{ marginLeft: 8, backgroundColor: currentTheme.warning + '22', borderRadius: 8, padding: 8 }}
+              style={[localStyles.taskCheckedBox, { backgroundColor: cardAccent, borderColor: cardAccent }]}
               activeOpacity={0.7}
             >
-              <MaterialCommunityIcons name="close-circle-outline" size={22} color={currentTheme.warning || '#D32F2F'} />
+              <MaterialCommunityIcons name="close" size={14} color={accentTextColor} />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity 
               onPress={() => onComplete && onComplete(task.id)} 
-              style={{ backgroundColor: cardAccent, borderRadius: 8, padding: 8 }}
+              style={[localStyles.taskUncheckedBox, { borderColor: cardAccent }]}
               activeOpacity={0.7}
-            >
-              <MaterialCommunityIcons name="check-circle-outline" size={22} color={accentTextColor} />
-            </TouchableOpacity>
+            />
           )}
           <TouchableOpacity 
             onPress={() => onDelete && onDelete(task.id)} 
@@ -243,3 +239,56 @@ export const TaskCard = ({ task, onPress, onComplete, onUncomplete, onDelete, th
     </LiquidGlassCard>
   );
 };
+
+const localStyles = StyleSheet.create({
+  taskCheckedBox: {
+    width: 24,
+    height: 24,
+    borderWidth: 2,
+    borderRadius: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 8,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
+    borderTopColor: "rgba(255,255,255,0.4)",
+    borderLeftColor: "rgba(255,255,255,0.4)",
+    borderBottomColor: "rgba(0,0,0,0.8)",
+    borderRightColor: "rgba(0,0,0,0.8)",
+  },
+  taskUncheckedBox: {
+    width: 24,
+    height: 24,
+    borderWidth: 2,
+    borderRadius: 0,
+    marginLeft: 8,
+    backgroundColor: "transparent",
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
+    borderTopColor: "rgba(255,255,255,0.2)",
+    borderLeftColor: "rgba(255,255,255,0.2)",
+    borderBottomColor: "rgba(0,0,0,0.5)",
+    borderRightColor: "rgba(0,0,0,0.5)",
+  },
+  subtaskCheckedBox: {
+    width: 14,
+    height: 14,
+    borderWidth: 1.5,
+    borderRadius: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 6,
+  },
+  subtaskUncheckedBox: {
+    width: 14,
+    height: 14,
+    borderWidth: 1.5,
+    borderRadius: 0,
+    marginRight: 6,
+    backgroundColor: "transparent",
+  },
+});

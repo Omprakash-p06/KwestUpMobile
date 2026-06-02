@@ -16,6 +16,17 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
+import {
+  HankenGrotesk_400Regular,
+  HankenGrotesk_500Medium,
+  HankenGrotesk_700Bold,
+  HankenGrotesk_800ExtraBold,
+} from "@expo-google-fonts/hanken-grotesk";
+import {
+  JetBrainsMono_400Regular,
+  JetBrainsMono_500Medium,
+  JetBrainsMono_700Bold,
+} from "@expo-google-fonts/jetbrains-mono";
 
 // Component imports
 import { CustomButton } from "./src/components/CustomButton";
@@ -60,6 +71,13 @@ const App = () => {
     "Inter-Medium": Inter_500Medium,
     "Inter-SemiBold": Inter_600SemiBold,
     "Inter-Bold": Inter_700Bold,
+    "HankenGrotesk-Regular": HankenGrotesk_400Regular,
+    "HankenGrotesk-Medium": HankenGrotesk_500Medium,
+    "HankenGrotesk-Bold": HankenGrotesk_700Bold,
+    "HankenGrotesk-ExtraBold": HankenGrotesk_800ExtraBold,
+    "JetBrainsMono-Regular": JetBrainsMono_400Regular,
+    "JetBrainsMono-Medium": JetBrainsMono_500Medium,
+    "JetBrainsMono-Bold": JetBrainsMono_700Bold,
   });
 
   const [dailyTasks, setDailyTasks] = useState([]);

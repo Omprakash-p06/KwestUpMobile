@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Note: PP Fraktion Mono is a premium font. Since I cannot provide the actual font file, I am using 'JetBrains Mono' as the closest high-quality open-source substitute that matches the technical, edgy aesthetic requested, and updating all references to 'PP Fraktion Mono' in the configuration. -->
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-layer {
+            backdrop-filter: blur(32px);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .brushed-metal {
+            background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 50%, #2a2a2a 100%);
+            position: relative;
+        }
+        .brushed-metal::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            opacity: 0.05;
+            background-image: url("https://www.transparenttextures.com/patterns/brushed-alum.png");
+            pointer-events: none;
+        }
+        .etched-input {
+            box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.5), inset -1px -1px 2px rgba(255, 255, 255, 0.05);
+        }
+        .ai-scan-line {
+            position: absolute;
+            width: 100%;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 8px #fff;
+            animation: scan 3s linear infinite;
+        }
+        @keyframes scan {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+        .tactile-switch-active {
+            background: #ffffff;
+            color: #000000;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+            transform: translateY(2px);
+        }
+        .noise-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            pointer-events: none;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#1a1c1c",
+                        "on-secondary-container": "#b5b5b5",
+                        "inverse-on-surface": "#313030",
+                        "inverse-primary": "#5d5f5f",
+                        "on-error-container": "#ffdad6",
+                        "tertiary": "#ffffff",
+                        "error-container": "#93000a",
+                        "on-secondary-fixed": "#1b1b1b",
+                        "surface-variant": "#353535",
+                        "background": "#131313",
+                        "tertiary-fixed": "#e4e2e1",
+                        "surface-dim": "#131313",
+                        "on-error": "#690005",
+                        "primary-container": "#e2e2e2",
+                        "surface-container-high": "#2a2a2a",
+                        "surface-container": "#20201f",
+                        "secondary-fixed-dim": "#c6c6c6",
+                        "surface-container-highest": "#353535",
+                        "surface-tint": "#c6c6c7",
+                        "on-primary-fixed-variant": "#454747",
+                        "on-surface-variant": "#c4c7c8",
+                        "on-tertiary-fixed-variant": "#474747",
+                        "on-tertiary-container": "#656464",
+                        "on-tertiary": "#303030",
+                        "secondary-container": "#474747",
+                        "primary-fixed": "#e2e2e2",
+                        "outline-variant": "#444748",
+                        "secondary": "#c6c6c6",
+                        "surface": "#131313",
+                        "surface-bright": "#393939",
+                        "on-tertiary-fixed": "#1b1c1c",
+                        "on-primary-container": "#636565",
+                        "on-secondary-fixed-variant": "#474747",
+                        "surface-container-low": "#1c1b1b",
+                        "inverse-surface": "#e5e2e1",
+                        "on-primary": "#2f3131",
+                        "tertiary-container": "#e4e2e1",
+                        "secondary-fixed": "#e2e2e2",
+                        "on-secondary": "#303030",
+                        "outline": "#8e9192",
+                        "primary-fixed-dim": "#c6c6c7",
+                        "on-surface": "#e5e2e1",
+                        "error": "#ffb4ab",
+                        "surface-container-lowest": "#0e0e0e",
+                        "tertiary-fixed-dim": "#c8c6c6",
+                        "primary": "#ffffff",
+                        "on-background": "#e5e2e1"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "sm": "8px",
+                        "margin": "20px",
+                        "xs": "4px",
+                        "unit": "4px",
+                        "xl": "32px",
+                        "gutter": "16px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["PP Fraktion Mono", "JetBrains Mono", "monospace"],
+                        "label-md": ["PP Fraktion Mono", "JetBrains Mono", "monospace"],
+                        "body-lg": ["PP Fraktion Mono", "JetBrains Mono", "monospace"],
+                        "headline-lg-mobile": ["PP Fraktion Mono", "JetBrains Mono", "monospace"],
+                        "headline-lg": ["PP Fraktion Mono", "JetBrains Mono", "monospace"],
+                        "label-sm": ["PP Fraktion Mono", "JetBrains Mono", "monospace"],
+                        "body-md": ["PP Fraktion Mono", "JetBrains Mono", "monospace"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "800"}],
+                        "label-md": ["14px", {"lineHeight": "1.4", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-sm": ["12px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            min-height: max(884px, 100dvh);
+            font-family: 'PP Fraktion Mono', 'JetBrains Mono', monospace;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen font-body-md text-body-md overflow-x-hidden">
+<div class="noise-overlay"></div>
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 w-full z-50 bg-background border-b-2 border-outline shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)] flex justify-between items-center h-16 px-margin">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary">bolt</span>
+<h1 class="font-display-lg text-headline-lg-mobile md:text-headline-lg font-black tracking-tighter text-primary uppercase">KWESTUP</h1>
+</div>
+<button class="active:scale-95 transition-transform duration-75 hover:bg-on-surface-variant hover:text-on-primary p-2">
+<span class="material-symbols-outlined">smart_toy</span>
+</button>
+</header>
+<main class="pt-24 pb-32 px-margin max-w-4xl mx-auto space-y-xl">
+<!-- Search Section -->
+<section class="space-y-md">
+<div class="flex items-center justify-between">
+<h2 class="font-label-md text-label-md uppercase tracking-widest text-outline">System_Registry / Search</h2>
+<span class="font-label-sm text-label-sm px-2 py-1 bg-surface-container-highest border border-outline">v.1.0.4</span>
+</div>
+<div class="relative p-unit bg-outline border-2 border-outline">
+<div class="brushed-metal p-md flex items-center gap-md border border-white/10">
+<span class="material-symbols-outlined text-primary">search</span>
+<input class="bg-surface-container-lowest etched-input w-full py-3 px-4 font-label-md text-label-md border-none focus:ring-0 text-primary placeholder:text-on-surface-variant/40" placeholder="QUERY_SYSTEM_STATE..." type="text"/>
+<button class="bg-primary text-on-primary px-lg py-2 font-label-md text-label-md font-bold uppercase active:invert duration-100 border-2 border-outline">
+                    EXEC
+                </button>
+</div>
+</div>
+</section>
+<!-- AI Assist Overlay (Bento Style) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-md">
+<div class="md:col-span-2 glass-layer p-lg relative overflow-hidden border-2 border-outline">
+<div class="ai-scan-line"></div>
+<div class="relative z-10 flex flex-col h-full justify-between gap-xl">
+<div>
+<div class="flex items-center gap-sm mb-sm">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+<span class="font-label-md text-label-md font-bold text-primary">AI_ASSISTANT_READY</span>
+</div>
+<p class="text-on-surface-variant font-body-md italic">"Analyzing your current workflow... 4 potential optimizations found in search parameters."</p>
+</div>
+<button class="w-fit bg-primary text-on-primary px-lg py-md font-label-md text-label-md font-extrabold flex items-center gap-md active:invert transition-all border-2 border-outline uppercase">
+                    RUN_NEURAL_OPTIMIZER
+                    <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</div>
+<div class="bg-surface-container border-2 border-outline p-lg flex flex-col items-center justify-center text-center gap-md">
+<span class="material-symbols-outlined text-primary scale-150">analytics</span>
+<div>
+<div class="font-label-sm text-label-sm text-outline">UPTIME_METRIC</div>
+<div class="font-display-lg text-headline-lg font-black text-primary">99.9%</div>
+</div>
+</div>
+</div>
+<!-- Settings Section -->
+<section class="space-y-lg">
+<div class="border-l-4 border-primary pl-md py-xs">
+<h2 class="font-headline-lg-mobile md:text-headline-lg text-primary uppercase font-black">Environmental_Configs</h2>
+</div>
+<!-- Theme Toggles -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+<!-- Light Theme Toggle -->
+<button class="group relative flex flex-col items-start p-lg border-2 border-outline bg-surface-container-low hover:bg-surface-container-high transition-all active:translate-x-1">
+<div class="w-full flex justify-between items-center mb-xl">
+<span class="material-symbols-outlined text-primary">light_mode</span>
+<div class="w-12 h-6 border-2 border-outline flex items-center px-1">
+<div class="w-4 h-3 bg-outline transition-all group-hover:bg-primary"></div>
+</div>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant uppercase">Light_Mode</span>
+<span class="font-label-sm text-label-sm text-outline">High visibility material</span>
+</button>
+<!-- Dark Theme Toggle (Active State) -->
+<button class="relative flex flex-col items-start p-lg border-4 border-primary bg-primary text-on-primary shadow-[8px_8px_0px_0px_rgba(255,255,255,0.1)] active:scale-[0.98]">
+<div class="w-full flex justify-between items-center mb-xl">
+<span class="material-symbols-outlined">dark_mode</span>
+<div class="w-12 h-6 bg-on-primary flex items-center justify-end px-1">
+<div class="w-4 h-3 bg-primary"></div>
+</div>
+</div>
+<span class="font-label-md text-label-md uppercase font-black">Dark_Mode</span>
+<span class="font-label-sm text-label-sm opacity-70">Industrial obsidian</span>
+<div class="absolute -top-3 -right-3 bg-primary text-on-primary px-2 py-1 font-label-sm text-label-sm border-2 border-background">ACTIVE</div>
+</button>
+<!-- AMOLED Theme Toggle -->
+<button class="group relative flex flex-col items-start p-lg border-2 border-outline bg-black hover:bg-surface-container-lowest transition-all active:translate-x-1">
+<div class="w-full flex justify-between items-center mb-xl">
+<span class="material-symbols-outlined text-primary">brightness_2</span>
+<div class="w-12 h-6 border-2 border-outline flex items-center px-1">
+<div class="w-4 h-3 bg-outline group-hover:bg-primary"></div>
+</div>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant uppercase">AMOLED_Black</span>
+<span class="font-label-sm text-label-sm text-outline">Zero emission state</span>
+</button>
+</div>
+<!-- Sub Settings -->
+<div class="border-2 border-outline divide-y-2 divide-outline">
+<div class="p-md flex items-center justify-between bg-surface-container-low">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-outline">vibration</span>
+<span class="font-label-md text-label-md text-primary uppercase">Haptic_Feedback</span>
+</div>
+<input checked="" class="w-6 h-6 border-2 border-outline bg-transparent checked:bg-primary checked:border-primary focus:ring-0 rounded-none appearance-none cursor-pointer relative after:content-[''] after:hidden checked:after:block after:absolute after:inset-0 after:text-center after:text-on-primary after:leading-5 after:text-xl after:content-['X']" type="checkbox"/>
+</div>
+<div class="p-md flex items-center justify-between bg-surface-container-low">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-outline">notifications_active</span>
+<span class="font-label-md text-label-md text-primary uppercase">Critical_Alerts_Only</span>
+</div>
+<input class="w-6 h-6 border-2 border-outline bg-transparent checked:bg-primary checked:border-primary focus:ring-0 rounded-none appearance-none cursor-pointer relative after:content-[''] after:hidden checked:after:block after:absolute after:inset-0 after:text-center after:text-on-primary after:leading-5 after:text-xl after:content-['X']" type="checkbox"/>
+</div>
+</div>
+</section>
+<!-- Illustration / Mood Block -->
+<div class="w-full h-48 border-2 border-outline relative overflow-hidden">
+<img class="w-full h-full object-cover grayscale brightness-50" data-alt="A macro cinematic shot of a futuristic server room with glowing green and white motherboard circuits. The lighting is low-key with high-contrast sharp highlights, creating a tactile digital-industrial atmosphere. The style is edgy and technical, focusing on the intricate textures of machined metal and obsidian glass panels under soft, atmospheric smoke." src="https://lh3.googleusercontent.com/aida/AP1WRLssMZMAkqBT_mCppjrIAQtxB_dz6D75vYOC03E90eJ0TFQjgTfX1sOZKQD7wwQaFJsns9C0qLNpMAQpm87rNz8BKkpncyDaSzHq0kv-XLXGXIZQ2QhNMSkOFCKEV16MzTffkALkv9rUNuaGIl-puWzLVB1CbmyeS3-HHhw6DY2zxb7hXDqbmzKgcGE7f4AJVP0jnHaJtHL2Cdqe8Li0eLpk6AcXVRk7wCEpK1kPtA-_jiUxvedrLJ29bw"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<div class="bg-background/80 border-2 border-primary p-md text-center">
+<p class="font-label-md text-label-md text-primary font-bold">SYSTEM_IDENTITY_VERIFIED</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">LOC: 23-SF-CORE</p>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-stretch h-20 bg-surface-container-lowest border-t-2 border-outline shadow-[0_-4px_0px_0px_rgba(0,0,0,1)]">
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-2 hover:bg-surface-variant active:invert duration-100 flex-1" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-sm text-label-sm">Dash</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-2 hover:bg-surface-variant active:invert duration-100 flex-1" href="#">
+<span class="material-symbols-outlined">event_upcoming</span>
+<span class="font-label-sm text-label-sm">Daily</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-2 hover:bg-surface-variant active:invert duration-100 flex-1" href="#">
+<span class="material-symbols-outlined">format_list_bulleted</span>
+<span class="font-label-sm text-label-sm">Tasks</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-2 hover:bg-surface-variant active:invert duration-100 flex-1" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="font-label-sm text-label-sm">Notes</span>
+</a>
+<!-- Settings/Search mapped to Focus as active tab in this context -->
+<a class="flex flex-col items-center justify-center bg-primary text-on-primary rounded-none h-full border-x-2 border-outline px-2 active:invert duration-100 flex-1" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">timer</span>
+<span class="font-label-sm text-label-sm">Focus</span>
+</a>
+</nav>
+<script>
+    // Simple Interaction logic for search button simulation
+    document.querySelector('button.bg-primary')?.addEventListener('click', function() {
+        this.classList.add('scale-95');
+        setTimeout(() => this.classList.remove('scale-95'), 100);
+    });
+
+    // Theme switch simulation (visual only)
+    const themeButtons = document.querySelectorAll('.Environmental_Configs button');
+    themeButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            console.log('Switching environment...');
+        });
+    });
+</script>
+</body></html>

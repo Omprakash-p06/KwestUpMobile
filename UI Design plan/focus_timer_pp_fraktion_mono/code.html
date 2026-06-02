@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>KWESTUP - Focus Timer</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        /* Note: Using JetBrains Mono as a high-quality fallback for PP Fraktion Mono in this environment */
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .grain-overlay {
+            background-image: url("https://www.transparenttextures.com/patterns/carbon-fibre.png");
+            pointer-events: none;
+            opacity: 0.05;
+        }
+        .brushed-metal {
+            background: linear-gradient(135deg, #20201f 0%, #353535 50%, #20201f 100%);
+            box-shadow: inset 0 1px 1px rgba(255,255,255,0.1), 0 4px 8px rgba(0,0,0,0.5);
+        }
+        .etched-inset {
+            box-shadow: inset 4px 4px 8px rgba(0,0,0,0.8), inset -1px -1px 2px rgba(255,255,255,0.05);
+        }
+        .scanning-line {
+            width: 100%;
+            height: 1px;
+            background: #ffffff;
+            position: absolute;
+            top: 0;
+            animation: scan 3s linear infinite;
+            opacity: 0.3;
+        }
+        @keyframes scan {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+        .bevel-raised {
+            box-shadow: -1px -1px 0px rgba(255,255,255,0.1), 3px 3px 0px rgba(0,0,0,1);
+        }
+        .bevel-pressed {
+            box-shadow: inset 2px 2px 4px rgba(0,0,0,0.8);
+            transform: translate(1px, 1px);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#1a1c1c",
+                        "on-secondary-container": "#b5b5b5",
+                        "inverse-on-surface": "#313030",
+                        "inverse-primary": "#5d5f5f",
+                        "on-error-container": "#ffdad6",
+                        "tertiary": "#ffffff",
+                        "error-container": "#93000a",
+                        "on-secondary-fixed": "#1b1b1b",
+                        "surface-variant": "#353535",
+                        "background": "#131313",
+                        "tertiary-fixed": "#e4e2e1",
+                        "surface-dim": "#131313",
+                        "on-error": "#690005",
+                        "primary-container": "#e2e2e2",
+                        "surface-container-high": "#2a2a2a",
+                        "surface-container": "#20201f",
+                        "secondary-fixed-dim": "#c6c6c6",
+                        "surface-container-highest": "#353535",
+                        "surface-tint": "#c6c6c7",
+                        "on-primary-fixed-variant": "#454747",
+                        "on-surface-variant": "#c4c7c8",
+                        "on-tertiary-fixed-variant": "#474747",
+                        "on-tertiary-container": "#656464",
+                        "on-tertiary": "#303030",
+                        "secondary-container": "#474747",
+                        "primary-fixed": "#e2e2e2",
+                        "outline-variant": "#444748",
+                        "secondary": "#c6c6c6",
+                        "surface": "#131313",
+                        "surface-bright": "#393939",
+                        "on-tertiary-fixed": "#1b1c1c",
+                        "on-primary-container": "#636565",
+                        "on-secondary-fixed-variant": "#474747",
+                        "surface-container-low": "#1c1b1b",
+                        "inverse-surface": "#e5e2e1",
+                        "on-primary": "#2f3131",
+                        "tertiary-container": "#e4e2e1",
+                        "secondary-fixed": "#e2e2e2",
+                        "on-secondary": "#303030",
+                        "outline": "#8e9192",
+                        "primary-fixed-dim": "#c6c6c7",
+                        "on-surface": "#e5e2e1",
+                        "error": "#ffb4ab",
+                        "surface-container-lowest": "#0e0e0e",
+                        "tertiary-fixed-dim": "#c8c6c6",
+                        "primary": "#ffffff",
+                        "on-background": "#e5e2e1"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "sm": "8px",
+                        "margin": "20px",
+                        "xs": "4px",
+                        "unit": "4px",
+                        "xl": "32px",
+                        "gutter": "16px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["JetBrains Mono", "Hanken Grotesk", "monospace"],
+                        "label-md": ["JetBrains Mono", "Hanken Grotesk", "monospace"],
+                        "body-lg": ["JetBrains Mono", "Hanken Grotesk", "monospace"],
+                        "headline-lg-mobile": ["JetBrains Mono", "Hanken Grotesk", "monospace"],
+                        "headline-lg": ["JetBrains Mono", "Hanken Grotesk", "monospace"],
+                        "label-sm": ["JetBrains Mono", "Hanken Grotesk", "monospace"],
+                        "body-md": ["JetBrains Mono", "Hanken Grotesk", "monospace"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "800" }],
+                        "label-md": ["14px", { "lineHeight": "1.4", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "1.2", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-sm": ["12px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            min-height: max(884px, 100dvh);
+            font-family: 'JetBrains Mono', monospace;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md overflow-hidden flex flex-col min-h-screen">
+<div class="fixed inset-0 grain-overlay z-[100]"></div>
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-background dark:bg-background border-b-2 border-outline shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)] flex justify-between items-center h-16 px-margin w-full">
+<div class="flex items-center gap-sm active:scale-95 transition-transform duration-75 cursor-pointer">
+<span class="material-symbols-outlined text-primary">bolt</span>
+<h1 class="font-display-lg text-display-lg font-black tracking-tighter text-primary">KWESTUP</h1>
+</div>
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-on-surface-variant hover:bg-on-surface-variant hover:text-on-primary p-xs cursor-pointer active:scale-95 transition-transform duration-75">smart_toy</span>
+</div>
+</header>
+<main class="flex-grow pt-20 pb-24 px-margin overflow-y-auto flex flex-col items-center justify-center gap-xl">
+<!-- Timer Status Badge -->
+<div class="flex flex-wrap justify-center gap-sm">
+<div class="px-sm py-xs bg-surface-container border-2 border-outline font-label-sm text-label-sm flex items-center gap-xs">
+<span class="w-2 h-2 bg-primary rounded-none"></span>
+            DEEP_WORK_PHASE
+        </div>
+<div class="px-sm py-xs border-2 border-outline-variant text-on-surface-variant font-label-sm text-label-sm">
+            03/04 COMPLETED
+        </div>
+</div>
+<!-- The Dial Container -->
+<div class="relative w-80 h-80 md:w-96 md:h-96 rounded-full brushed-metal border-[4px] border-outline shadow-[0_10px_40px_rgba(0,0,0,0.8)] flex items-center justify-center">
+<!-- Mechanical Ticks -->
+<div class="absolute inset-4 rounded-full border border-outline-variant opacity-20"></div>
+<!-- Dial Numbering -->
+<div class="absolute inset-0 w-full h-full p-6 flex flex-col items-center justify-between font-label-md text-label-md text-on-surface-variant">
+<span class="font-bold">60</span>
+<div class="w-full flex justify-between px-2">
+<span class="font-bold">45</span>
+<span class="font-bold">15</span>
+</div>
+<span class="font-bold">30</span>
+</div>
+<!-- Central Hub (Etched) -->
+<div class="z-10 w-64 h-64 md:w-72 md:h-72 rounded-full bg-surface-container-lowest etched-inset flex flex-col items-center justify-center">
+<div class="font-display-lg text-[64px] md:text-[80px] font-black tracking-tight text-primary tabular-nums" id="timer-display">
+                25:00
+            </div>
+<div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest mt-xs font-bold">
+                SECONDS REMAINING
+            </div>
+</div>
+<!-- Hand/Needle (Rotatable) -->
+<div class="absolute inset-0 transition-transform duration-1000 ease-linear" id="timer-hand" style="transform: rotate(0deg);">
+<div class="absolute top-10 left-1/2 -translate-x-1/2 w-1 h-12 md:h-16 bg-primary shadow-[0_0_10px_rgba(255,255,255,0.5)]"></div>
+</div>
+</div>
+<!-- Controls Section -->
+<div class="w-full max-w-md grid grid-cols-2 md:grid-cols-4 gap-md px-margin">
+<!-- Reset Button -->
+<button class="h-16 flex flex-col items-center justify-center bg-surface-container border-2 border-outline bevel-raised active:scale-95 transition-all" onclick="this.classList.toggle('bevel-pressed')">
+<span class="material-symbols-outlined text-primary">restart_alt</span>
+<span class="font-label-sm text-label-sm font-bold">RESET</span>
+</button>
+<!-- Start/Pause Button (Primary) -->
+<button class="h-16 col-span-1 md:col-span-2 flex flex-col items-center justify-center bg-primary text-on-primary border-2 border-outline bevel-raised active:invert transition-all" onclick="toggleTimer(this)">
+<span class="material-symbols-outlined text-on-primary" id="play-icon">play_arrow</span>
+<span class="font-label-md text-label-md font-bold" id="play-text">START</span>
+</button>
+<!-- Phase Button -->
+<button class="h-16 flex flex-col items-center justify-center bg-surface-container border-2 border-outline bevel-raised active:scale-95 transition-all">
+<span class="material-symbols-outlined text-primary">alt_route</span>
+<span class="font-label-sm text-label-sm font-bold">PHASE</span>
+</button>
+</div>
+<!-- AI Assist Card -->
+<div class="w-full max-w-md relative overflow-hidden bg-surface-container-low border-2 border-outline p-md flex flex-col gap-sm backdrop-blur-3xl">
+<div class="scanning-line"></div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-primary text-sm">smart_toy</span>
+<span class="font-label-md text-label-md text-primary font-bold">AI_COACH</span>
+</div>
+<span class="text-[10px] text-on-surface-variant font-label-sm font-bold">v1.0.44_ACTIVE</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface italic leading-snug">
+            "Productivity patterns suggest you're most alert now. Disabling all non-essential notifications for the next 25 minutes."
+        </p>
+<div class="flex gap-sm mt-xs">
+<button class="flex-1 py-xs border border-outline-variant font-label-sm text-label-sm font-bold hover:bg-surface-variant transition-colors">OPTIMIZE</button>
+<button class="flex-1 py-xs border border-outline-variant font-label-sm text-label-sm font-bold hover:bg-surface-variant transition-colors">DISMISS</button>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 border-t-2 border-outline bg-background shadow-[0_-4px_0px_0px_rgba(0,0,0,1)] flex justify-around items-stretch h-20 w-full">
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-2 hover:bg-surface-variant active:invert duration-100" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-sm text-label-sm font-bold uppercase">Dash</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-2 hover:bg-surface-variant active:invert duration-100" href="#">
+<span class="material-symbols-outlined">event_upcoming</span>
+<span class="font-label-sm text-label-sm font-bold uppercase">Daily</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-2 hover:bg-surface-variant active:invert duration-100" href="#">
+<span class="material-symbols-outlined">format_list_bulleted</span>
+<span class="font-label-sm text-label-sm font-bold uppercase">Tasks</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-2 hover:bg-surface-variant active:invert duration-100" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="font-label-sm text-label-sm font-bold uppercase">Notes</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary text-on-primary rounded-none h-full border-x-2 border-outline px-2 active:invert duration-100" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">timer</span>
+<span class="font-label-sm text-label-sm font-bold uppercase">Focus</span>
+</a>
+</nav>
+<script>
+    let isRunning = false;
+    let timeLeft = 25 * 60;
+    let timerInterval;
+
+    function updateDisplay() {
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        document.getElementById('timer-display').innerText = 
+            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        
+        const rotation = ((25 * 60 - timeLeft) / (25 * 60)) * 360;
+        document.getElementById('timer-hand').style.transform = `rotate(${rotation}deg)`;
+    }
+
+    function toggleTimer(btn) {
+        const icon = document.getElementById('play-icon');
+        const text = document.getElementById('play-text');
+        
+        if (isRunning) {
+            clearInterval(timerInterval);
+            icon.innerText = 'play_arrow';
+            text.innerText = 'START';
+            btn.classList.remove('bg-on-error-container', 'text-error-container');
+            btn.classList.add('bg-primary', 'text-on-primary');
+        } else {
+            timerInterval = setInterval(() => {
+                if (timeLeft > 0) {
+                    timeLeft--;
+                    updateDisplay();
+                } else {
+                    clearInterval(timerInterval);
+                }
+            }, 1000);
+            icon.innerText = 'pause';
+            text.innerText = 'PAUSE';
+            btn.classList.remove('bg-primary', 'text-on-primary');
+            btn.classList.add('bg-on-error-container', 'text-error-container');
+        }
+        isRunning = !isRunning;
+    }
+
+    updateDisplay();
+</script>
+</body></html>

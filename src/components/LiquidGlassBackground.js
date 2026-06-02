@@ -1,42 +1,61 @@
 import React from "react";
 import { StyleSheet, View, ImageBackground } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 
 export const LiquidGlassBackground = ({ children, theme }) => {
-  const currentTheme = theme || { background: "#F0E6F8", text: "#333333" };
+  const currentTheme = theme || { background: "#131313", text: "#FFFFFF" };
 
-  // Select texture based on theme properties
-  let textureUrl = null;
-  const isDark = currentTheme.background === "#282A36"; // Dark
-  const isAmoled = currentTheme.background === "#000000"; // AMOLED
+  const isDark = currentTheme.background === "#131313";
+  const isAmoled = currentTheme.background === "#000000";
+  const isLight = !isDark && !isAmoled;
 
-  if (!isAmoled) {
-    if (isDark) {
-      // Brushed Dark Metal Slate texture
-      textureUrl = "https://images.unsplash.com/photo-1501166617867-c55b45097a60?q=80&w=1200&auto=format&fit=crop";
-    } else {
-      // Fine Parchment / Clean White Lined Paper texture
-      textureUrl = "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?q=80&w=1200&auto=format&fit=crop";
-    }
+  // Stardust noise transparent grain overlay (applied globally)
+  const grainTextureUrl = "https://www.transparenttextures.com/patterns/stardust.png";
+
+  const renderBackgroundContent = () => (
+    <ImageBackground
+      source={{ uri: grainTextureUrl }}
+      style={StyleSheet.absoluteFill}
+      imageStyle={{ opacity: isDark ? 0.05 : isLight ? 0.08 : 0.03, resizeMode: "repeat" }}
+    >
+      {children}
+    </ImageBackground>
+  );
+
+  if (isDark) {
+    // Brushed Dark Steel plate horizontally grooved gradient reflection
+    return (
+      <LinearGradient
+        colors={["#131313", "#20201f", "#2a2a2a", "#20201f", "#131313"]}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={styles.container}
+      >
+        {renderBackgroundContent()}
+      </LinearGradient>
+    );
   }
 
-  if (textureUrl) {
+  if (isLight) {
+    // Warm industrial concrete / recycled paper desk background
+    const lightPaperUrl = "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?q=80&w=1200&auto=format&fit=crop";
     return (
-      <ImageBackground 
-        source={{ uri: textureUrl }} 
-        style={[styles.container, { backgroundColor: currentTheme.background }]}
+      <ImageBackground
+        source={{ uri: lightPaperUrl }}
+        style={[styles.container, { backgroundColor: "#E4E2E1" }]}
         resizeMode="cover"
       >
-        {/* Translucent overlay to optimize contrast and readability */}
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? "rgba(40, 42, 54, 0.45)" : "rgba(240, 230, 248, 0.15)" }]} />
-        {children}
+        {/* Subtle warming overlay */}
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(228, 226, 225, 0.25)" }]} />
+        {renderBackgroundContent()}
       </ImageBackground>
     );
   }
 
-  // Fallback for AMOLED mode: pure black
+  // Fallback for AMOLED mode: pure black console
   return (
     <View style={[styles.container, { backgroundColor: "#000000" }]}>
-      {children}
+      {renderBackgroundContent()}
     </View>
   );
 };

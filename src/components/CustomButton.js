@@ -1,44 +1,121 @@
 import React from "react";
-import { TouchableOpacity, Text } from "react-native";
+import { Pressable, Text, StyleSheet } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { styles } from "../theme/styles";
+import * as Haptics from "expo-haptics";
 
-export const CustomButton = ({ title, onPress, icon, style, textStyle, color, outline, disabled }) => {
-  const primaryColor = color || "#8E7BEF";
+export const CustomButton = ({ title, onPress, icon, style, textStyle, outline, disabled }) => {
   const isOutlined = !!outline;
 
-  let buttonBackgroundColor = isOutlined ? "transparent" : primaryColor;
-  let buttonTextColor = isOutlined ? primaryColor : "#FFFFFF";
-  let buttonBorderColor = isOutlined ? primaryColor : "transparent";
-
-  if (disabled) {
-    if (isOutlined) {
-      buttonTextColor = '#888';
-      buttonBorderColor = '#555';
-    } else {
-      buttonBackgroundColor = '#555';
-      buttonTextColor = '#AAA';
-    }
-  }
+  const handlePress = () => {
+    if (disabled) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (onPress) onPress();
+  };
 
   return (
-    <TouchableOpacity
-      style={[
-        styles.customButton,
-        {
-          backgroundColor: buttonBackgroundColor,
-          borderColor: buttonBorderColor,
-          borderWidth: isOutlined ? 1 : 0,
-        },
-        style,
-        disabled && styles.customButtonDisabled,
-      ]}
-      onPress={onPress}
+    <Pressable
       disabled={disabled}
-      activeOpacity={0.7}
+      onPress={handlePress}
+      style={({ pressed }) => {
+        // Base mechanical button styles
+        const buttonStyles = [
+          styles.baseButton,
+          disabled ? styles.disabledButton : {}
+        ];
+
+        if (!disabled) {
+          if (!isOutlined) {
+            // Primary Active color inversion: White <-> Black
+            buttonStyles.push({
+              backgroundColor: pressed ? "#000000" : "#FFFFFF",
+              borderColor: pressed ? "#FFFFFF" : "#000000",
+              borderTopColor: pressed ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.7)",
+              borderLeftColor: pressed ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.7)",
+              borderBottomColor: pressed ? "rgba(0,0,0,0.8)" : "rgba(0,0,0,0.3)",
+              borderRightColor: pressed ? "rgba(0,0,0,0.8)" : "rgba(0,0,0,0.3)",
+            });
+          } else {
+            // Secondary Active color inversion: Black <-> White
+            buttonStyles.push({
+              backgroundColor: pressed ? "#FFFFFF" : "#000000",
+              borderColor: pressed ? "#000000" : "#FFFFFF",
+              borderTopColor: pressed ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.2)",
+              borderLeftColor: pressed ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.2)",
+              borderBottomColor: pressed ? "rgba(0,0,0,0.8)" : "rgba(0,0,0,0.5)",
+              borderRightColor: pressed ? "rgba(0,0,0,0.8)" : "rgba(0,0,0,0.5)",
+            });
+          }
+        }
+
+        return [buttonStyles, style];
+      }}
     >
-      {icon && <MaterialCommunityIcons name={icon} size={20} color={buttonTextColor} style={styles.customButtonIcon} />}
-      <Text style={[styles.customButtonText, { color: buttonTextColor }, textStyle]}>{title || ""}</Text>
-    </TouchableOpacity>
+      {({ pressed }) => {
+        // Resolve dynamic text/icon colors based on pressed state
+        let textColor = "#FFFFFF";
+        if (disabled) {
+          textColor = "#888888";
+        } else if (!isOutlined) {
+          textColor = pressed ? "#FFFFFF" : "#2F3131";
+        } else {
+          textColor = pressed ? "#000000" : "#FFFFFF";
+        }
+
+        return (
+          <>
+            {icon && (
+              <MaterialCommunityIcons
+                name={icon}
+                size={20}
+                color={textColor}
+                style={styles.buttonIcon}
+              />
+            )}
+            <Text style={[styles.buttonText, { color: textColor }, textStyle]}>
+              {title || ""}
+            </Text>
+          </>
+        );
+      }}
+    </Pressable>
   );
 };
+
+const styles = StyleSheet.create({
+  baseButton: {
+    height: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    borderRadius: 0, // perfect 90-degree square corners
+    borderWidth: 2,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
+    
+    // raised outward shadows
+    shadowColor: "#000000",
+    shadowOffset: { width: 3, height: 3 },
+    shadowOpacity: 0.45,
+    shadowRadius: 0,
+    elevation: 6,
+  },
+  disabledButton: {
+    backgroundColor: "#222222",
+    borderColor: "#444444",
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  buttonText: {
+    fontSize: 14,
+    fontWeight: "900",
+    fontFamily: "HankenGrotesk-ExtraBold",
+    letterSpacing: 0.05,
+    textTransform: "uppercase",
+  },
+  buttonIcon: {
+    marginRight: 8,
+  },
+});

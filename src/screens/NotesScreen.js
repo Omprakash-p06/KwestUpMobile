@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ImageBackground,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Modal from "react-native-modal";
@@ -364,9 +365,11 @@ export const NotesScreen = ({
         const indentWidth = (indent.match(/ /g) || []).length * 4;
         return (
           <View key={index} style={[styles.mdTodoRow, { paddingLeft: Math.max(0, indentWidth) }]}>
-            <TouchableOpacity onPress={() => toggleMarkdownCheckbox(index)} activeOpacity={0.7} style={{ flexDirection: "row", alignItems: "center" }}>
-              <MaterialCommunityIcons name="checkbox-blank-outline" size={20} color={currentTheme.primary} style={{ marginRight: 8 }} />
-            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => toggleMarkdownCheckbox(index)}
+              activeOpacity={0.7}
+              style={[styles.industrialUncheckedBox, { borderColor: currentTheme.primary }]}
+            />
             <Text style={[styles.mdTodoText, { color: currentTheme.text }]}>
               {taskText}
             </Text>
@@ -379,10 +382,15 @@ export const NotesScreen = ({
         const indent = checkedMatch[1];
         const taskText = checkedMatch[2];
         const indentWidth = (indent.match(/ /g) || []).length * 4;
+        const xColor = currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000";
         return (
           <View key={index} style={[styles.mdTodoRow, { paddingLeft: Math.max(0, indentWidth) }]}>
-            <TouchableOpacity onPress={() => toggleMarkdownCheckbox(index)} activeOpacity={0.7} style={{ flexDirection: "row", alignItems: "center" }}>
-              <MaterialCommunityIcons name="checkbox-marked" size={20} color={currentTheme.primary} style={{ marginRight: 8 }} />
+            <TouchableOpacity
+              onPress={() => toggleMarkdownCheckbox(index)}
+              activeOpacity={0.7}
+              style={[styles.industrialCheckedBox, { backgroundColor: currentTheme.primary, borderColor: currentTheme.primary }]}
+            >
+              <MaterialCommunityIcons name="close" size={12} color={xColor} style={{ fontWeight: "bold" }} />
             </TouchableOpacity>
             <Text style={[styles.mdTodoText, styles.mdTodoDone, { color: currentTheme.secondaryText }]}>
               {taskText}
@@ -452,6 +460,107 @@ export const NotesScreen = ({
     }
 
     return parts.length > 0 ? parts : text;
+  };
+
+  const renderTactileSheet = (contentChildren) => {
+    const isDark = currentTheme.background === "#131313";
+    const isAmoled = currentTheme.background === "#000000";
+    const isLightNotePaper = !isDark && !isAmoled;
+
+    let cardTextureUrl = null;
+    if (isLightNotePaper) {
+      cardTextureUrl = "https://www.transparenttextures.com/patterns/lined-paper.png";
+    } else if (isDark) {
+      cardTextureUrl = "https://www.transparenttextures.com/patterns/brushed-alum-dark.png";
+    }
+
+    const cardStyles = {
+      flex: 1,
+      backgroundColor: currentTheme.cardBackground,
+      borderRadius: 0,
+      borderTopWidth: 1,
+      borderLeftWidth: 1,
+      borderBottomWidth: 3,
+      borderRightWidth: 3,
+      borderTopColor: isLightNotePaper ? "rgba(255, 255, 255, 0.75)" : "rgba(255, 255, 255, 0.18)",
+      borderLeftColor: isLightNotePaper ? "rgba(255, 255, 255, 0.75)" : "rgba(255, 255, 255, 0.18)",
+      borderBottomColor: isLightNotePaper ? "rgba(0, 0, 0, 0.22)" : "rgba(0, 0, 0, 0.75)",
+      borderRightColor: isLightNotePaper ? "rgba(0, 0, 0, 0.22)" : "rgba(0, 0, 0, 0.75)",
+      margin: 10,
+      overflow: "hidden",
+    };
+
+    if (isAmoled) {
+      cardStyles.borderWidth = 1;
+      cardStyles.borderColor = currentTheme.primary + "33";
+    }
+
+    const renderScrewRivets = () => (
+      <>
+        <View style={[styles.screwOuter, { top: 8, left: 8 }]} pointerEvents="none">
+          <View style={styles.screwInner}><View style={styles.screwThread} /></View>
+        </View>
+        <View style={[styles.screwOuter, { top: 8, right: 8 }]} pointerEvents="none">
+          <View style={styles.screwInner}><View style={[styles.screwThread, { transform: [{ rotate: "135deg" }] }]} /></View>
+        </View>
+        <View style={[styles.screwOuter, { bottom: 8, left: 8 }]} pointerEvents="none">
+          <View style={styles.screwInner}><View style={[styles.screwThread, { transform: [{ rotate: "90deg" }] }]} /></View>
+        </View>
+        <View style={[styles.screwOuter, { bottom: 8, right: 8 }]} pointerEvents="none">
+          <View style={styles.screwInner}><View style={[styles.screwThread, { transform: [{ rotate: "45deg" }] }]} /></View>
+        </View>
+      </>
+    );
+
+    const sheetContent = (
+      <View style={[styles.content, { flex: 1, padding: 18 }, isLightNotePaper && { paddingLeft: 46 }]}>
+        {isLightNotePaper && <View style={styles.redMarginLine} />}
+        {isDark && renderScrewRivets()}
+        {isLightNotePaper && (
+          <View style={styles.binderSpirals}>
+            <View style={styles.spiralRing} />
+            <View style={styles.spiralRing} />
+            <View style={sheetStylesHelper.spiralRing} />
+            <View style={sheetStylesHelper.spiralRing} />
+            <View style={sheetStylesHelper.spiralRing} />
+            <View style={sheetStylesHelper.spiralRing} />
+            <View style={sheetStylesHelper.spiralRing} />
+            <View style={sheetStylesHelper.spiralRing} />
+          </View>
+        )}
+        {contentChildren}
+      </View>
+    );
+
+    if (cardTextureUrl) {
+      return (
+        <ImageBackground
+          source={{ uri: cardTextureUrl }}
+          style={cardStyles}
+          imageStyle={{ opacity: isLightNotePaper ? 0.35 : 0.08, borderRadius: 0 }}
+        >
+          {sheetContent}
+        </ImageBackground>
+      );
+    }
+
+    return (
+      <View style={cardStyles}>
+        {sheetContent}
+      </View>
+    );
+  };
+
+  // Helper styles that don't need font injection
+  const sheetStylesHelper = {
+    spiralRing: {
+      width: 6,
+      height: 14,
+      borderRadius: 3,
+      backgroundColor: "#CCCCCC",
+      borderWidth: 1,
+      borderColor: "#999999",
+    }
   };
 
   return (
@@ -630,22 +739,83 @@ export const NotesScreen = ({
                 </Text>
               </TouchableOpacity>
 
-              {folders.map((folder) => (
-                <TouchableOpacity
-                  key={folder}
-                  style={[styles.sidebarItem, activeFolder === folder && styles.activeItem]}
-                  onPress={() => setActiveFolder(folder)}
-                >
-                  <MaterialCommunityIcons
-                    name="folder"
-                    size={20}
-                    color={activeFolder === folder ? currentTheme.primary : currentTheme.secondaryText}
-                  />
-                  <Text style={[styles.sidebarText, activeFolder === folder && { color: currentTheme.primary }]}>
-                    {folder}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              <View style={styles.folderContainer}>
+                {folders.map((folder, index) => {
+                  const isDark = currentTheme.background === "#131313";
+                  const isAmoled = currentTheme.background === "#000000";
+                  const isLight = !isDark && !isAmoled;
+                  const isActive = activeFolder === folder;
+
+                  let textureUri = null;
+                  let bgCardColor = currentTheme.cardBackground;
+
+                  if (isDark) {
+                    if (index % 2 === 0) {
+                      textureUri = "https://www.transparenttextures.com/patterns/leather.png";
+                      bgCardColor = "#2A2A2A";
+                    } else {
+                      textureUri = "https://www.transparenttextures.com/patterns/pinstriped-suit.png";
+                      bgCardColor = "#20201F";
+                    }
+                  } else if (isLight) {
+                    textureUri = "https://www.transparenttextures.com/patterns/lined-paper.png";
+                    bgCardColor = "#FFFFFF";
+                  }
+
+                  const folderCardStyle = [
+                    styles.folderCard,
+                    {
+                      backgroundColor: bgCardColor,
+                      borderColor: isActive ? currentTheme.primary : currentTheme.border,
+                      borderWidth: isActive ? 2.5 : 1.5,
+                      shadowOpacity: isActive ? 0.25 : 0.08,
+                    }
+                  ];
+
+                  const fileCount = notes.filter((n) => n.folder === folder).length;
+
+                  const folderContent = (
+                    <View style={styles.folderCardInner}>
+                      <View style={styles.folderCardTop}>
+                        <MaterialCommunityIcons
+                          name="folder"
+                          size={24}
+                          color={isActive ? currentTheme.primary : currentTheme.secondaryText}
+                        />
+                        <Text style={[styles.folderFileCount, { color: currentTheme.secondaryText }]}>
+                          {fileCount < 10 ? `0${fileCount}` : fileCount}_FILES
+                        </Text>
+                      </View>
+                      <Text style={[styles.folderLabel, { color: currentTheme.text }]}>
+                        {folder.toUpperCase()}
+                      </Text>
+                      <View style={[styles.folderActiveLine, { backgroundColor: isActive ? currentTheme.primary : "transparent" }]} />
+                    </View>
+                  );
+
+                  return (
+                    <TouchableOpacity
+                      key={folder}
+                      onPress={() => setActiveFolder(folder)}
+                      activeOpacity={0.8}
+                    >
+                      {textureUri ? (
+                        <ImageBackground
+                          source={{ uri: textureUri }}
+                          style={folderCardStyle}
+                          imageStyle={{ opacity: isLight ? 0.3 : 0.12, borderRadius: 0 }}
+                        >
+                          {folderContent}
+                        </ImageBackground>
+                      ) : (
+                        <View style={folderCardStyle}>
+                          {folderContent}
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
 
               {/* Tags Filter Section */}
               {tags.length > 0 && (
@@ -706,7 +876,7 @@ export const NotesScreen = ({
                 <View style={styles.searchBarContainer}>
                   <MaterialCommunityIcons name="magnify" size={20} color={currentTheme.secondaryText} style={styles.searchIcon} />
                   <TextInput
-                    style={[styles.searchInput, { color: currentTheme.text, backgroundColor: currentTheme.cardBackground }]}
+                    style={[styles.searchInput, { color: currentTheme.text, backgroundColor: currentTheme.cardBackground, borderColor: currentTheme.border, borderWidth: 1.5 }]}
                     placeholder="Search notes..."
                     placeholderTextColor={currentTheme.secondaryText}
                     value={searchQuery}
@@ -717,8 +887,12 @@ export const NotesScreen = ({
                   style={[styles.createButton, { backgroundColor: currentTheme.primary }]}
                   onPress={handleCreateNote}
                 >
-                  <MaterialCommunityIcons name="plus" size={20} color="#FFF" />
-                  <Text style={styles.createButtonText}>Note</Text>
+                  <MaterialCommunityIcons 
+                    name="plus" 
+                    size={20} 
+                    color={currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000"} 
+                  />
+                  <Text style={[styles.createButtonText, { color: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000" }]}>Note</Text>
                 </TouchableOpacity>
               </View>
 
@@ -782,8 +956,9 @@ export const NotesScreen = ({
             </View>
           ) : (
             // NOTE EDITOR / RENDERER
-            <View style={styles.flexOne}>
-              {/* Editor Header */}
+            renderTactileSheet(
+              <View style={styles.flexOne}>
+                {/* Editor Header */}
               <View style={[styles.editorHeader, { borderBottomColor: currentTheme.border }]}>
                 <View style={{ flexDirection: "row", alignItems: "center" }}>
                   <TouchableOpacity
@@ -941,7 +1116,8 @@ export const NotesScreen = ({
                 </ScrollView>
               )}
             </View>
-          )}
+          )
+        )}
         </View>
       </View>
 
@@ -1149,7 +1325,7 @@ const rawStyles = {
     alignItems: "center",
     paddingVertical: 10,
     paddingHorizontal: 15,
-    borderRadius: 8,
+    borderRadius: 0,
     marginHorizontal: 8,
     marginBottom: 2,
   },
@@ -1186,7 +1362,7 @@ const rawStyles = {
   searchInput: {
     flex: 1,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 0,
     paddingLeft: 38,
     paddingRight: 15,
     fontSize: 14,
@@ -1194,7 +1370,7 @@ const rawStyles = {
   createButton: {
     flexDirection: "row",
     height: 40,
-    borderRadius: 20,
+    borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 15,
@@ -1226,7 +1402,7 @@ const rawStyles = {
     paddingBottom: 40,
   },
   noteCard: {
-    borderRadius: 16,
+    borderRadius: 0,
     padding: 16,
     marginBottom: 12,
     elevation: 2,
@@ -1269,7 +1445,7 @@ const rawStyles = {
   badge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: 0,
     marginRight: 6,
   },
   badgeText: {
@@ -1305,13 +1481,13 @@ const rawStyles = {
   },
   editorToggle: {
     flexDirection: "row",
-    borderRadius: 18,
+    borderRadius: 0,
     padding: 2,
   },
   toggleBtn: {
     paddingHorizontal: 15,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 0,
   },
   toggleActive: {
     elevation: 1,
@@ -1359,7 +1535,7 @@ const rawStyles = {
   folderInput: {
     fontSize: 13,
     fontWeight: "600",
-    borderRadius: 6,
+    borderRadius: 0,
     paddingHorizontal: 8,
     paddingVertical: 2,
     minWidth: 100,
@@ -1416,7 +1592,7 @@ const rawStyles = {
     alignItems: "center",
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 0,
     marginRight: 8,
     marginBottom: 6,
   },
@@ -1462,6 +1638,24 @@ const rawStyles = {
     flexDirection: "row",
     alignItems: "center",
     marginVertical: 4,
+  },
+  industrialUncheckedBox: {
+    width: 18,
+    height: 18,
+    borderWidth: 2,
+    borderColor: "#8E9192",
+    borderRadius: 0,
+    marginRight: 2,
+    backgroundColor: "transparent",
+  },
+  industrialCheckedBox: {
+    width: 18,
+    height: 18,
+    borderWidth: 2,
+    borderRadius: 0,
+    marginRight: 2,
+    alignItems: "center",
+    justifyContent: "center",
   },
   mdTodoText: {
     fontSize: 15,
@@ -1529,15 +1723,106 @@ const rawStyles = {
   confirmButton: {
     paddingVertical: 10,
     paddingHorizontal: 20,
-    borderRadius: 10,
+    borderRadius: 0,
+  },
+  // Tactile Note details sheet styles
+  screwOuter: {
+    position: "absolute",
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#4E5067",
+    borderWidth: 1,
+    borderColor: "#2E303D",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 15,
+  },
+  screwInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#777A99",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  screwThread: {
+    width: 6,
+    height: 1,
+    backgroundColor: "#2E303D",
+  },
+  redMarginLine: {
+    position: "absolute",
+    left: 36,
+    top: 0,
+    bottom: 0,
+    width: 1.5,
+    backgroundColor: "rgba(255, 99, 71, 0.45)",
+  },
+  binderSpirals: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    position: "absolute",
+    top: -6,
+    left: 20,
+    right: 20,
+    zIndex: 10,
+  },
+  spiralRing: {
+    width: 6,
+    height: 14,
+    borderRadius: 3,
+    backgroundColor: "#CCCCCC",
+    borderWidth: 1,
+    borderColor: "#999999",
+  },
+  folderContainer: {
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+    gap: 12,
+  },
+  folderCard: {
+    borderRadius: 0,
+    borderWidth: 1.5,
+    marginBottom: 10,
+    elevation: 3,
+    shadowColor: "#000000",
+    shadowOffset: { width: 3, height: 3 },
+    shadowRadius: 0,
+  },
+  folderCardInner: {
+    padding: 12,
+    position: "relative",
+  },
+  folderCardTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  folderFileCount: {
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  folderLabel: {
+    fontSize: 13,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  folderActiveLine: {
+    height: 3,
+    marginTop: 8,
+    width: "100%",
   },
 };
 
 const injectFontFamily = (obj) => {
-  const fontRegular = "Inter-Regular";
-  const fontMedium = "Inter-Medium";
-  const fontSemiBold = "Inter-SemiBold";
-  const fontBold = "Inter-Bold";
+  const fontRegular = "HankenGrotesk-Regular";
+  const fontMedium = "HankenGrotesk-Medium";
+  const fontSemiBold = "HankenGrotesk-Bold";
+  const fontBold = "HankenGrotesk-ExtraBold";
+  const fontMono = "JetBrainsMono-Medium";
 
   for (const key in obj) {
     if (obj[key] && typeof obj[key] === "object") {
@@ -1551,7 +1836,16 @@ const injectFontFamily = (obj) => {
         style.fontWeight !== undefined;
 
       if (hasTextProp) {
-        if (style.fontFamily && (style.fontFamily === "monospace" || style.fontFamily === "Menlo")) {
+        if (
+          key.toLowerCase().includes("mono") ||
+          key.toLowerCase().includes("code") ||
+          key.toLowerCase().includes("time") ||
+          key.toLowerCase().includes("tag") ||
+          key.toLowerCase().includes("meta") ||
+          key.toLowerCase().includes("path") ||
+          (style.fontFamily && (style.fontFamily === "monospace" || style.fontFamily === "Menlo"))
+        ) {
+          style.fontFamily = fontMono;
           continue;
         }
 

@@ -819,10 +819,14 @@ const rawStyles = {
 };
 
 const injectFontFamily = (obj) => {
-  const fontRegular = "Inter-Regular";
-  const fontMedium = "Inter-Medium";
-  const fontSemiBold = "Inter-SemiBold";
-  const fontBold = "Inter-Bold";
+  const fontRegular = "HankenGrotesk-Regular";
+  const fontMedium = "HankenGrotesk-Medium";
+  const fontSemiBold = "HankenGrotesk-Bold";
+  const fontBold = "HankenGrotesk-ExtraBold";
+
+  const monoRegular = "JetBrainsMono-Regular";
+  const monoMedium = "JetBrainsMono-Medium";
+  const monoBold = "JetBrainsMono-Bold";
 
   for (const key in obj) {
     if (obj[key] && typeof obj[key] === "object") {
@@ -837,8 +841,23 @@ const injectFontFamily = (obj) => {
         style.fontWeight !== undefined;
 
       if (hasTextProp) {
-        // Exclude monospace timers or specific code styling
-        if (style.fontFamily && (style.fontFamily === "monospace" || style.fontFamily === "Menlo")) {
+        const isMono = 
+          (style.fontFamily && (style.fontFamily === "monospace" || style.fontFamily === "Menlo")) ||
+          key.toLowerCase().includes("timer") || 
+          key.toLowerCase().includes("mono") || 
+          key.toLowerCase().includes("label") || 
+          key.toLowerCase().includes("technical") || 
+          key.toLowerCase().includes("code") ||
+          key.toLowerCase().includes("logs") ||
+          key.toLowerCase().includes("tag") ||
+          key.toLowerCase().includes("version");
+
+        if (isMono) {
+          if (style.fontWeight && (style.fontWeight === "bold" || style.fontWeight === "700" || style.fontWeight === "800" || style.fontWeight === "900")) {
+            style.fontFamily = monoBold;
+          } else {
+            style.fontFamily = monoMedium;
+          }
           continue;
         }
 

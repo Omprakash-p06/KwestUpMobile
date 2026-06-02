@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>KWESTUP | Daily Tasks</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        /* Using JetBrains Mono as a fallback for PP Fraktion Mono which is a custom boutique font usually requiring local hosting or a specific license. I will set the font-family to prioritize 'PP Fraktion Mono' and fallback to 'JetBrains Mono' which captures the mechanical/mono aesthetic requested. */
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .paper-texture {
+            background-color: #e5e2e1;
+            background-image: 
+                radial-gradient(#000000 0.5px, transparent 0.5px), 
+                linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px);
+            background-size: 20px 20px, 40px 40px, 40px 40px;
+            position: relative;
+        }
+        .paper-texture::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: url('https://www.transparenttextures.com/patterns/stardust.png');
+            opacity: 0.15;
+            pointer-events: none;
+        }
+        .etched-input {
+            box-shadow: inset 2px 2px 4px rgba(0,0,0,0.4), inset -1px -1px 0px rgba(255,255,255,0.1);
+        }
+        .brushed-metal {
+            background: linear-gradient(135deg, #2a2a2a 0%, #1c1b1b 50%, #2a2a2a 100%);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .scanline {
+            width: 100%;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.5);
+            position: absolute;
+            top: 0;
+            left: 0;
+            animation: scan 3s linear infinite;
+            z-index: 10;
+            pointer-events: none;
+        }
+        @keyframes scan {
+            0% { top: 0; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+        .custom-checkbox:checked + .checkbox-visual::after {
+            content: "X";
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'PP Fraktion Mono', 'JetBrains Mono', monospace;
+            font-weight: 800;
+            font-size: 14px;
+            color: #000;
+        }
+        .glass-overlay {
+            backdrop-filter: blur(30px);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#1a1c1c",
+                        "on-secondary-container": "#b5b5b5",
+                        "inverse-on-surface": "#313030",
+                        "inverse-primary": "#5d5f5f",
+                        "on-error-container": "#ffdad6",
+                        "tertiary": "#ffffff",
+                        "error-container": "#93000a",
+                        "on-secondary-fixed": "#1b1b1b",
+                        "surface-variant": "#353535",
+                        "background": "#131313",
+                        "tertiary-fixed": "#e4e2e1",
+                        "surface-dim": "#131313",
+                        "on-error": "#690005",
+                        "primary-container": "#e2e2e2",
+                        "surface-container-high": "#2a2a2a",
+                        "surface-container": "#20201f",
+                        "secondary-fixed-dim": "#c6c6c6",
+                        "surface-container-highest": "#353535",
+                        "surface-tint": "#c6c6c7",
+                        "on-primary-fixed-variant": "#454747",
+                        "on-surface-variant": "#c4c7c8",
+                        "on-tertiary-fixed-variant": "#474747",
+                        "on-tertiary-container": "#656464",
+                        "on-tertiary": "#303030",
+                        "secondary-container": "#474747",
+                        "primary-fixed": "#e2e2e2",
+                        "outline-variant": "#444748",
+                        "secondary": "#c6c6c6",
+                        "surface": "#131313",
+                        "surface-bright": "#393939",
+                        "on-tertiary-fixed": "#1b1c1c",
+                        "on-primary-container": "#636565",
+                        "on-secondary-fixed-variant": "#474747",
+                        "surface-container-low": "#1c1b1b",
+                        "inverse-surface": "#e5e2e1",
+                        "on-primary": "#2f3131",
+                        "tertiary-container": "#e4e2e1",
+                        "secondary-fixed": "#e2e2e2",
+                        "on-secondary": "#303030",
+                        "outline": "#8e9192",
+                        "primary-fixed-dim": "#c6c6c7",
+                        "on-surface": "#e5e2e1",
+                        "error": "#ffb4ab",
+                        "surface-container-lowest": "#0e0e0e",
+                        "tertiary-fixed-dim": "#c8c6c6",
+                        "primary": "#ffffff",
+                        "on-background": "#e5e2e1"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "sm": "8px",
+                        "margin": "20px",
+                        "xs": "4px",
+                        "unit": "4px",
+                        "xl": "32px",
+                        "gutter": "16px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["PP Fraktion Mono", "JetBrains Mono", "monospace"],
+                        "label-md": ["PP Fraktion Mono", "JetBrains Mono", "monospace"],
+                        "body-lg": ["PP Fraktion Mono", "JetBrains Mono", "monospace"],
+                        "headline-lg-mobile": ["PP Fraktion Mono", "JetBrains Mono", "monospace"],
+                        "headline-lg": ["PP Fraktion Mono", "JetBrains Mono", "monospace"],
+                        "label-sm": ["PP Fraktion Mono", "JetBrains Mono", "monospace"],
+                        "body-md": ["PP Fraktion Mono", "JetBrains Mono", "monospace"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "800"}],
+                        "label-md": ["14px", {"lineHeight": "1.4", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-sm": ["12px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            min-height: max(884px, 100dvh);
+            font-family: 'PP Fraktion Mono', 'JetBrains Mono', monospace;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md overflow-x-hidden pb-20">
+<!-- Top AppBar -->
+<header class="fixed top-0 w-full z-50 bg-background border-b-2 border-outline shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)]">
+<div class="flex justify-between items-center h-16 px-margin w-full">
+<div class="flex items-center gap-sm active:scale-95 transition-transform duration-75 cursor-pointer">
+<span class="material-symbols-outlined text-primary">bolt</span>
+<h1 class="font-display-lg text-display-lg font-black tracking-tighter text-primary">KWESTUP</h1>
+</div>
+<div class="flex items-center gap-md">
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-on-surface-variant hover:text-on-primary p-xs transition-colors">smart_toy</button>
+</div>
+</div>
+</header>
+<main class="mt-20 px-margin max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-lg">
+<!-- Page Header Section -->
+<section class="md:col-span-12 flex flex-col md:flex-row md:items-end justify-between gap-md mb-md">
+<div>
+<span class="font-label-sm text-label-sm bg-primary text-on-primary px-sm py-1 border border-outline inline-block mb-xs uppercase">DAILY_LOG_V1.0</span>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-primary uppercase tracking-tighter">System Objectives</h2>
+</div>
+<div class="flex gap-sm">
+<div class="glass-overlay p-xs px-sm flex items-center gap-xs border-2 border-outline">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">timer</span>
+<span class="font-label-md text-label-md font-bold">08:42 REMAINING</span>
+</div>
+</div>
+</section>
+<!-- Task Canvas (The Paper Texture) -->
+<section class="md:col-span-8 paper-texture border-2 border-outline p-lg shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] min-h-[600px] flex flex-col">
+<div class="flex justify-between items-center mb-lg border-b-2 border-black pb-sm">
+<h3 class="font-label-md text-label-md font-black text-black uppercase tracking-widest">Active_Tasks.sys</h3>
+<span class="font-label-sm text-label-sm font-bold text-black">OCT_24_2023</span>
+</div>
+<!-- Task List -->
+<div class="space-y-md flex-grow">
+<!-- Task Item 1 -->
+<div class="flex items-start gap-md group">
+<label class="relative cursor-pointer flex items-center pt-1">
+<input checked="" class="sr-only custom-checkbox" type="checkbox"/>
+<div class="w-6 h-6 border-2 border-black bg-transparent flex-shrink-0 checkbox-visual active:scale-90 transition-transform"></div>
+</label>
+<div class="flex-grow">
+<p class="font-body-lg text-body-lg text-black font-bold line-through opacity-60">Synchronize terminal cache across all nodes</p>
+<div class="flex gap-sm mt-xs">
+<span class="font-label-sm text-label-sm border border-black px-1 text-black font-bold">SYSTEM</span>
+<span class="font-label-sm text-label-sm text-black opacity-50 font-medium">DONE: 09:12 AM</span>
+</div>
+</div>
+</div>
+<!-- Task Item 2 -->
+<div class="flex items-start gap-md group">
+<label class="relative cursor-pointer flex items-center pt-1">
+<input class="sr-only custom-checkbox" type="checkbox"/>
+<div class="w-6 h-6 border-2 border-black bg-transparent flex-shrink-0 checkbox-visual active:scale-90 transition-transform"></div>
+</label>
+<div class="flex-grow">
+<p class="font-body-lg text-body-lg text-black font-bold">Review neural network weights for project "OBSIDIAN"</p>
+<div class="flex gap-sm mt-xs">
+<span class="font-label-sm text-label-sm border border-black px-1 text-black font-bold">HIGH_PRIORITY</span>
+<span class="font-label-sm text-label-sm text-black opacity-50 font-medium">DUE: 14:00 PM</span>
+</div>
+</div>
+</div>
+<!-- Task Item 3 -->
+<div class="flex items-start gap-md group">
+<label class="relative cursor-pointer flex items-center pt-1">
+<input class="sr-only custom-checkbox" type="checkbox"/>
+<div class="w-6 h-6 border-2 border-black bg-transparent flex-shrink-0 checkbox-visual active:scale-90 transition-transform"></div>
+</label>
+<div class="flex-grow">
+<p class="font-body-lg text-body-lg text-black font-bold">Draft documentation for KWESTUP_API_V2</p>
+<div class="flex gap-sm mt-xs">
+<span class="font-label-sm text-label-sm border border-black px-1 text-black font-bold">DOCS</span>
+</div>
+</div>
+</div>
+<!-- Empty "New" Entry -->
+<div class="flex items-start gap-md border-t border-black/10 pt-md mt-lg">
+<div class="w-6 h-6 border-2 border-black/30 bg-transparent flex-shrink-0"></div>
+<div class="flex-grow">
+<input class="w-full bg-transparent border-none p-0 focus:ring-0 text-black placeholder:text-black/30 font-label-md text-label-md font-bold tracking-tight" placeholder="ADD NEW SYSTEM OBJECTIVE..." type="text"/>
+</div>
+</div>
+</div>
+<!-- Footer Stamp -->
+<div class="mt-xl flex justify-end opacity-20 select-none">
+<div class="border-4 border-black p-sm rounded-full rotate-12 flex flex-col items-center">
+<span class="font-display-lg text-xl font-black text-black">KWESTUP</span>
+<span class="font-label-sm text-[10px] text-black font-black uppercase">Verified Authentic</span>
+</div>
+</div>
+</section>
+<!-- Side Panel / AI Assist -->
+<aside class="md:col-span-4 space-y-lg">
+<!-- AI Assist Button -->
+<button class="w-full group relative overflow-hidden bg-primary text-on-primary py-lg border-2 border-outline shadow-[4px_4px_0px_0px_rgba(255,255,255,0.2)] active:scale-[0.98] transition-all">
+<div class="scanline"></div>
+<div class="flex flex-col items-center gap-sm relative z-20">
+<span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+<span class="font-label-md text-label-md font-black tracking-widest uppercase">AI ASSIST_ACTIVATE</span>
+</div>
+<div class="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+</button>
+<!-- Insight Card -->
+<div class="brushed-metal p-md border-2 border-outline shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+<div class="flex items-center gap-sm mb-md text-primary">
+<span class="material-symbols-outlined text-md">analytics</span>
+<h4 class="font-label-md text-label-md uppercase font-black tracking-wider">System Insights</h4>
+</div>
+<p class="text-on-surface-variant font-body-md mb-md">Current productivity cycle is at <span class="text-primary font-bold">87%</span> efficiency. Focus on completing "OBSIDIAN" review to optimize throughput.</p>
+<div class="w-full bg-surface-container h-2 border border-outline-variant overflow-hidden">
+<div class="bg-primary h-full w-[87%] shadow-[0_0_8px_rgba(255,255,255,0.5)]"></div>
+</div>
+</div>
+<!-- Suggestions -->
+<div class="space-y-sm">
+<h4 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest px-xs font-black">Suggested Prioritization</h4>
+<div class="glass-overlay p-sm px-md flex items-center justify-between border-2 border-outline hover:bg-surface-bright transition-colors cursor-pointer group">
+<span class="font-label-md text-label-md font-bold uppercase tracking-tight">Archive completed logs</span>
+<span class="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</div>
+<div class="glass-overlay p-sm px-md flex items-center justify-between border-2 border-outline hover:bg-surface-bright transition-colors cursor-pointer group">
+<span class="font-label-md text-label-md font-bold uppercase tracking-tight">Schedule maintenance window</span>
+<span class="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</div>
+</div>
+</aside>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 w-full z-50 bg-surface-container-lowest border-t-2 border-outline bg-background shadow-[0_-4px_0px_0px_rgba(0,0,0,1)]">
+<div class="flex justify-around items-stretch h-20 w-full">
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-2 hover:bg-surface-variant active:invert duration-100" href="#">
+<span class="material-symbols-outlined mb-1">dashboard</span>
+<span class="font-label-sm text-label-sm font-bold uppercase tracking-tighter">Dash</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary text-on-primary rounded-none h-full border-x-2 border-outline px-2 active:invert duration-100" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">event_upcoming</span>
+<span class="font-label-sm text-label-sm font-bold uppercase tracking-tighter">Daily</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-2 hover:bg-surface-variant active:invert duration-100" href="#">
+<span class="material-symbols-outlined mb-1">format_list_bulleted</span>
+<span class="font-label-sm text-label-sm font-bold uppercase tracking-tighter">Tasks</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-2 hover:bg-surface-variant active:invert duration-100" href="#">
+<span class="material-symbols-outlined mb-1">description</span>
+<span class="font-label-sm text-label-sm font-bold uppercase tracking-tighter">Notes</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-2 hover:bg-surface-variant active:invert duration-100" href="#">
+<span class="material-symbols-outlined mb-1">timer</span>
+<span class="font-label-sm text-label-sm font-bold uppercase tracking-tighter">Focus</span>
+</a>
+</div>
+</nav>
+<!-- Interactive Layer: Simple Mouse Grain Effect -->
+<script>
+        document.addEventListener('mousemove', (e) => {
+            const paper = document.querySelector('.paper-texture');
+            if(paper) {
+                const rect = paper.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                if(x > 0 && x < rect.width && y > 0 && y < rect.height) {
+                    paper.style.backgroundImage = `
+                        radial-gradient(circle at ${x}px ${y}px, rgba(255,255,255,0.3) 0%, transparent 20%),
+                        radial-gradient(#000000 0.5px, transparent 0.5px), 
+                        linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px),
+                        linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px)
+                    `;
+                }
+            }
+        });
+
+        // Add task toggle logic
+        document.querySelectorAll('.custom-checkbox').forEach(box => {
+            box.addEventListener('change', function() {
+                const text = this.closest('.flex').querySelector('p');
+                if(this.checked) {
+                    text.classList.add('line-through', 'opacity-60');
+                } else {
+                    text.classList.remove('line-through', 'opacity-60');
+                }
+            });
+        });
+    </script>
+</body></html>

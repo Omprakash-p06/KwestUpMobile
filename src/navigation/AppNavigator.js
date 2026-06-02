@@ -144,6 +144,7 @@ export const AppNavigator = ({
         {() => (
           <DashboardScreen
             tasks={tasks}
+            notes={notes}
             currentTheme={currentTheme}
             handleCompleteTask={handleCompleteTask}
             setSelectedTask={setSelectedTask}
@@ -151,6 +152,10 @@ export const AppNavigator = ({
             toggleTaskComplete={toggleTaskComplete}
             deleteTask={deleteTask}
             setTasks={setTasks}
+            timerRemaining={timerRemaining}
+            isTimerRunning={isTimerRunning}
+            setIsTimerRunning={setIsTimerRunning}
+            setTimerRemaining={setTimerRemaining}
           />
         )}
       </Drawer.Screen>

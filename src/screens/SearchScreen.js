@@ -1,18 +1,17 @@
 import React from "react";
-import { ScrollView, View, Text } from "react-native";
+import { ScrollView, View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { LiquidGlassCard } from "../components/LiquidGlassCard";
 import { CustomTextInput } from "../components/CustomTextInput";
-import { CustomCard } from "../components/CustomCard";
 import { TaskCard } from "../components/TaskCard";
-import { styles } from "../theme/styles";
 
 export const SearchScreen = ({
   currentTheme,
   setSelectedTask,
   setModalVisible,
-  dailyTasks,
-  birthdays,
-  tasks,
+  dailyTasks = [],
+  birthdays = [],
+  tasks = [],
   searchQuery,
   setSearchQuery,
   handleCompleteTask,
@@ -26,32 +25,50 @@ export const SearchScreen = ({
   const hasResults = filteredDailyTasks.length > 0 || filteredBirthdays.length > 0 || filteredTasks.length > 0;
 
   return (
-    <ScrollView style={styles.tabContentScroll}>
-      <View style={styles.tabContent}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollPadding}>
+      
+      {/* Page Header */}
+      <View style={styles.headerSection}>
+        <View style={[styles.badge, { backgroundColor: currentTheme.primary, borderColor: currentTheme.primary }]}>
+          <Text style={[styles.badgeText, { color: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000" }]}>
+            SEARCH_QUERY_SYS
+          </Text>
+        </View>
+        <Text style={[styles.title, { color: currentTheme.text }]}>DATABASE SEARCH</Text>
+      </View>
+
+      {/* Etched Terminal Input field */}
+      <View style={styles.inputWrapper}>
         <CustomTextInput
-          label="Search all tasks and birthdays"
+          label="QUERY PHRASE:"
           value={searchQuery}
           onChangeText={setSearchQuery}
           style={styles.searchInput}
-          placeholderTextColor={currentTheme.secondaryText}
+          placeholder="SEARCH OBJECTIVES AND ANNIVERSARIES..."
+          placeholderTextColor={currentTheme.secondaryText + "70"}
           icon="magnify"
           theme={currentTheme}
         />
+      </View>
 
-        {!hasResults && searchQuery.length > 0 ? (
-          <CustomCard style={{ backgroundColor: currentTheme.cardBackground, alignItems: "center" }} theme={currentTheme}>
-            <MaterialCommunityIcons name="magnify-minus-outline" size={60} color={currentTheme.secondaryText} />
-            <Text style={[styles.emptyListText, { color: currentTheme.secondaryText }]}>
-              No results found for &ldquo;{searchQuery}&rdquo;.
-            </Text>
-          </CustomCard>
-        ) : (
-          <>
-            {filteredTasks.length > 0 && (
-              <>
-                <Text style={[styles.sectionTitle, { color: currentTheme.primary, marginTop: 20 }]}>
-                  General Tasks
-                </Text>
+      {!hasResults && searchQuery.length > 0 ? (
+        <LiquidGlassCard theme={currentTheme} style={styles.emptyCard}>
+          <MaterialCommunityIcons name="magnify-minus-outline" size={48} color={currentTheme.secondaryText} style={{ marginBottom: 8 }} />
+          <Text style={[styles.emptyText, { color: currentTheme.secondaryText }]}>
+            NO SYSTEM MATCHES FOUND FOR: "{searchQuery.toUpperCase()}"
+          </Text>
+        </LiquidGlassCard>
+      ) : (
+        <View style={styles.resultsStack}>
+          
+          {/* 1. General Tasks Results */}
+          {filteredTasks.length > 0 && (
+            <View style={styles.categoryBlock}>
+              <View style={styles.categoryHeader}>
+                <MaterialCommunityIcons name="format-list-bulleted" size={16} color={currentTheme.primary} style={{ marginRight: 6 }} />
+                <Text style={[styles.categoryTitle, { color: currentTheme.text }]}>TASK_QUEUE_MATCHES</Text>
+              </View>
+              <View style={styles.cardList}>
                 {filteredTasks.map((task) => (
                   <TaskCard
                     key={task.id}
@@ -67,11 +84,18 @@ export const SearchScreen = ({
                     accent={currentTheme.primary}
                   />
                 ))}
-              </>
-            )}
-            {filteredDailyTasks.length > 0 && (
-              <>
-                <Text style={[styles.sectionTitle, { color: currentTheme.primary, marginTop: 20 }]}>Daily Tasks</Text>
+              </View>
+            </View>
+          )}
+
+          {/* 2. Daily Tasks Results */}
+          {filteredDailyTasks.length > 0 && (
+            <View style={styles.categoryBlock}>
+              <View style={styles.categoryHeader}>
+                <MaterialCommunityIcons name="calendar-clock" size={16} color={currentTheme.primary} style={{ marginRight: 6 }} />
+                <Text style={[styles.categoryTitle, { color: currentTheme.text }]}>DAILY_OBJECTIVE_MATCHES</Text>
+              </View>
+              <View style={styles.cardList}>
                 {filteredDailyTasks.map((task) => (
                   <TaskCard
                     key={task.id}
@@ -83,11 +107,18 @@ export const SearchScreen = ({
                     accent={currentTheme.primary}
                   />
                 ))}
-              </>
-            )}
-            {filteredBirthdays.length > 0 && (
-              <>
-                <Text style={[styles.sectionTitle, { color: currentTheme.primary, marginTop: 20 }]}>Birthdays</Text>
+              </View>
+            </View>
+          )}
+
+          {/* 3. Birthdays Results */}
+          {filteredBirthdays.length > 0 && (
+            <View style={styles.categoryBlock}>
+              <View style={styles.categoryHeader}>
+                <MaterialCommunityIcons name="cake-variant" size={16} color={currentTheme.primary} style={{ marginRight: 6 }} />
+                <Text style={[styles.categoryTitle, { color: currentTheme.text }]}>ANNIVERSARY_MATCHES</Text>
+              </View>
+              <View style={styles.cardList}>
                 {filteredBirthdays.map((bday) => (
                   <TaskCard
                     key={bday.id}
@@ -99,11 +130,89 @@ export const SearchScreen = ({
                     accent={currentTheme.primary}
                   />
                 ))}
-              </>
-            )}
-          </>
-        )}
-      </View>
+              </View>
+            </View>
+          )}
+
+        </View>
+      )}
+
     </ScrollView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollPadding: {
+    padding: 16,
+    paddingBottom: 60,
+    gap: 16,
+  },
+  headerSection: {
+    marginBottom: 8,
+  },
+  badge: {
+    borderWidth: 1.5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 0,
+    alignSelf: "flex-start",
+    marginBottom: 6,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+    fontFamily: "JetBrainsMono-Bold",
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "800",
+    fontFamily: "HankenGrotesk-ExtraBold",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  inputWrapper: {
+    marginBottom: 8,
+  },
+  searchInput: {
+    borderRadius: 0,
+  },
+  emptyCard: {
+    padding: 30,
+    alignItems: "center",
+    borderWidth: 2,
+  },
+  emptyText: {
+    fontSize: 12,
+    fontFamily: "JetBrainsMono-Regular",
+    textAlign: "center",
+  },
+  resultsStack: {
+    flexDirection: "column",
+    gap: 20,
+  },
+  categoryBlock: {
+    flexDirection: "column",
+    gap: 8,
+  },
+  categoryHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderBottomWidth: 1.5,
+    borderBottomColor: "#000000",
+    paddingBottom: 6,
+    marginBottom: 4,
+  },
+  categoryTitle: {
+    fontSize: 12,
+    fontWeight: "900",
+    fontFamily: "JetBrainsMono-Bold",
+  },
+  cardList: {
+    flexDirection: "column",
+    gap: 2,
+  },
+});
