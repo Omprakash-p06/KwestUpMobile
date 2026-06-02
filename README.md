@@ -5,19 +5,22 @@
 [![Local AI](https://img.shields.io/badge/Local_AI-llama.cpp-red?logo=artificial-intelligence)](https://github.com/ggerganov/llama.cpp)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-**KwestUp Mobile** is a premium, privacy-respecting, and completely offline-first personal workspace application designed to bring the capabilities of **Obsidian** and **Notion** directly to your mobile device. With rich Markdown notes, Google Tasks-style task lists, and birthday reminders, KwestUp Mobile processes all your data locally on your device—keeping your personal life private.
+KwestUp Mobile is a local-first personal workspace and productivity app focused on privacy, portability, and fast offline workflows. It provides Markdown-based note files, structured vaults, Google Tasks-style task lists, and local Wi‑Fi sync with a companion desktop app.
 
-A key highlight is the built-in **On-Device Local AI**, which compiles native C++ `llama.cpp` bindings via `react-native-llama` to run a quantized Qwen3-0.6B-GGUF model entirely offline. It provides Note Summarization and Task Extraction without transmitting a single byte of your data to the cloud. Furthermore, KwestUp Mobile synchronizes locally over Wi-Fi with the **KwestUp PC** desktop app via a simple camera scan of a PC-generated QR code.
+Core differentiators:
+- Fully local note storage (raw `.md` files) with a fast in-memory metadata cache for search and navigation.
+- Offline-first on-device AI tooling via local `llama.cpp` bindings for note summarization and task extraction.
+- Local Wi‑Fi synchronization with the KwestUp PC desktop companion (no cloud intermediaries).
 
 ---
 
 ## 🌟 Key Features
 
-### 📝 Notion & Obsidian-Style Notes
+### 📝 collaborative notes platform & vault-Style Notes
 - **Local Filesystem Vault**: Organizes raw Markdown `.md` documents inside structured directories.
 - **Collapsible Explorer Sidebar**: Intuitive navigation for managing multiple notebooks and tags.
 - **Dual Markdown Engine**: Seamless toggle between a rich raw-text editor and a beautiful styled markdown rendering engine.
-- **Notion-Style Auto-Save**: Debounced background writing to prevent data loss.
+- **collaborative notes platform-Style Auto-Save**: Debounced background writing to prevent data loss.
 
 ### 📋 Google Tasks-Style Management
 - **Custom Categorized Lists**: Swiftly swipe between multiple task categories and lists.
