@@ -750,16 +750,13 @@ export const NotesScreen = ({
                   let bgCardColor = currentTheme.cardBackground;
 
                   if (isDark) {
-                    if (index % 2 === 0) {
-                      textureUri = "https://www.transparenttextures.com/patterns/leather.png";
-                      bgCardColor = "#2A2A2A";
-                    } else {
-                      textureUri = "https://www.transparenttextures.com/patterns/pinstriped-suit.png";
-                      bgCardColor = "#20201F";
-                    }
+                    textureUri = "https://www.transparenttextures.com/patterns/brushed-alum-dark.png";
+                    bgCardColor = "#20201F";
                   } else if (isLight) {
                     textureUri = "https://www.transparenttextures.com/patterns/lined-paper.png";
                     bgCardColor = "#FFFFFF";
+                  } else if (isAmoled) {
+                    bgCardColor = "#0E0E0E";
                   }
 
                   const folderCardStyle = [
@@ -981,22 +978,66 @@ export const NotesScreen = ({
                   </TouchableOpacity>
                 </View>
 
-                {/* Edit vs Preview Toggle */}
-                <View style={[styles.editorToggle, { backgroundColor: currentTheme.primary + "10" }]}>
+                {/* Edit vs Preview Toggle Switch Key-Deck */}
+                <View style={[
+                  styles.editorToggle, 
+                  { 
+                    backgroundColor: currentTheme.background === "#E4E2E1" ? "#DCDAD9" : "#0E0E0E",
+                    borderColor: currentTheme.border
+                  }
+                ]}>
                   <TouchableOpacity
-                    style={[styles.toggleBtn, editorTab === "preview" && [styles.toggleActive, { backgroundColor: currentTheme.primary }]]}
+                    style={[
+                      styles.toggleBtn, 
+                      editorTab === "preview" && [
+                        styles.toggleActive, 
+                        { 
+                          backgroundColor: currentTheme.primary,
+                          borderColor: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000"
+                        }
+                      ]
+                    ]}
                     onPress={() => handleToggleTab("preview")}
                   >
-                    <Text style={[styles.toggleText, { color: editorTab === "preview" ? "#FFF" : currentTheme.text }]}>
-                      Preview
+                    <Text 
+                      style={[
+                        styles.toggleText, 
+                        { 
+                          color: editorTab === "preview" 
+                            ? (currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000") 
+                            : currentTheme.secondaryText,
+                          fontFamily: "JetBrainsMono-Bold"
+                        }
+                      ]}
+                    >
+                      PREVIEW
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.toggleBtn, editorTab === "edit" && [styles.toggleActive, { backgroundColor: currentTheme.primary }]]}
+                    style={[
+                      styles.toggleBtn, 
+                      editorTab === "edit" && [
+                        styles.toggleActive, 
+                        { 
+                          backgroundColor: currentTheme.primary,
+                          borderColor: currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000"
+                        }
+                      ]
+                    ]}
                     onPress={() => handleToggleTab("edit")}
                   >
-                    <Text style={[styles.toggleText, { color: editorTab === "edit" ? "#FFF" : currentTheme.text }]}>
-                      Edit
+                    <Text 
+                      style={[
+                        styles.toggleText, 
+                        { 
+                          color: editorTab === "edit" 
+                            ? (currentTheme.background === "#E4E2E1" ? "#FFFFFF" : "#000000") 
+                            : currentTheme.secondaryText,
+                          fontFamily: "JetBrainsMono-Bold"
+                        }
+                      ]}
+                    >
+                      EDIT
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1482,19 +1523,25 @@ const rawStyles = {
   editorToggle: {
     flexDirection: "row",
     borderRadius: 0,
-    padding: 2,
+    borderWidth: 2,
+    padding: 3,
+    alignSelf: "center",
+    marginVertical: 5,
   },
   toggleBtn: {
-    paddingHorizontal: 15,
-    paddingVertical: 6,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
     borderRadius: 0,
+    alignItems: "center",
+    justifyContent: "center",
   },
   toggleActive: {
-    elevation: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
+    borderWidth: 1.5,
+    elevation: 3,
+    shadowColor: "#000000",
+    shadowOffset: { width: 1, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 0,
   },
   toggleText: {
     fontSize: 12,
