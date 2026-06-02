@@ -66,3 +66,17 @@ ios/Pods/
 *.bak
 *.tmp
 *.temp
+
+# Old app icons (no longer referenced — replaced by UI Design plan/logo/)
+AppIcons(1)/
+
+# GSD internal planning & validation (not app source code)
+.planning/
+scripts/
+
+# Generated native project files
+android/.gradle/
+android/app/build/
+android/build/
+ios/Pods/
+ios/build/
