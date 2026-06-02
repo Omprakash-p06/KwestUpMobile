@@ -4,7 +4,7 @@
     "slug": "kwestupmobile",
     "version": "2.0.0",
     "orientation": "portrait",
-    "icon": "./AppIcons(1)/appstore.png",
+    "icon": "./UI Design plan/logo/screen.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -19,8 +19,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./AppIcons(1)/appstore.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./UI Design plan/logo/screen.png",
+        "backgroundColor": "#131313"
       },
       "package": "com.omprakashp06.kwestupmobile"
     },
