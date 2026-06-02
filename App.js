@@ -6,6 +6,7 @@ import * as Notifications from "expo-notifications";
 import Modal from "react-native-modal";
 import ConfettiCannon from "react-native-confetti-cannon";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { StatusBar } from "expo-status-bar";
 import { NavigationContainer } from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -722,6 +723,7 @@ const App = () => {
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: currentTheme.background }}>
+      <StatusBar style={themeMode === "light" ? "dark" : "light"} animated />
       <SafeAreaProvider>
         <PaperProvider theme={{ colors: currentTheme }}>
           <LiquidGlassBackground theme={currentTheme}>

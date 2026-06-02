@@ -9,6 +9,7 @@ import { CustomSegmentedButtons } from "../components/CustomSegmentedButtons";
 import { CustomButton } from "../components/CustomButton";
 import { QRScannerModal } from "../components/QRScannerModal";
 import { isModelDownloaded, unloadModel } from "../utils/aiService";
+import { APP_VERSION } from "../utils/storage";
 
 const MODEL_PATH = `${FileSystem.documentDirectory}models/qwen2.5-0.5b-instruct-q4_k_m.gguf`;
 
@@ -290,6 +291,11 @@ export const SettingsScreen = ({
           <View style={[styles.aboutItemRow, { borderColor: currentTheme.border + "12" }]}> 
             <Text style={[styles.aboutLabelText, { color: currentTheme.text }]}>DEVELOPMENT AGENT</Text>
             <Text style={[styles.aboutValText, { color: currentTheme.secondaryText }]}>OMPRAKASH PANDA</Text>
+          </View>
+
+          <View style={[styles.aboutItemRow, { borderColor: currentTheme.border + "12" }]}> 
+            <Text style={[styles.aboutLabelText, { color: currentTheme.text }]}>APP VERSION</Text>
+            <Text style={[styles.aboutValText, { color: currentTheme.primary }]}>{APP_VERSION}</Text>
           </View>
         </LiquidGlassCard>
 

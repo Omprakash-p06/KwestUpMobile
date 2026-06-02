@@ -2,7 +2,7 @@
   "expo": {
     "name": "KwestUpMobile",
     "slug": "kwestupmobile",
-    "version": "2.0.0",
+    "version": "3.0.0",
     "orientation": "portrait",
     "icon": "./UI Design plan/logo/screen.png",
     "userInterfaceStyle": "light",

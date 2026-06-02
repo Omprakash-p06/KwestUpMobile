@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export const APP_VERSION = "v2.5.0-SIDE-PANEL-REDESIGN";
-export const STORAGE_VERSION = "v5.0";
+export const APP_VERSION = "v3.0.0";
+export const STORAGE_VERSION = "v6.0";
 
 // COMPREHENSIVE CACHE CLEARING SYSTEM
 export const clearAllCaches = async () => {
