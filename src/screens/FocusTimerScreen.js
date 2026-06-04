@@ -224,7 +224,7 @@ export const FocusTimerScreen = ({
         </View>
 
         <Text style={[styles.coachQuoteText, { color: currentTheme.text }]}>
-          "Focus metrics indicate high system alignment. Flow optimization active. All peripheral interrupts and alert pathways are temporarily isolated."
+          {"\"Focus metrics indicate high system alignment. Flow optimization active. All peripheral interrupts and alert pathways are temporarily isolated.\""}
         </Text>
       </View>
 

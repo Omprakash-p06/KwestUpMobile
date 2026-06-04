@@ -35,3 +35,16 @@ allprojects {
 
 apply plugin: "expo-root-project"
 apply plugin: "com.facebook.react.rootproject"
+
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            def cmake = project.android.defaultConfig.externalNativeBuild.cmake
+            if (cmake.arguments == null) {
+                cmake.arguments = []
+            }
+            cmake.arguments.add("-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON")
+            cmake.arguments.add("-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384")
+        }
+    }
+}
