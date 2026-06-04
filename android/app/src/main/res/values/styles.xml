@@ -2,8 +2,14 @@
   <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
     <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
     <item name="colorPrimary">@color/colorPrimary</item>
+    <!-- Transparent status bar — safe-area-context handles insets via WindowInsets API -->
     <item name="android:statusBarColor">@android:color/transparent</item>
-    <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
+    <!--
+      windowOptOutEdgeToEdgeEnforcement was REMOVED:
+      - On Android 16 (API 36) this opt-out flag is IGNORED — the OS enforces edge-to-edge for all apps.
+      - Keeping it caused a conflict with expo.edgeToEdgeEnabled=true (gradle.properties),
+        making safe-area-context report 0 insets while the system drew behind the bars anyway.
+    -->
   </style>
   <style name="Theme.App.SplashScreen" parent="AppTheme">
     <item name="android:windowBackground">@drawable/ic_launcher_background</item>

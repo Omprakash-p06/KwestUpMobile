@@ -39,12 +39,21 @@ apply plugin: "com.facebook.react.rootproject"
 subprojects {
     afterEvaluate { project ->
         if (project.hasProperty("android")) {
-            def cmake = project.android.defaultConfig.externalNativeBuild.cmake
-            if (cmake.arguments == null) {
-                cmake.arguments = []
+            try {
+                def cmake = project.android.defaultConfig.externalNativeBuild?.cmake
+                if (cmake != null) {
+                    // Inject 16 KB page-size alignment flags for all C/C++ native modules.
+                    // Required for Android 16 (API 36) which enforces 16 KB ELF alignment.
+                    if (!cmake.arguments.contains("-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON")) {
+                        cmake.arguments.add("-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON")
+                    }
+                    if (!cmake.arguments.any { it.startsWith("-DCMAKE_SHARED_LINKER_FLAGS=") }) {
+                        cmake.arguments.add("-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384")
+                    }
+                }
+            } catch (Exception e) {
+                // Module has android {} but no externalNativeBuild.cmake — skip silently.
             }
-            cmake.arguments.add("-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON")
-            cmake.arguments.add("-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384")
         }
     }
 }
