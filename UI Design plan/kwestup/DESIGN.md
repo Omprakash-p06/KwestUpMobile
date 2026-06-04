@@ -113,7 +113,7 @@ The palette is strictly monochromatic to maximize focus and visual impact.
 This design system supports three distinct modes:
 1. **Light Mode:** Uses a "Paper" texture base with ink-black typography.
 2. **Dark Mode:** Features "Brushed Metal" surfaces with white typography.
-3. **AMOLED Mode:** High-contrast "Obsidian" surfaces with pure black backgrounds to save energy and provide infinite depth.
+3. **AMOLED Mode:** High-contrast "vault" surfaces with pure black backgrounds to save energy and provide infinite depth.
 
 ## Typography
 The typography is sharp, technical, and modern. We use **Hanken Grotesk** for all primary communication due to its clean, geometric precision and high legibility at extreme weights. For metadata, technical labels, and AI-generated content, we utilize **JetBrains Mono** to reinforce the "industrial tool" aesthetic.

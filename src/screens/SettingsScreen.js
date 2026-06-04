@@ -282,7 +282,7 @@ export const SettingsScreen = ({
 
           <TouchableOpacity 
             style={[styles.aboutItemRow, { borderColor: currentTheme.border + "12" }]}
-            onPress={() => Linking.openURL("https://github.com/Omprakash-p06/KwestUpMobile")}
+            onPress={() => Linking.openURL("https://github.com/Omprakash-p06/KwestUp")}
           > 
             <Text style={[styles.aboutLabelText, { color: currentTheme.text }]}>REPOSITORY RESOURCE</Text>
             <MaterialCommunityIcons name="github" size={20} color={currentTheme.text} />

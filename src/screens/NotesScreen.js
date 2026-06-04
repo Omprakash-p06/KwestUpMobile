@@ -220,7 +220,7 @@ export const NotesScreen = ({
     });
   };
 
-  // Notion-style auto-save with 1s debounce
+  // auto-save auto-save with 1s debounce
   useEffect(() => {
     if (!selectedNote || !isEditing || editorTab !== "edit") return;
     if (editContent === selectedNote.content) return;
@@ -1245,7 +1245,7 @@ export const NotesScreen = ({
         <View style={[styles.dialogContent, { backgroundColor: currentTheme.cardBackground }]}>
           <Text style={[styles.dialogTitle, { color: currentTheme.text }]}>New Vault</Text>
           <Text style={[styles.dialogMessage, { color: currentTheme.secondaryText }]}>
-            Vaults are isolated note directories — like separate Obsidian vaults.
+            Vaults are isolated note directories — like separate vault vaults.
           </Text>
           <TextInput
             style={[styles.nameInput, { color: currentTheme.text, borderBottomColor: currentTheme.primary }]}

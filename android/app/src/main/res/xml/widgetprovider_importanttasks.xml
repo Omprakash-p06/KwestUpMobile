@@ -4,9 +4,18 @@
     android:minHeight="100dp"
     android:targetCellWidth="3"
     android:targetCellHeight="2"
-    android:resizeMode="vertical|horizontal"
+
+
+
+    android:resizeMode="none"
+
     android:description="@string/widget_importanttasks_description"
+
     android:initialLayout="@layout/rn_widget"
+    android:previewImage="@drawable/importanttasks_preview"
+
+
+
     android:updatePeriodMillis="1800000"
     android:widgetCategory="home_screen">
 </appwidget-provider>

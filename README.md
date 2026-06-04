@@ -62,8 +62,8 @@ Core differentiators:
 
 ### 2. Clone and Install
 ```bash
-git clone https://github.com/Omprakash-p06/KwestUpMobile.git
-cd KwestUpMobile
+git clone https://github.com/Omprakash-p06/KwestUp.git
+cd KwestUp
 npm install
 ```
 
@@ -162,5 +162,5 @@ To integrate Android App Widgets in the next milestone, developers should follow
 ## 👥 Authors & License
 
 - **Developer**: Omprakash Panda
-- **Repository**: [https://github.com/Omprakash-p06/KwestUpMobile](https://github.com/Omprakash-p06/KwestUpMobile)
+- **Repository**: [https://github.com/Omprakash-p06/KwestUp](https://github.com/Omprakash-p06/KwestUp)
 - **License**: MIT License

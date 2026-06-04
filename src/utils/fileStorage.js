@@ -129,7 +129,7 @@ export const deleteNoteFile = async (vaultId, folder, title) => {
 };
 
 /**
- * Scan all note files in the given vault (Obsidian vault-style explorer).
+ * Scan all note files in the given vault (vault vault-style explorer).
  * Returns only files/folders directly inside the vault path — does NOT
  * recurse into nested Vaults/ subdirectories.
  * @param {string} vaultId

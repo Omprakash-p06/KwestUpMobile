@@ -1,51 +1,64 @@
-import React from "react";
-import { ScrollView, View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { LiquidGlassCard } from "../components/LiquidGlassCard";
-import { CustomTextInput } from "../components/CustomTextInput";
-import { TaskCard } from "../components/TaskCard";
+import React, { useState, useMemo } from 'react';
+import { View, Text, StyleSheet, FlatList, TextInput } from 'react-native';
+import { useTheme } from '../theme/colors';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import LiquidGlassCard from '../components/LiquidGlassCard';
+import LiquidGlassBackground from '../components/LiquidGlassBackground';
+import CustomTextInput from '../components/CustomTextInput';
+import TaskCard from '../components/TaskCard';
+import { useVault } from '../utils/vaultService';
+import TaskEditModal from '../components/TaskEditModal';
 
-export const SearchScreen = ({
-  currentTheme,
-  setSelectedTask,
-  setModalVisible,
-  dailyTasks = [],
-  birthdays = [],
-  tasks = [],
-  searchQuery,
-  setSearchQuery,
-  handleCompleteTask,
-  toggleTaskComplete,
-  deleteTask
-}) => {
-  const filteredDailyTasks = dailyTasks.filter((task) => task.name.toLowerCase().includes(searchQuery.toLowerCase()));
-  const filteredBirthdays = birthdays.filter((bday) => bday.name.toLowerCase().includes(searchQuery.toLowerCase()));
-  const filteredTasks = tasks.filter((task) => (task.title || task.name).toLowerCase().includes(searchQuery.toLowerCase()));
+const SearchScreen = () => {
+  const { currentTheme } = useTheme();
+  const { 
+    tasks, 
+    dailyTasks, 
+    notes, 
+    toggleTaskCompletion, 
+    toggleDailyTaskCompletion,
+    deleteTask
+  } = useVault();
+  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTask, setSelectedTask] = useState(null);
 
-  const hasResults = filteredDailyTasks.length > 0 || filteredBirthdays.length > 0 || filteredTasks.length > 0;
+  const filteredTasks = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    return tasks.filter(t => 
+      t.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (t.description && t.description.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+  }, [tasks, searchQuery]);
+
+  const filteredDailyTasks = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    return dailyTasks.filter(t => 
+      t.title.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [dailyTasks, searchQuery]);
+
+  const filteredNotes = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    return notes.filter(n => 
+      n.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      n.content.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [notes, searchQuery]);
+
+  const hasResults = filteredTasks.length > 0 || filteredDailyTasks.length > 0 || filteredNotes.length > 0;
+
+  const handleCompleteTask = async (taskId) => {
+    await toggleTaskCompletion(taskId);
+  };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollPadding}>
-      
-      {/* Page Header */}
-      <View style={styles.headerSection}>
-        <View style={[styles.badge, { backgroundColor: currentTheme.primary, borderColor: currentTheme.primary }]}>
-          <Text style={[styles.badgeText, { color: currentTheme.onPrimary }]}>
-            SEARCH_QUERY_SYS
-          </Text>
-        </View>
-        <Text style={[styles.title, { color: currentTheme.text }]}>DATABASE SEARCH</Text>
-      </View>
-
-      {/* Etched Terminal Input field */}
-      <View style={styles.inputWrapper}>
+    <LiquidGlassBackground theme={currentTheme}>
+      <View style={styles.searchHeader}>
         <CustomTextInput
-          label="QUERY PHRASE:"
+          placeholder="ENTER_QUERY_PARAMETERS..."
           value={searchQuery}
           onChangeText={setSearchQuery}
-          style={styles.searchInput}
-          placeholder="SEARCH OBJECTIVES AND ANNIVERSARIES..."
-          placeholderTextColor={currentTheme.secondaryText + "70"}
           icon="magnify"
           theme={currentTheme}
         />
@@ -55,7 +68,7 @@ export const SearchScreen = ({
         <LiquidGlassCard theme={currentTheme} style={styles.emptyCard}>
           <MaterialCommunityIcons name="magnify-minus-outline" size={48} color={currentTheme.secondaryText} style={{ marginBottom: 8 }} />
           <Text style={[styles.emptyText, { color: currentTheme.secondaryText }]}>
-            NO SYSTEM MATCHES FOUND FOR: "{searchQuery.toUpperCase()}"
+            {"NO SYSTEM MATCHES FOUND FOR: " + searchQuery.toUpperCase()}
           </Text>
         </LiquidGlassCard>
       ) : (
@@ -68,23 +81,15 @@ export const SearchScreen = ({
                 <MaterialCommunityIcons name="format-list-bulleted" size={16} color={currentTheme.primary} style={{ marginRight: 6 }} />
                 <Text style={[styles.categoryTitle, { color: currentTheme.text }]}>TASK_QUEUE_MATCHES</Text>
               </View>
-              <View style={styles.cardList}>
-                {filteredTasks.map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    onPress={() => {
-                      setSelectedTask(task);
-                      setModalVisible(true);
-                    }}
-                    onComplete={() => handleCompleteTask(task.id)}
-                    onUncomplete={() => toggleTaskComplete(task.id)}
-                    onDelete={deleteTask}
-                    theme={currentTheme}
-                    accent={currentTheme.primary}
-                  />
-                ))}
-              </View>
+              {filteredTasks.map(task => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  theme={currentTheme}
+                  onPress={() => setSelectedTask(task)}
+                  onComplete={() => handleCompleteTask(task.id)}
+                />
+              ))}
             </View>
           )}
 
@@ -92,127 +97,107 @@ export const SearchScreen = ({
           {filteredDailyTasks.length > 0 && (
             <View style={styles.categoryBlock}>
               <View style={styles.categoryHeader}>
-                <MaterialCommunityIcons name="calendar-clock" size={16} color={currentTheme.primary} style={{ marginRight: 6 }} />
-                <Text style={[styles.categoryTitle, { color: currentTheme.text }]}>DAILY_OBJECTIVE_MATCHES</Text>
+                <MaterialCommunityIcons name="calendar-check" size={16} color={currentTheme.primary} style={{ marginRight: 6 }} />
+                <Text style={[styles.categoryTitle, { color: currentTheme.text }]}>DIARY_MATCHES</Text>
               </View>
-              <View style={styles.cardList}>
-                {filteredDailyTasks.map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    task={{ ...task, title: task.name }}
-                    onComplete={() => {}}
-                    onUncomplete={() => toggleTaskComplete(task.id)}
-                    onDelete={deleteTask}
-                    theme={currentTheme}
-                    accent={currentTheme.primary}
-                  />
-                ))}
-              </View>
+              {filteredDailyTasks.map(task => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  theme={currentTheme}
+                  onComplete={() => toggleDailyTaskCompletion(task.id)}
+                />
+              ))}
             </View>
           )}
 
-          {/* 3. Birthdays Results */}
-          {filteredBirthdays.length > 0 && (
+          {/* 3. Notes Results */}
+          {filteredNotes.length > 0 && (
             <View style={styles.categoryBlock}>
               <View style={styles.categoryHeader}>
-                <MaterialCommunityIcons name="cake-variant" size={16} color={currentTheme.primary} style={{ marginRight: 6 }} />
-                <Text style={[styles.categoryTitle, { color: currentTheme.text }]}>ANNIVERSARY_MATCHES</Text>
+                <MaterialCommunityIcons name="note-text-outline" size={16} color={currentTheme.primary} style={{ marginRight: 6 }} />
+                <Text style={[styles.categoryTitle, { color: currentTheme.text }]}>DATA_MODULE_MATCHES</Text>
               </View>
-              <View style={styles.cardList}>
-                {filteredBirthdays.map((bday) => (
-                  <TaskCard
-                    key={bday.id}
-                    task={{ ...bday, title: bday.name }}
-                    onComplete={() => {}}
-                    onUncomplete={() => toggleTaskComplete(bday.id)}
-                    onDelete={deleteTask}
-                    theme={currentTheme}
-                    accent={currentTheme.primary}
-                  />
-                ))}
-              </View>
+              {filteredNotes.map(note => (
+                <LiquidGlassCard key={note.id} theme={currentTheme} style={styles.noteResult}>
+                  <Text style={[styles.noteTitle, { color: currentTheme.text }]}>{note.title}</Text>
+                  <Text style={[styles.noteSnippet, { color: currentTheme.secondaryText }]} numberOfLines={2}>
+                    {note.content}
+                  </Text>
+                </LiquidGlassCard>
+              ))}
             </View>
           )}
-
         </View>
       )}
 
-    </ScrollView>
+      {selectedTask && (
+        <TaskEditModal
+          isVisible={!!selectedTask}
+          onClose={() => setSelectedTask(null)}
+          task={selectedTask}
+          onSave={async (updatedTask) => {
+            // In a real app, you'd call an update function. For now we just close.
+            setSelectedTask(null);
+          }}
+          onDelete={async (taskId) => {
+            await deleteTask(taskId);
+            setSelectedTask(null);
+          }}
+          theme={currentTheme}
+        />
+      )}
+    </LiquidGlassBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollPadding: {
+  searchHeader: {
     padding: 16,
-    paddingBottom: 60,
-    gap: 16,
-  },
-  headerSection: {
-    marginBottom: 8,
-  },
-  badge: {
-    borderWidth: 1.5,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 0,
-    alignSelf: "flex-start",
-    marginBottom: 6,
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 0.5,
-    fontFamily: "JetBrainsMono-Bold",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "800",
-    fontFamily: "JetBrainsMono-Bold",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  inputWrapper: {
-    marginBottom: 8,
-  },
-  searchInput: {
-    borderRadius: 0,
+    paddingTop: 8,
   },
   emptyCard: {
-    padding: 30,
-    alignItems: "center",
-    borderWidth: 2,
+    margin: 16,
+    padding: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyText: {
-    fontSize: 12,
-    fontFamily: "JetBrainsMono-Regular",
-    textAlign: "center",
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 12,
   },
   resultsStack: {
-    flexDirection: "column",
-    gap: 20,
+    padding: 16,
   },
   categoryBlock: {
-    flexDirection: "column",
-    gap: 8,
+    marginBottom: 24,
   },
   categoryHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderBottomWidth: 1.5,
-    borderBottomColor: "#000000",
-    paddingBottom: 6,
-    marginBottom: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 4,
   },
   categoryTitle: {
+    fontFamily: 'JetBrainsMono-Bold',
     fontSize: 12,
-    fontWeight: "900",
-    fontFamily: "JetBrainsMono-Bold",
+    letterSpacing: 1,
   },
-  cardList: {
-    flexDirection: "column",
-    gap: 2,
+  noteResult: {
+    marginBottom: 10,
+    padding: 12,
+  },
+  noteTitle: {
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  noteSnippet: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 12,
   },
 });
+
+export default SearchScreen;

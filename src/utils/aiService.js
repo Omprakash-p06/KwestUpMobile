@@ -350,7 +350,7 @@ Parse this command: "${command}"
 };
 
 /**
- * Notion-style Writing Assistant using on-device Qwen model.
+ * auto-save Writing Assistant using on-device Qwen model.
  * Directly edits/improves the given markdown note content based on commandType.
  * 
  * @param {string} noteContent - raw note content
