@@ -8,6 +8,7 @@
 
 import { initLlama, releaseAllLlama } from "llama.rn";
 import * as FileSystem from "expo-file-system";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // === Model Configuration ===
 const MODEL_FILENAME = "qwen2.5-0.5b-instruct-q4_k_m.gguf";
@@ -15,9 +16,11 @@ const MODEL_DOWNLOAD_URL =
   "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf";
 const MODEL_DIR = `${FileSystem.documentDirectory}models/`;
 const MODEL_PATH = `${MODEL_DIR}${MODEL_FILENAME}`;
+const RESUMABLE_DOWNLOAD_KEY = "kwestup_ai_model_download_resumable";
 
 // === Module-level context handle ===
 let _llamaContext = null;
+let _isInitializing = false; // Simple mutex flag
 
 /**
  * Returns true if the GGUF model file is cached on device.
@@ -44,6 +47,7 @@ export const isModelDownloaded = async () => {
 
 /**
  * Downloads the Qwen2.5-0.5B-Instruct GGUF model file with progress callbacks.
+ * Includes resumable support and retry logic for network instability.
  * @param {function} onProgress - called with { progress: 0–1, bytesReceived, totalBytes }
  */
 export const downloadModel = async (onProgress) => {
@@ -53,11 +57,14 @@ export const downloadModel = async (onProgress) => {
     await FileSystem.makeDirectoryAsync(MODEL_DIR, { intermediates: true });
   }
 
-  const downloadResumable = FileSystem.createDownloadResumable(
-    MODEL_DOWNLOAD_URL,
-    MODEL_PATH,
-    {},
-    (downloadProgress) => {
+  const MAX_RETRIES = 3;
+  let attempt = 0;
+
+  const performDownload = async () => {
+    let downloadResumable;
+    const savedState = await AsyncStorage.getItem(RESUMABLE_DOWNLOAD_KEY);
+
+    const progressCallback = (downloadProgress) => {
       const { totalBytesWritten, totalBytesExpectedToWrite } = downloadProgress;
       if (totalBytesExpectedToWrite > 0 && onProgress) {
         onProgress({
@@ -66,14 +73,74 @@ export const downloadModel = async (onProgress) => {
           totalBytes: totalBytesExpectedToWrite,
         });
       }
-    }
-  );
+    };
 
-  const result = await downloadResumable.downloadAsync();
-  if (!result || !result.uri) {
-    throw new Error("Model download failed — no URI returned.");
+    if (savedState) {
+      try {
+        const parsedState = JSON.parse(savedState);
+        downloadResumable = new FileSystem.DownloadResumable(
+          parsedState.url,
+          parsedState.fileUri,
+          parsedState.options,
+          progressCallback,
+          parsedState.resumeData
+        );
+        console.log("🔄 Resuming AI model download...");
+      } catch (e) {
+        console.warn("Failed to parse saved download state, starting fresh:", e);
+      }
+    }
+
+    if (!downloadResumable) {
+      downloadResumable = FileSystem.createDownloadResumable(
+        MODEL_DOWNLOAD_URL,
+        MODEL_PATH,
+        {},
+        progressCallback
+      );
+    }
+
+    try {
+      const result = await downloadResumable.downloadAsync();
+      if (!result || !result.uri) {
+        throw new Error("Model download failed — no URI returned.");
+      }
+      // Success! Clear resume state
+      await AsyncStorage.removeItem(RESUMABLE_DOWNLOAD_KEY);
+      return result.uri;
+    } catch (err) {
+      // Save state for next time
+      if (downloadResumable.savable()) {
+        const state = JSON.stringify(downloadResumable.savable());
+        await AsyncStorage.setItem(RESUMABLE_DOWNLOAD_KEY, state);
+      }
+      throw err;
+    }
+  };
+
+  while (attempt < MAX_RETRIES) {
+    try {
+      return await performDownload();
+    } catch (err) {
+      attempt++;
+      console.warn(`Download attempt ${attempt} failed:`, err.message);
+      
+      const isNetworkError = 
+        err.message.includes("ENOTFOUND") || 
+        err.message.includes("ERR_NAME_NOT_RESOLVED") ||
+        err.message.includes("CONNECTION_UNAVAILABLE") ||
+        err.message.includes("Network request failed");
+
+      if (attempt >= MAX_RETRIES) {
+        if (isNetworkError) {
+          throw new Error("Network error: Please check your internet connection and DNS settings. The download will resume from where it left off next time.");
+        }
+        throw err;
+      }
+      // Wait before retry: 1s, 2s, 4s...
+      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt - 1)));
+    }
   }
-  return result.uri;
 };
 
 /**
@@ -81,8 +148,18 @@ export const downloadModel = async (onProgress) => {
  * Throws if model file is not downloaded.
  */
 export const loadModel = async () => {
+  // 1. If already loaded, return it
   if (_llamaContext) {
-    return _llamaContext; // already loaded
+    return _llamaContext;
+  }
+
+  // 2. Mutex check to prevent multiple concurrent initializations
+  if (_isInitializing) {
+    // Wait for the other call to finish
+    while (_isInitializing) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    if (_llamaContext) return _llamaContext;
   }
 
   const downloaded = await isModelDownloaded();
@@ -90,12 +167,13 @@ export const loadModel = async () => {
     throw new Error("Model not downloaded or corrupted. Please download the AI model first.");
   }
 
+  _isInitializing = true;
   try {
     _llamaContext = await initLlama({
       model: MODEL_PATH,
       use_mlock: false,
       n_ctx: 2048,        // stable 2048 prevents OOM native crashes on standard hardware
-      n_threads: 4,       // inference threads
+      n_threads: 2,       // reduced from 4 to 2 for better stability on mid-range Android devices
       n_gpu_layers: 0,    // CPU-only
       no_gpu_devices: true, // skip GPU device probing to avoid Unknown error on Android
     });
@@ -103,7 +181,15 @@ export const loadModel = async () => {
   } catch (err) {
     _llamaContext = null;
     const msg = err?.message || "Failed to initialize native model context";
+    
+    // Check for common native errors
+    if (msg.includes("out of memory") || msg.includes("OOM")) {
+      throw new Error("Device ran out of memory while loading the AI model. Try closing other apps.");
+    }
+    
     throw new Error(`Model initialization failed: ${msg}`);
+  } finally {
+    _isInitializing = false;
   }
 };
 
@@ -112,7 +198,11 @@ export const loadModel = async () => {
  */
 export const unloadModel = async () => {
   if (_llamaContext) {
-    await releaseAllLlama();
+    try {
+      await releaseAllLlama();
+    } catch (e) {
+      console.warn("Error releasing llama context:", e);
+    }
     _llamaContext = null;
   }
 };

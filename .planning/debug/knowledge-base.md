@@ -58,3 +58,12 @@ Resolved debug sessions. Used by `gsd-debugger` to surface known-pattern hypothe
 - **Fix:** Used null-safe access (`?.cmake`), wrapped in `try/catch`, added duplicate-flag guards with `contains()`/`startsWith()`.
 - **Files changed:** android/build.gradle
 ---
+
+## android16-afterevaluate-failure — Gradle subprojects afterEvaluate Lifecycle Error
+- **Date:** 2026-06-05
+- **Error patterns:** Cannot run Project.afterEvaluate(Closure) when the project is already evaluated, afterEvaluate, subprojects, build.gradle
+- **Root cause:** Registering an `afterEvaluate` closure on a subproject that was already evaluated during root project configuration throws a Gradle exception. This occurs when plugins eagerly evaluate subprojects.
+- **Fix:** Check `subProject.state.executed` before registering `afterEvaluate`. If true, execute configuration immediately.
+- **Files changed:** android/build.gradle
+---
+
