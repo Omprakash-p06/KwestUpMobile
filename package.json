@@ -8,7 +8,8 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "eslint .",
-    "lint:report": "eslint . --format json --output-file eslint-report.json"
+    "lint:report": "eslint . --format json --output-file eslint-report.json",
+    "postinstall": "node patch-llama-gradle.js"
   },
   "dependencies": {
     "@expo-google-fonts/hanken-grotesk": "^0.4.3",

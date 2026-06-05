@@ -36,11 +36,11 @@ allprojects {
 apply plugin: "expo-root-project"
 apply plugin: "com.facebook.react.rootproject"
 
-subprojects {
-    afterEvaluate { project ->
-        if (project.hasProperty("android")) {
+subprojects { subProject ->
+    def configureProject = { proj ->
+        if (proj.hasProperty("android")) {
             try {
-                def cmake = project.android.defaultConfig.externalNativeBuild?.cmake
+                def cmake = proj.android.defaultConfig.externalNativeBuild?.cmake
                 if (cmake != null) {
                     // Inject 16 KB page-size alignment flags for all C/C++ native modules.
                     // Required for Android 16 (API 36) which enforces 16 KB ELF alignment.
@@ -54,6 +54,14 @@ subprojects {
             } catch (Exception e) {
                 // Module has android {} but no externalNativeBuild.cmake — skip silently.
             }
+        }
+    }
+
+    if (subProject.state.executed) {
+        configureProject(subProject)
+    } else {
+        subProject.afterEvaluate { proj ->
+            configureProject(proj)
         }
     }
 }
