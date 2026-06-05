@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { View, Text, Platform, ActivityIndicator } from "react-native";
+import { View, Text, Platform, ActivityIndicator, AppState } from "react-native";
 import { PaperProvider } from "react-native-paper";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
@@ -121,6 +121,15 @@ const App = () => {
 
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const appState = useRef(AppState.currentState);
+
+  // AppState monitoring to prevent background Binder flooding
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      appState.current = nextAppState;
+    });
+    return () => subscription.remove();
+  }, []);
 
   // Define currentTheme with fallback to prevent undefined errors
   const resolvedThemeName = resolveThemeName(selectedThemeName);
@@ -329,44 +338,45 @@ const App = () => {
     saveData,
   ]);
 
-  // Debounced foreground widget updates — pushes state to home-screen widgets
-  // when app is in foreground. Background updates handled by widget-task-handler.
+  // Throttled, Staggered, and AppState-guarded widget updates
   useEffect(() => {
-    if (!isInitialized) return;
+    if (!isInitialized || Platform.OS !== 'android') return;
 
-    // Debounce: only update every 2 seconds to avoid excessive bridge traffic
-    const debounceTimer = setTimeout(() => {
-      const widgetData = {
-        remaining: timerRemaining,
-        isRunning: isTimerRunning,
-        dailyTaskCount: dailyTasks.length,
-        dailyTasksCompleted: dailyTasks.filter(t => t.completed).length,
-      };
+    // RULE 1: Only push updates if the app is ACTIVE.
+    // Background updates are handled natively by widget-task-handler.tsx via AsyncStorage.
+    // Pushing from JS while backgrounded risks 'Binder transaction failure' (-22) on NothingOS.
+    if (appState.current !== 'active') return;
 
-      if (Platform.OS === 'android') {
-        requestWidgetUpdate({
-          widgetName: 'FocusTimer',
-          renderWidget: () => (
-            <FocusTimerWidget
-              remaining={widgetData.remaining}
-              isRunning={widgetData.isRunning}
-            />
-          ),
-        });
+    // RULE 2: 5-second throttle for FocusTimer updates to prevent high-frequency flooding.
+    // 10-second throttle for DailyTasks (less critical).
+    const timerThrottle = setTimeout(() => {
+      requestWidgetUpdate({
+        widgetName: 'FocusTimer',
+        renderWidget: () => (
+          <FocusTimerWidget
+            remaining={timerRemaining}
+            isRunning={isTimerRunning}
+          />
+        ),
+      });
 
+      // STAGGER: Wait 500ms before sending the next widget update to split Binder payloads.
+      const staggerTimer = setTimeout(() => {
         requestWidgetUpdate({
           widgetName: 'DailyTasks',
           renderWidget: () => (
             <DailyTasksWidget
-              dailyTaskCount={widgetData.dailyTaskCount}
-              dailyTasksCompleted={widgetData.dailyTasksCompleted}
+              dailyTaskCount={dailyTasks.length}
+              dailyTasksCompleted={dailyTasks.filter(t => t.completed).length}
             />
           ),
         });
-      }
-    }, 2000); // 2-second debounce — per RESEARCH.md Open Question 1 recommendation
+      }, 500);
 
-    return () => clearTimeout(debounceTimer);
+      return () => clearTimeout(staggerTimer);
+    }, 5000); 
+
+    return () => clearTimeout(timerThrottle);
   }, [timerRemaining, isTimerRunning, dailyTasks, isInitialized]);
 
   const showConfirmation = (message, onConfirm, onCancel = null) => {

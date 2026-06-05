@@ -72,8 +72,8 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
         if (widgetName === 'FocusTimer') {
           props.renderWidget(
             <Widget
-              timerRemaining={widgetData.timerRemaining}
-              isTimerRunning={widgetData.isTimerRunning}
+              remaining={widgetData.timerRemaining}
+              isRunning={widgetData.isTimerRunning}
             />
           );
         } else if (widgetName === 'DailyTasks') {
