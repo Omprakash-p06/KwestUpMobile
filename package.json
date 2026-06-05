@@ -19,7 +19,6 @@
     "@react-native-community/datetimepicker": "8.4.1",
     "@react-navigation/drawer": "^6.6.6",
     "@react-navigation/native": "^6.1.9",
-    "@shopify/react-native-skia": "^2.0.6",
     "expo": "~53.0.20",
     "expo-build-properties": "~0.14.8",
     "expo-camera": "~16.1.11",
