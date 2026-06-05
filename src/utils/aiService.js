@@ -57,7 +57,7 @@ export const downloadModel = async (onProgress) => {
     await FileSystem.makeDirectoryAsync(MODEL_DIR, { intermediates: true });
   }
 
-  const MAX_RETRIES = 3;
+  const MAX_RETRIES = 10; // Increased from 3 to 10 for NothingOS background stability
   let attempt = 0;
 
   const performDownload = async () => {
@@ -123,22 +123,30 @@ export const downloadModel = async (onProgress) => {
       return await performDownload();
     } catch (err) {
       attempt++;
-      console.warn(`Download attempt ${attempt} failed:`, err.message);
+      const errMsg = err.message || "";
+      console.warn(`Download attempt ${attempt} failed:`, errMsg);
       
       const isNetworkError = 
-        err.message.includes("ENOTFOUND") || 
-        err.message.includes("ERR_NAME_NOT_RESOLVED") ||
-        err.message.includes("CONNECTION_UNAVAILABLE") ||
-        err.message.includes("Network request failed");
+        errMsg.includes("ENOTFOUND") || 
+        errMsg.includes("ERR_NAME_NOT_RESOLVED") ||
+        errMsg.includes("CONNECTION_UNAVAILABLE") ||
+        errMsg.includes("Network request failed") ||
+        errMsg.includes("timeout") ||
+        errMsg.includes("abort") ||
+        errMsg.includes("MNSSecureTCP") || // NothingOS specific DGW errors
+        errMsg.includes("StreamGroup");
 
       if (attempt >= MAX_RETRIES) {
         if (isNetworkError) {
-          throw new Error("Network error: Please check your internet connection and DNS settings. The download will resume from where it left off next time.");
+          throw new Error("Network error: The connection timed out or was aborted by the system after 10 attempts. Please ensure your Wi-Fi is stable and try again. The download will resume from where it left off.");
         }
         throw err;
       }
-      // Wait before retry: 1s, 2s, 4s...
-      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt - 1)));
+
+      // Wait before retry with exponential backoff + jitter (1s, 2s, 4s... + random offset)
+      const baseDelay = 1000 * Math.pow(2, Math.min(attempt - 1, 5)); // cap at 32s
+      const jitter = Math.random() * 1000;
+      await new Promise(resolve => setTimeout(resolve, baseDelay + jitter));
     }
   }
 };
