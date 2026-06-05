@@ -54,7 +54,5 @@
       </intent-filter>
       <meta-data android:name="android.appwidget.provider" android:resource="@xml/widgetprovider_importanttasks"/>
     </receiver>
-    <uses-native-library android:name="libOpenCL.so" android:required="false"/>
-    <uses-native-library android:name="libcdsprpc.so" android:required="false"/>
   </application>
 </manifest>

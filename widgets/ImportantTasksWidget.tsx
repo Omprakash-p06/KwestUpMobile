@@ -14,8 +14,9 @@ interface ImportantTasksWidgetProps {
 }
 
 export function ImportantTasksWidget({ tasks }: ImportantTasksWidgetProps) {
-  const importantUnfinished = tasks.filter(t => t.important && !t.completed).slice(0, 5);
-
+  // Logic: The handler now performs the filtering and slicing (top 5)
+  // to prevent Binder transaction bloat. We just render what we get.
+  
   return (
     <FlexWidget
       style={{
@@ -25,7 +26,7 @@ export function ImportantTasksWidget({ tasks }: ImportantTasksWidgetProps) {
         backgroundColor: '#131313',
         padding: 12,
       }}
-      accessibilityLabel={`${importantUnfinished.length} important tasks remaining`}
+      accessibilityLabel={`${tasks.length} important tasks remaining`}
     >
       <FlexWidget
         style={{
@@ -56,7 +57,7 @@ export function ImportantTasksWidget({ tasks }: ImportantTasksWidgetProps) {
           }}
         />
         <TextWidget
-          text={` ${importantUnfinished.length} TASKS`}
+          text={` ${tasks.length} TASKS`}
           style={{
             fontSize: 10,
             fontFamily: 'sans-serif',
@@ -66,7 +67,7 @@ export function ImportantTasksWidget({ tasks }: ImportantTasksWidgetProps) {
         />
       </FlexWidget>
 
-      {importantUnfinished.length === 0 ? (
+      {tasks.length === 0 ? (
         <FlexWidget
           style={{
             flex: 1,
@@ -91,7 +92,7 @@ export function ImportantTasksWidget({ tasks }: ImportantTasksWidgetProps) {
             gap: 6,
           }}
         >
-          {importantUnfinished.map((task, idx) => (
+          {tasks.map((task, idx) => (
             <FlexWidget
               key={`task-${idx}`}
               style={{

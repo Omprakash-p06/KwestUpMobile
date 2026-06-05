@@ -66,7 +66,30 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
 
       const Widget = nameToWidget[widgetName];
       if (Widget) {
-        props.renderWidget(<Widget {...widgetData} />);
+        // SURGICAL PROPS: Only pass what each specific widget actually needs.
+        // This prevents the 'Binder transaction failure: -22 (Invalid argument)' error
+        // caused by sending large unused arrays (like thousands of tasks) over the bridge.
+        if (widgetName === 'FocusTimer') {
+          props.renderWidget(
+            <Widget
+              timerRemaining={widgetData.timerRemaining}
+              isTimerRunning={widgetData.isTimerRunning}
+            />
+          );
+        } else if (widgetName === 'DailyTasks') {
+          props.renderWidget(
+            <Widget
+              dailyTaskCount={widgetData.dailyTaskCount}
+              dailyTasksCompleted={widgetData.dailyTasksCompleted}
+            />
+          );
+        } else if (widgetName === 'ImportantTasks') {
+          // SLICE DATA: Only send the first 5 important unfinished tasks.
+          const importantUnfinished = widgetData.tasks
+            .filter((t) => t.important && !t.completed)
+            .slice(0, 5);
+          props.renderWidget(<Widget tasks={importantUnfinished} />);
+        }
       }
       break;
     }
