@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { View, Text, Platform, ActivityIndicator, AppState } from "react-native";
+import { View, Text, Platform, ActivityIndicator, AppState, Linking } from "react-native";
 import { PaperProvider } from "react-native-paper";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
@@ -157,7 +157,6 @@ const App = () => {
 
       await initNotesFolder(resolvedActiveId);
       runDeviceDiagnostics();
-      await checkForUpdates();
       await runNetworkDiagnostics();
 
       if (FORCE_CLEAR_ALL_STORAGE) {
@@ -202,12 +201,14 @@ const App = () => {
     if (!isInitialized) return;
 
     try {
-      const storageKey = `kwestup_data_${STORAGE_VERSION}`;
-      const timerKey = `kwestup_timer_state_${STORAGE_VERSION}`;
-      const [storedDataRaw, storedTimerRaw, storedUserName] = await Promise.all([
+      const themeModeKey = `kwestup_theme_mode_${STORAGE_VERSION}`;
+      const themeNameKey = `kwestup_theme_name_${STORAGE_VERSION}`;
+      const [storedDataRaw, storedTimerRaw, storedUserName, storedThemeMode, storedThemeName] = await Promise.all([
         AsyncStorage.getItem(storageKey),
         AsyncStorage.getItem(timerKey),
         AsyncStorage.getItem(`kwestup_userName_${STORAGE_VERSION}`),
+        AsyncStorage.getItem(themeModeKey),
+        AsyncStorage.getItem(themeNameKey),
       ]);
 
       // Resolve active vault for this load cycle
@@ -223,8 +224,19 @@ const App = () => {
         ]);
         const fsNotes = await getAllNotesFromFilesystem(activeId);
         setNotes(fsNotes);
-        setThemeMode(resolveThemeMode(parsedData.themeMode));
-        setSelectedThemeName(resolveThemeName(parsedData.selectedThemeName));
+        
+        if (storedThemeMode) {
+          setThemeMode(resolveThemeMode(storedThemeMode));
+        } else {
+          setThemeMode(resolveThemeMode(parsedData.themeMode));
+        }
+
+        if (storedThemeName) {
+          setSelectedThemeName(resolveThemeName(storedThemeName));
+        } else {
+          setSelectedThemeName(resolveThemeName(parsedData.selectedThemeName));
+        }
+
         setLastSynced(parsedData.lastSynced || null);
         if (storedUserName) setUserName(storedUserName);
         else setUserName(parsedData.userName || "");
@@ -256,8 +268,18 @@ const App = () => {
         ]);
         const fsNotes = await getAllNotesFromFilesystem(activeId);
         setNotes(fsNotes);
-        setThemeMode("light");
-        setSelectedThemeName("dribbble");
+        if (storedThemeMode) {
+          setThemeMode(resolveThemeMode(storedThemeMode));
+        } else {
+          setThemeMode("light");
+        }
+
+        if (storedThemeName) {
+          setSelectedThemeName(resolveThemeName(storedThemeName));
+        } else {
+          setSelectedThemeName("dribbble");
+        }
+
         setLastSynced(null);
         setUserName(storedUserName || "");
       }
@@ -373,6 +395,41 @@ const App = () => {
       saveTimerState();
     }
   }, [timerRemaining, isTimerRunning, isInitialized, saveTimerState]);
+
+  // Save theme state immediately to separate keys
+  useEffect(() => {
+    if (isInitialized) {
+      AsyncStorage.setItem(`kwestup_theme_mode_${STORAGE_VERSION}`, themeMode);
+    }
+  }, [themeMode, isInitialized]);
+
+  useEffect(() => {
+    if (isInitialized) {
+      AsyncStorage.setItem(`kwestup_theme_name_${STORAGE_VERSION}`, selectedThemeName);
+    }
+  }, [selectedThemeName, isInitialized]);
+
+  // Background check for updates after initialization finishes
+  useEffect(() => {
+    if (isInitialized) {
+      const timer = setTimeout(() => {
+        checkForUpdates((updateInfo) => {
+          showConfirmation(
+            `A new update is available: ${updateInfo.latestVersion}\n\nWould you like to visit the release page to download it?`,
+            () => {
+              if (updateInfo.releaseUrl) {
+                Linking.openURL(updateInfo.releaseUrl).catch((err) =>
+                  console.error("Failed to open update URL:", err)
+                );
+              }
+            },
+            () => {}
+          );
+        });
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isInitialized]);
 
   // Throttled, Staggered, and AppState-guarded widget updates
   useEffect(() => {
