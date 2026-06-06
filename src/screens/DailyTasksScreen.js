@@ -110,7 +110,8 @@ export const DailyTasksScreen = ({
           }
           return dailyTasks.filter((task) => task.id !== id);
         });
-      }
+      },
+      () => {}
     );
   };
 

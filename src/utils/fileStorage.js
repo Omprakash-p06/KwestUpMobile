@@ -129,6 +129,32 @@ export const deleteNoteFile = async (vaultId, folder, title) => {
 };
 
 /**
+ * Delete an entire folder and all notes inside it from a specific vault.
+ * @param {string} vaultId
+ * @param {string} folder
+ */
+export const deleteFolderFile = async (vaultId, folder) => {
+  try {
+    const vaultPath = getVaultPath(vaultId || "default");
+    const sanitizedFolder = (folder || "Uncategorized").trim();
+    if (sanitizedFolder === "Uncategorized") {
+      return { success: false, error: "Cannot delete Uncategorized folder" };
+    }
+
+    const folderPath = `${vaultPath}${sanitizedFolder}/`;
+    const folderInfo = await FileSystem.getInfoAsync(folderPath);
+    if (folderInfo.exists) {
+      await FileSystem.deleteAsync(folderPath, { idempotent: true });
+      console.log("🗑️ Deleted folder from disk:", folderPath);
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("❌ Failed to delete folder:", error);
+    return { success: false, error };
+  }
+};
+
+/**
  * Scan all note files in the given vault (vault vault-style explorer).
  * Returns only files/folders directly inside the vault path — does NOT
  * recurse into nested Vaults/ subdirectories.

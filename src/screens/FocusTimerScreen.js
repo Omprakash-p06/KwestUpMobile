@@ -62,7 +62,8 @@ export const FocusTimerScreen = ({
         setIsTimerRunning(false);
         setTimerRemaining(timerDuration);
         setShowTimerLockout(false);
-      }
+      },
+      () => {}
     );
   };
 

@@ -45,7 +45,8 @@ export const SettingsScreen = ({
                 console.error("Failed to open update URL:", err)
               );
             }
-          }
+          },
+          () => {}
         );
       } else {
         showConfirmation("Your application is fully updated to the latest release version.", () => {});
@@ -127,7 +128,8 @@ export const SettingsScreen = ({
           showConfirmation("Failed to delete model: " + err.message, () => {});
         }
         setDeletingModel(false);
-      }
+      },
+      () => {}
     );
   };
 

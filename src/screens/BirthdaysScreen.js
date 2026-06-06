@@ -82,7 +82,8 @@ export const BirthdaysScreen = ({
           await cancelCustomBirthdayReminders(targetBday.notificationIds);
         }
         setBirthdays((prev) => prev.filter((b) => b.id !== id));
-      }
+      },
+      () => {}
     );
   };
 

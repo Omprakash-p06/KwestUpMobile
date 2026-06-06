@@ -217,7 +217,23 @@ export const NotesScreen = ({
       setNotes(freshNotes);
       setSelectedNote(null);
       setIsEditing(false);
-    });
+    }, () => {});
+  };
+
+  const handleDeleteFolder = (folderName) => {
+    showConfirmation(`Delete folder "${folderName.toUpperCase()}" and all notes inside it?`, async () => {
+      const { deleteFolderFile } = await import("../utils/fileStorage");
+      const res = await deleteFolderFile(activeVaultId, folderName);
+      if (res.success) {
+        const freshNotes = await getAllNotesFromFilesystem(activeVaultId);
+        setNotes(freshNotes);
+        if (activeFolder === folderName) {
+          setActiveFolder("All");
+        }
+      } else {
+        Alert.alert("Error", res.error || "Failed to delete folder.");
+      }
+    }, () => {});
   };
 
   // auto-save auto-save with 1s debounce
@@ -672,7 +688,8 @@ export const NotesScreen = ({
                                   const vaultNotes = await getAllNotesFromFilesystem(newActive);
                                   setNotes(vaultNotes);
                                 }
-                              }
+                              },
+                              () => {}
                             );
                           }}
                           style={{ padding: 4 }}
@@ -779,9 +796,26 @@ export const NotesScreen = ({
                           size={24}
                           color={isActive ? currentTheme.primary : currentTheme.secondaryText}
                         />
-                        <Text style={[styles.folderFileCount, { color: currentTheme.secondaryText }]}>
-                          {fileCount < 10 ? `0${fileCount}` : fileCount}_FILES
-                        </Text>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                          <Text style={[styles.folderFileCount, { color: currentTheme.secondaryText }]}>
+                            {fileCount < 10 ? `0${fileCount}` : fileCount}_FILES
+                          </Text>
+                          {folder.toLowerCase() !== "uncategorized" && (
+                            <TouchableOpacity
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                handleDeleteFolder(folder);
+                              }}
+                              style={{ padding: 4 }}
+                            >
+                              <MaterialCommunityIcons
+                                name="trash-can-outline"
+                                size={16}
+                                color={currentTheme.error}
+                              />
+                            </TouchableOpacity>
+                          )}
+                        </View>
                       </View>
                       <Text style={[styles.folderLabel, { color: currentTheme.text }]}>
                         {folder.toUpperCase()}
