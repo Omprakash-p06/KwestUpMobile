@@ -123,6 +123,10 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(true);
   const appState = useRef(AppState.currentState);
 
+  // Throttling refs to prevent Binder flooding on sensitive devices (NothingOS)
+  const lastSaveTimeRef = useRef(0);
+  const lastWidgetUpdateTimeRef = useRef(0);
+
   // AppState monitoring to prevent background Binder flooding
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextAppState) => {
@@ -198,8 +202,10 @@ const App = () => {
 
     try {
       const storageKey = `kwestup_data_${STORAGE_VERSION}`;
-      const [storedDataRaw, storedUserName] = await Promise.all([
+      const timerKey = `kwestup_timer_state_${STORAGE_VERSION}`;
+      const [storedDataRaw, storedTimerRaw, storedUserName] = await Promise.all([
         AsyncStorage.getItem(storageKey),
+        AsyncStorage.getItem(timerKey),
         AsyncStorage.getItem(`kwestup_userName_${STORAGE_VERSION}`),
       ]);
 
@@ -222,8 +228,11 @@ const App = () => {
         if (storedUserName) setUserName(storedUserName);
         else setUserName(parsedData.userName || "");
 
-        if (parsedData.timerState) {
-          const { duration, remaining, isRunning, startTime } = parsedData.timerState;
+        // Timer state can come from either main data (legacy) or dedicated key
+        const timerState = storedTimerRaw ? JSON.parse(storedTimerRaw) : parsedData.timerState;
+        
+        if (timerState) {
+          const { duration, remaining, isRunning, startTime } = timerState;
           setTimerDuration(duration);
           if (isRunning && startTime) {
             const elapsed = Math.floor((Date.now() - startTime) / 1000);
@@ -269,18 +278,14 @@ const App = () => {
   const saveData = useCallback(async () => {
     if (!isInitialized) return;
 
+    // DECOUPLE: Main data save no longer includes high-frequency timer state.
+    // This prevents Binder transaction failures (-22) when saving large datasets.
     const dataToSave = {
       dailyTasks,
       birthdays,
       tasks,
       taskLists,
       notes,
-      timerState: {
-        duration: timerDuration,
-        remaining: timerRemaining,
-        isRunning: isTimerRunning,
-        startTime: isTimerRunning ? Date.now() - (timerDuration - timerRemaining) * 1000 : null,
-      },
       themeMode,
       selectedThemeName,
       userName,
@@ -292,24 +297,42 @@ const App = () => {
     try {
       const storageKey = `kwestup_data_${STORAGE_VERSION}`;
       await AsyncStorage.setItem(storageKey, JSON.stringify(dataToSave));
-      console.log("💾 Data saved successfully to:", storageKey);
+      console.log("💾 Main data saved successfully to:", storageKey);
+      lastSaveTimeRef.current = Date.now();
     } catch (error) {
-      console.error("❌ Failed to save data:", error);
+      console.error("❌ Failed to save main data:", error);
     }
   }, [
     dailyTasks,
     birthdays,
     tasks,
     taskLists,
-    timerDuration,
-    timerRemaining,
-    isTimerRunning,
+    notes,
     themeMode,
     selectedThemeName,
     userName,
     lastSynced,
     isInitialized,
   ]);
+
+  const saveTimerState = useCallback(async () => {
+    if (!isInitialized) return;
+
+    const timerState = {
+      duration: timerDuration,
+      remaining: timerRemaining,
+      isRunning: isTimerRunning,
+      startTime: isTimerRunning ? Date.now() - (timerDuration - timerRemaining) * 1000 : null,
+    };
+
+    try {
+      const timerKey = `kwestup_timer_state_${STORAGE_VERSION}`;
+      await AsyncStorage.setItem(timerKey, JSON.stringify(timerState));
+      // Log only on changes to avoid console spam, or keep silent
+    } catch (error) {
+      console.error("❌ Failed to save timer state:", error);
+    }
+  }, [timerDuration, timerRemaining, isTimerRunning, isInitialized]);
 
   useEffect(() => {
     if (isInitialized) {
@@ -318,18 +341,23 @@ const App = () => {
     }
   }, [isInitialized, loadData]);
 
+  // Main data save trigger with 15-second throttle to protect Binder buffer
   useEffect(() => {
     if (isInitialized) {
-      saveData();
+      const now = Date.now();
+      if (now - lastSaveTimeRef.current > 15000) {
+        saveData();
+      } else {
+        const timeout = setTimeout(saveData, 15000 - (now - lastSaveTimeRef.current));
+        return () => clearTimeout(timeout);
+      }
     }
   }, [
     dailyTasks,
     birthdays,
     tasks,
     taskLists,
-    timerDuration,
-    timerRemaining,
-    isTimerRunning,
+    notes,
     themeMode,
     selectedThemeName,
     userName,
@@ -338,45 +366,50 @@ const App = () => {
     saveData,
   ]);
 
+  // High-frequency timer state save (minimal payload)
+  useEffect(() => {
+    if (isInitialized) {
+      saveTimerState();
+    }
+  }, [timerRemaining, isTimerRunning, isInitialized, saveTimerState]);
+
   // Throttled, Staggered, and AppState-guarded widget updates
   useEffect(() => {
     if (!isInitialized || Platform.OS !== 'android') return;
 
     // RULE 1: Only push updates if the app is ACTIVE.
-    // Background updates are handled natively by widget-task-handler.tsx via AsyncStorage.
-    // Pushing from JS while backgrounded risks 'Binder transaction failure' (-22) on NothingOS.
     if (appState.current !== 'active') return;
 
     // RULE 2: 5-second throttle for FocusTimer updates to prevent high-frequency flooding.
-    // 10-second throttle for DailyTasks (less critical).
-    const timerThrottle = setTimeout(() => {
+    const now = Date.now();
+    if (now - lastWidgetUpdateTimeRef.current < 5000) return;
+
+    lastWidgetUpdateTimeRef.current = now;
+
+    requestWidgetUpdate({
+      widgetName: 'FocusTimer',
+      renderWidget: () => (
+        <FocusTimerWidget
+          remaining={timerRemaining}
+          isRunning={isTimerRunning}
+        />
+      ),
+    });
+
+    // STAGGER: Wait 500ms before sending the next widget update to split Binder payloads.
+    const staggerTimer = setTimeout(() => {
       requestWidgetUpdate({
-        widgetName: 'FocusTimer',
+        widgetName: 'DailyTasks',
         renderWidget: () => (
-          <FocusTimerWidget
-            remaining={timerRemaining}
-            isRunning={isTimerRunning}
+          <DailyTasksWidget
+            dailyTaskCount={dailyTasks.length}
+            dailyTasksCompleted={dailyTasks.filter(t => t.completed).length}
           />
         ),
       });
+    }, 500);
 
-      // STAGGER: Wait 500ms before sending the next widget update to split Binder payloads.
-      const staggerTimer = setTimeout(() => {
-        requestWidgetUpdate({
-          widgetName: 'DailyTasks',
-          renderWidget: () => (
-            <DailyTasksWidget
-              dailyTaskCount={dailyTasks.length}
-              dailyTasksCompleted={dailyTasks.filter(t => t.completed).length}
-            />
-          ),
-        });
-      }, 500);
-
-      return () => clearTimeout(staggerTimer);
-    }, 5000); 
-
-    return () => clearTimeout(timerThrottle);
+    return () => clearTimeout(staggerTimer);
   }, [timerRemaining, isTimerRunning, dailyTasks, isInitialized]);
 
   const showConfirmation = (message, onConfirm, onCancel = null) => {

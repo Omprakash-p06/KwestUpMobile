@@ -19,9 +19,17 @@ interface AppData {
     duration?: number;
     remaining?: number;
     isRunning?: boolean;
+    startTime?: number;
   };
   dailyTasks?: Array<{ completed: boolean }>;
   tasks?: Array<{ title: string; important: boolean; completed: boolean }>;
+}
+
+interface TimerState {
+  duration: number;
+  remaining: number;
+  isRunning: boolean;
+  startTime: number | null;
 }
 
 interface WidgetData {
@@ -49,16 +57,39 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
       };
 
       try {
-        const raw = await AsyncStorage.getItem(`kwestup_data_${STORAGE_VERSION}`);
+        const storageKey = `kwestup_data_${STORAGE_VERSION}`;
+        const timerKey = `kwestup_timer_state_${STORAGE_VERSION}`;
+        
+        // Fetch both. Timer state is now decoupled for high-frequency updates.
+        const [raw, timerRaw] = await Promise.all([
+          AsyncStorage.getItem(storageKey),
+          AsyncStorage.getItem(timerKey),
+        ]);
+
         if (raw) {
           const parsed: AppData = JSON.parse(raw);
-          widgetData = {
-            timerRemaining: parsed.timerState?.remaining ?? 0,
-            isTimerRunning: parsed.timerState?.isRunning ?? false,
-            dailyTaskCount: (parsed.dailyTasks || []).length,
-            dailyTasksCompleted: (parsed.dailyTasks || []).filter((t) => t.completed).length,
-            tasks: parsed.tasks || [],
-          };
+          widgetData.dailyTaskCount = (parsed.dailyTasks || []).length;
+          widgetData.dailyTasksCompleted = (parsed.dailyTasks || []).filter((t) => t.completed).length;
+          widgetData.tasks = parsed.tasks || [];
+          
+          // Legacy fallback for timer state
+          if (!timerRaw && parsed.timerState) {
+            widgetData.timerRemaining = parsed.timerState.remaining ?? 0;
+            widgetData.isTimerRunning = parsed.timerState.isRunning ?? false;
+          }
+        }
+
+        if (timerRaw) {
+          const timerParsed: TimerState = JSON.parse(timerRaw);
+          
+          if (timerParsed.isRunning && timerParsed.startTime) {
+            const elapsed = Math.floor((Date.now() - timerParsed.startTime) / 1000);
+            widgetData.timerRemaining = Math.max(0, timerParsed.duration - elapsed);
+            widgetData.isTimerRunning = widgetData.timerRemaining > 0;
+          } else {
+            widgetData.timerRemaining = timerParsed.remaining;
+            widgetData.isTimerRunning = false;
+          }
         }
       } catch (err) {
         console.warn('[WidgetTaskHandler] Failed to read AsyncStorage:', err);
@@ -67,8 +98,6 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
       const Widget = nameToWidget[widgetName];
       if (Widget) {
         // SURGICAL PROPS: Only pass what each specific widget actually needs.
-        // This prevents the 'Binder transaction failure: -22 (Invalid argument)' error
-        // caused by sending large unused arrays (like thousands of tasks) over the bridge.
         if (widgetName === 'FocusTimer') {
           props.renderWidget(
             <Widget
