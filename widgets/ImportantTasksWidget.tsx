@@ -4,6 +4,7 @@ import React from 'react';
 import { FlexWidget, TextWidget } from 'react-native-android-widget';
 
 interface ImportantTask {
+  id: string;
   title: string;
   important: boolean;
   completed: boolean;
@@ -101,6 +102,8 @@ export function ImportantTasksWidget({ tasks }: ImportantTasksWidgetProps) {
                 alignItems: 'center',
                 marginBottom: 6,
               }}
+              clickAction="COMPLETE_TASK"
+              clickActionData={{ taskId: task.id }}
             >
               <TextWidget
                 text={task.completed ? '[X] ' : '[ ] '}
