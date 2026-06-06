@@ -5,12 +5,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FocusTimerWidget } from './FocusTimerWidget';
 import { DailyTasksWidget } from './DailyTasksWidget';
 import { ImportantTasksWidget } from './ImportantTasksWidget';
+import { TasksListWidget } from './TasksListWidget';
 import { STORAGE_VERSION } from '../src/utils/storage';
 
 const nameToWidget = {
   FocusTimer: FocusTimerWidget,
   DailyTasks: DailyTasksWidget,
   ImportantTasks: ImportantTasksWidget,
+  TasksList: TasksListWidget,
 } as const;
 
 type WidgetName = keyof typeof nameToWidget;
@@ -74,7 +76,7 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
               .filter((t) => t.important && !t.completed)
               .slice(0, 5);
 
-            // Update both ImportantTasks and DailyTasks widgets
+            // Update ImportantTasks, DailyTasks, and TasksList widgets
             requestWidgetUpdate({
               widgetName: 'ImportantTasks',
               renderWidget: () => <ImportantTasksWidget tasks={importantUnfinished} />,
@@ -93,6 +95,15 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
                   dailyTasksCompleted={dailyTasksCompletedCount}
                 />
               ),
+            });
+
+            const tasksListUnfinished = parsed.tasks
+              .filter((t) => !t.completed)
+              .slice(0, 8);
+
+            requestWidgetUpdate({
+              widgetName: 'TasksList',
+              renderWidget: () => <TasksListWidget tasks={tasksListUnfinished} />,
             });
           }
         }
@@ -174,6 +185,11 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
           .filter((t) => t.important && !t.completed)
           .slice(0, 5);
         props.renderWidget(<Widget tasks={importantUnfinished} />);
+      } else if (widgetName === 'TasksList') {
+        const tasksListUnfinished = widgetData.tasks
+          .filter((t) => !t.completed)
+          .slice(0, 8);
+        props.renderWidget(<Widget tasks={tasksListUnfinished} />);
       }
     }
   }

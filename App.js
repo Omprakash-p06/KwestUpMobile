@@ -61,6 +61,7 @@ import { requestWidgetUpdate } from 'react-native-android-widget';
 import { FocusTimerWidget } from './widgets/FocusTimerWidget';
 import { DailyTasksWidget } from './widgets/DailyTasksWidget';
 import { ImportantTasksWidget } from './widgets/ImportantTasksWidget';
+import { TasksListWidget } from './widgets/TasksListWidget';
 
 // Configuration
 const FORCE_CLEAR_ALL_STORAGE = false;
@@ -470,7 +471,7 @@ const App = () => {
     return () => clearTimeout(staggerTimer);
   }, [timerRemaining, isTimerRunning, dailyTasks, isInitialized]);
 
-  // Update ImportantTasks widget when tasks list changes
+  // Update ImportantTasks and TasksList widgets when tasks list changes
   useEffect(() => {
     if (!isInitialized || Platform.OS !== 'android') return;
 
@@ -488,6 +489,22 @@ const App = () => {
         <ImportantTasksWidget tasks={importantUnfinished} />
       ),
     });
+
+    // Stagger the TasksList update to split binder transactions
+    const tasksListTimer = setTimeout(() => {
+      const tasksListUnfinished = tasks
+        .filter((t) => !t.completed)
+        .slice(0, 8);
+
+      requestWidgetUpdate({
+        widgetName: 'TasksList',
+        renderWidget: () => (
+          <TasksListWidget tasks={tasksListUnfinished} />
+        ),
+      });
+    }, 250);
+
+    return () => clearTimeout(tasksListTimer);
   }, [tasks, isInitialized]);
 
   const showConfirmation = (message, onConfirm, onCancel = null) => {

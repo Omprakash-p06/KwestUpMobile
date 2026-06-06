@@ -81,6 +81,17 @@
               "targetCellHeight": 2,
               "previewImage": "./assets/widget-preview/important-tasks-preview.png",
               "updatePeriodMillis": 1800000
+            },
+            {
+              "name": "TasksList",
+              "label": "Tasks List",
+              "description": "Shows your active tasks list",
+              "minWidth": "320dp",
+              "minHeight": "180dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 3,
+              "previewImage": "./assets/widget-preview/important-tasks-preview.png",
+              "updatePeriodMillis": 1800000
             }
           ]
         }
