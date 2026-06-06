@@ -21,8 +21,10 @@ interface DailyTasksWidgetProps {
 export function DailyTasksWidget({ dailyTaskCount, dailyTasksCompleted }: DailyTasksWidgetProps) {
   const progress =
     dailyTaskCount > 0 ? Math.round((dailyTasksCompleted / dailyTaskCount) * 100) : 0;
-
-  const allDone = dailyTaskCount > 0 && dailyTasksCompleted === dailyTaskCount;
+  const totalBlocks = 10;
+  const filledBlocks = Math.round((progress / 100) * totalBlocks);
+  const emptyBlocks = totalBlocks - filledBlocks;
+  const progressBar = `[${'█'.repeat(filledBlocks)}${'░'.repeat(emptyBlocks)}]`;
 
   return (
     <FlexWidget
@@ -31,8 +33,9 @@ export function DailyTasksWidget({ dailyTaskCount, dailyTasksCompleted }: DailyT
         width: 'match_parent',
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#0f172a',
-        borderRadius: 16,
+        backgroundColor: '#131313',
+        borderWidth: 2,
+        borderColor: '#ffffff',
         padding: 16,
       }}
       accessibilityLabel={`Daily tasks: ${dailyTasksCompleted} of ${dailyTaskCount} completed`}
@@ -42,10 +45,10 @@ export function DailyTasksWidget({ dailyTaskCount, dailyTasksCompleted }: DailyT
         text="DAILY TASKS"
         style={{
           fontSize: 10,
-          fontFamily: 'sans-serif-medium',
-          color: '#94a3b8',
+          fontFamily: 'monospace',
+          color: '#888888',
           letterSpacing: 2,
-          marginBottom: 8,
+          marginBottom: 4,
         }}
       />
 
@@ -53,22 +56,45 @@ export function DailyTasksWidget({ dailyTaskCount, dailyTasksCompleted }: DailyT
       <TextWidget
         text={`${dailyTasksCompleted} / ${dailyTaskCount}`}
         style={{
-          fontSize: 36,
-          fontFamily: 'sans-serif-medium',
+          fontSize: 32,
+          fontFamily: 'monospace',
           fontWeight: 'bold',
-          color: allDone ? '#4ade80' : '#ffffff',
+          color: '#ffffff',
+          marginBottom: 6,
         }}
       />
 
-      {/* Percentage label — only shown when there are tasks */}
-      {dailyTaskCount > 0 && (
+      {/* Progress bar and Percentage label */}
+      {dailyTaskCount > 0 ? (
         <TextWidget
-          text={`${progress}% complete`}
+          text={progressBar}
           style={{
             fontSize: 12,
-            fontFamily: 'sans-serif',
-            color: progress === 100 ? '#4ade80' : '#94a3b8',
-            marginTop: 4,
+            fontFamily: 'monospace',
+            color: '#ffffff',
+            marginBottom: 4,
+          }}
+        />
+      ) : null}
+
+      {dailyTaskCount > 0 ? (
+        <TextWidget
+          text={`${progress}% COMPLETE`}
+          style={{
+            fontSize: 10,
+            fontFamily: 'monospace',
+            color: '#888888',
+            letterSpacing: 1,
+          }}
+        />
+      ) : (
+        <TextWidget
+          text="NO TASKS ACTIVE"
+          style={{
+            fontSize: 10,
+            fontFamily: 'monospace',
+            color: '#888888',
+            letterSpacing: 1,
           }}
         />
       )}

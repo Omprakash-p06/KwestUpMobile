@@ -24,6 +24,8 @@ export function ImportantTasksWidget({ tasks }: ImportantTasksWidgetProps) {
         width: 'match_parent',
         flexDirection: 'column',
         backgroundColor: '#131313',
+        borderWidth: 2,
+        borderColor: '#ffffff',
         padding: 12,
       }}
       accessibilityLabel={`${tasks.length} important tasks remaining`}
@@ -33,34 +35,34 @@ export function ImportantTasksWidget({ tasks }: ImportantTasksWidgetProps) {
           flexDirection: 'row',
           alignItems: 'center',
           marginBottom: 10,
-          borderBottomWidth: 1,
-          borderColor: '#333333',
+          borderBottomWidth: 2,
+          borderColor: '#ffffff',
           paddingBottom: 6,
         }}
       >
         <FlexWidget
           style={{
             width: 4,
-            height: 16,
+            height: 12,
             backgroundColor: '#ffffff',
-            marginRight: 8,
+            marginRight: 6,
           }}
         />
         <TextWidget
           text="KWESTUP"
           style={{
             fontSize: 10,
-            fontFamily: 'sans-serif-medium',
+            fontFamily: 'monospace',
             color: '#ffffff',
             letterSpacing: 2,
             fontWeight: 'bold',
           }}
         />
         <TextWidget
-          text={` ${tasks.length} TASKS`}
+          text={` // ${tasks.length} ACTIVE`}
           style={{
             fontSize: 10,
-            fontFamily: 'sans-serif',
+            fontFamily: 'monospace',
             color: '#888888',
             letterSpacing: 1,
           }}
@@ -76,11 +78,11 @@ export function ImportantTasksWidget({ tasks }: ImportantTasksWidgetProps) {
           }}
         >
           <TextWidget
-            text="ALL TASKS COMPLETE"
+            text="STATUS: ALL CLEAR"
             style={{
-              fontSize: 13,
-              fontFamily: 'sans-serif',
-              color: '#4ade80',
+              fontSize: 11,
+              fontFamily: 'monospace',
+              color: '#ffffff',
               letterSpacing: 1,
             }}
           />
@@ -89,7 +91,6 @@ export function ImportantTasksWidget({ tasks }: ImportantTasksWidgetProps) {
         <FlexWidget
           style={{
             flexDirection: 'column',
-            gap: 6,
           }}
         >
           {tasks.map((task, idx) => (
@@ -98,30 +99,24 @@ export function ImportantTasksWidget({ tasks }: ImportantTasksWidgetProps) {
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                gap: 8,
+                marginBottom: 6,
               }}
             >
-              <FlexWidget
+              <TextWidget
+                text={task.completed ? '[X] ' : '[ ] '}
                 style={{
-                  width: 14,
-                  height: 14,
-                  borderWidth: 2,
-                  borderColor: '#ffffff',
-                  justifyContent: 'center',
-                  alignItems: 'center',
+                  fontSize: 12,
+                  fontFamily: 'monospace',
+                  color: '#ffffff',
+                  fontWeight: 'bold',
                 }}
-              >
-                <TextWidget
-                  text=""
-                  style={{ fontSize: 8, color: '#ffffff' }}
-                />
-              </FlexWidget>
+              />
               <TextWidget
                 text={task.title}
                 style={{
                   flex: 1,
                   fontSize: 11,
-                  fontFamily: 'sans-serif',
+                  fontFamily: 'monospace',
                   color: '#ffffff',
                   numberOfLines: 1,
                 }}

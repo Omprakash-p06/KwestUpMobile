@@ -60,6 +60,7 @@ import { performSync } from "./src/utils/syncService";
 import { requestWidgetUpdate } from 'react-native-android-widget';
 import { FocusTimerWidget } from './widgets/FocusTimerWidget';
 import { DailyTasksWidget } from './widgets/DailyTasksWidget';
+import { ImportantTasksWidget } from './widgets/ImportantTasksWidget';
 
 // Configuration
 const FORCE_CLEAR_ALL_STORAGE = false;
@@ -411,6 +412,26 @@ const App = () => {
 
     return () => clearTimeout(staggerTimer);
   }, [timerRemaining, isTimerRunning, dailyTasks, isInitialized]);
+
+  // Update ImportantTasks widget when tasks list changes
+  useEffect(() => {
+    if (!isInitialized || Platform.OS !== 'android') return;
+
+    // RULE 1: Only push updates if the app is ACTIVE.
+    if (appState.current !== 'active') return;
+
+    // SLICE DATA: Only send the first 5 important unfinished tasks to prevent Binder transaction bloat.
+    const importantUnfinished = tasks
+      .filter((t) => t.important && !t.completed)
+      .slice(0, 5);
+
+    requestWidgetUpdate({
+      widgetName: 'ImportantTasks',
+      renderWidget: () => (
+        <ImportantTasksWidget tasks={importantUnfinished} />
+      ),
+    });
+  }, [tasks, isInitialized]);
 
   const showConfirmation = (message, onConfirm, onCancel = null) => {
     setConfirmationMessage(message);

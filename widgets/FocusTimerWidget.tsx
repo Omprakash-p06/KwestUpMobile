@@ -30,8 +30,9 @@ export function FocusTimerWidget({ remaining, isRunning }: FocusTimerWidgetProps
         width: 'match_parent',
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#1a1a2e',
-        borderRadius: 16,
+        backgroundColor: '#131313',
+        borderWidth: 2,
+        borderColor: '#ffffff',
         padding: 16,
       }}
       accessibilityLabel={`Focus timer: ${timeString}${isRunning ? ', active' : ', paused'}`}
@@ -41,10 +42,10 @@ export function FocusTimerWidget({ remaining, isRunning }: FocusTimerWidgetProps
         text="FOCUS TIMER"
         style={{
           fontSize: 10,
-          fontFamily: 'sans-serif-medium',
-          color: '#94a3b8',
+          fontFamily: 'monospace',
+          color: '#888888',
           letterSpacing: 2,
-          marginBottom: 8,
+          marginBottom: 4,
         }}
       />
 
@@ -52,21 +53,22 @@ export function FocusTimerWidget({ remaining, isRunning }: FocusTimerWidgetProps
       <TextWidget
         text={timeString}
         style={{
-          fontSize: 32,
-          fontFamily: 'sans-serif-medium',
-          color: '#ffffff',
+          fontSize: 36,
+          fontFamily: 'monospace',
           fontWeight: 'bold',
+          color: '#ffffff',
+          marginBottom: 6,
         }}
       />
 
       {/* Running / Paused status */}
       <TextWidget
-        text={isRunning ? '● Focus Active' : '○ Timer Paused'}
+        text={isRunning ? '[ ACTIVE ]' : '[ STANDBY ]'}
         style={{
-          fontSize: 14,
-          fontFamily: 'sans-serif',
-          color: isRunning ? '#4ade80' : '#94a3b8',
-          marginTop: 4,
+          fontSize: 11,
+          fontFamily: 'monospace',
+          color: isRunning ? '#ffffff' : '#888888',
+          letterSpacing: 1,
         }}
       />
     </FlexWidget>
