@@ -1,8 +1,32 @@
 import React, { useState, useEffect } from "react";
 import { Modal as RNModal, View, ScrollView, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import { CustomDatePickerModal, CustomTimePickerModal } from "./CustomDateTimePicker";
 import { CustomButton } from "./CustomButton";
+
+const formatDateToInputString = (date) => {
+  if (!date) return "";
+  const pad = (num) => String(num).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  const mm = pad(date.getMonth() + 1);
+  const dd = pad(date.getDate());
+  const hh = pad(date.getHours());
+  const min = pad(date.getMinutes());
+  return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+};
+
+const parseInputDate = (text) => {
+  if (!text || text.trim() === '') return null;
+  const match = text.trim().match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})$/);
+  if (match) {
+    const [_, yyyy, mm, dd, hh, min] = match;
+    const d = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd), parseInt(hh), parseInt(min), 0);
+    if (!isNaN(d.getTime())) return d;
+  }
+  const fallback = new Date(text.trim().replace(' ', 'T'));
+  if (!isNaN(fallback.getTime())) return fallback;
+  return null;
+};
 
 export const colorPalette = [
   '#8E7BEF',
@@ -30,7 +54,7 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme, taskLists
   const [dueDate, setDueDate] = useState(null);
   const [dueDateText, setDueDateText] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [pickerMode, setPickerMode] = useState('date');
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [tempDate, setTempDate] = useState(null);
   const [listId, setListId] = useState('default_inbox');
 
@@ -42,8 +66,9 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme, taskLists
         setSubtasks(task?.subtasks ? [...task.subtasks] : []);
         setColor(task?.color || colorPalette[0]);
         setPriority(task?.priority || (task?.important ? 'high' : 'normal'));
-        setDueDate(task?.dueDate ? new Date(task.dueDate) : null);
-        setDueDateText(task?.dueDate ? new Date(task.dueDate).toLocaleString() : '');
+        const initialDueDate = task?.dueDate ? new Date(task.dueDate) : null;
+        setDueDate(initialDueDate);
+        setDueDateText(formatDateToInputString(initialDueDate));
         setListId(task?.listId || 'default_inbox');
       } else {
         setTitle('');
@@ -80,10 +105,14 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme, taskLists
     setSubtasks((prev) => prev.filter((_, i) => i !== idx));
   };
   const handleSave = () => {
-    let finalDueDate = dueDate;
-    if (!finalDueDate && dueDateText) {
-      const parsed = new Date(dueDateText);
-      if (!isNaN(parsed.getTime())) finalDueDate = parsed;
+    let finalDueDate = null;
+    if (dueDateText && dueDateText.trim() !== '') {
+      const parsed = parseInputDate(dueDateText);
+      if (parsed) {
+        finalDueDate = parsed;
+      } else {
+        finalDueDate = dueDate;
+      }
     }
     onSave({
       ...task,
@@ -99,26 +128,25 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme, taskLists
     });
     onClose();
   };
-  const handleDateChange = (event, selectedDate) => {
-    if (pickerMode === 'date' && selectedDate) {
-      setTempDate(selectedDate);
-      setPickerMode('time');
-      setShowDatePicker(true);
-    } else if (pickerMode === 'time' && selectedDate) {
-      const combined = new Date(tempDate || dueDate || new Date());
-      combined.setHours(selectedDate.getHours());
-      combined.setMinutes(selectedDate.getMinutes());
-      combined.setSeconds(0);
-      setDueDate(combined);
-      setDueDateText(combined.toLocaleString());
-      setShowDatePicker(false);
-      setPickerMode('date');
-      setTempDate(null);
-    } else {
-      setShowDatePicker(false);
-      setPickerMode('date');
-      setTempDate(null);
-    }
+
+  const handleDatePickerConfirm = (selectedDate) => {
+    setTempDate(selectedDate);
+    setShowDatePicker(false);
+    setShowTimePicker(true);
+  };
+
+  const handleTimePickerConfirm = (selectedTime) => {
+    const combined = new Date(tempDate || dueDate || new Date());
+    combined.setFullYear(tempDate ? tempDate.getFullYear() : combined.getFullYear());
+    combined.setMonth(tempDate ? tempDate.getMonth() : combined.getMonth());
+    combined.setDate(tempDate ? tempDate.getDate() : combined.getDate());
+    combined.setHours(selectedTime.getHours());
+    combined.setMinutes(selectedTime.getMinutes());
+    combined.setSeconds(0);
+    setDueDate(combined);
+    setDueDateText(formatDateToInputString(combined));
+    setShowTimePicker(false);
+    setTempDate(null);
   };
 
   return (
@@ -216,9 +244,9 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme, taskLists
           <View style={[styles.fieldGroup, { borderBottomColor: theme.border + '30' }]}>
             <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>DUE DATE</Text>
             <View style={styles.dateRow}>
-              <TouchableOpacity onPress={() => { setPickerMode('date'); setShowDatePicker(true); }} style={styles.datePickBtn}>
+              <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.datePickBtn}>
                 <Text style={[styles.datePickText, { color: theme.primary }]}>
-                  {dueDate ? `DUE: ${dueDate.toLocaleString()}` : '+ PICK DATE & TIME'}
+                  {dueDate ? `DUE: ${formatDateToInputString(dueDate)}` : '+ PICK DATE & TIME'}
                 </Text>
               </TouchableOpacity>
               <Text style={[styles.dateOrText, { color: theme.secondaryText }]}>OR</Text>
@@ -230,16 +258,21 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme, taskLists
                 placeholderTextColor={theme.secondaryText}
               />
             </View>
-            {showDatePicker && (
-              <DateTimePicker
-                value={dueDate || new Date()}
-                mode={pickerMode}
-                is24Hour={true}
-                display="default"
-                onChange={handleDateChange}
-                minimumDate={new Date()}
-              />
-            )}
+            <CustomDatePickerModal
+              visible={showDatePicker}
+              value={dueDate}
+              onClose={() => setShowDatePicker(false)}
+              onConfirm={handleDatePickerConfirm}
+              theme={theme}
+            />
+            <CustomTimePickerModal
+              visible={showTimePicker}
+              value={dueDate}
+              onClose={() => setShowTimePicker(false)}
+              onConfirm={handleTimePickerConfirm}
+              theme={theme}
+              is24Hour={true}
+            />
           </View>
 
           <View style={[styles.fieldGroup, { borderBottomColor: theme.border + '30' }]}>

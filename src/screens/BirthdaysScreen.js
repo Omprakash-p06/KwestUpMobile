@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { ScrollView, View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import { CustomDatePickerModal, CustomTimePickerModal } from "../components/CustomDateTimePicker";
 import * as Haptics from "expo-haptics";
 import { LiquidGlassCard } from "../components/LiquidGlassCard";
 import { CustomTextInput } from "../components/CustomTextInput";
@@ -345,35 +345,22 @@ export const BirthdaysScreen = ({
 
       </ScrollView>
 
-      {/* Native system date/time pickers — rendered inline so Android opens its own system dialog */}
-      {showDatePicker && (
-        <DateTimePicker
-          value={newBirthdayDate || new Date()}
-          mode="date"
-          display="default"
-          onChange={(event, selectedDate) => {
-            setShowDatePicker(false);
-            if (event.type === 'set' && selectedDate) {
-              setNewBirthdayDate(selectedDate);
-            }
-          }}
-        />
-      )}
+      <CustomDatePickerModal
+        visible={showDatePicker}
+        value={newBirthdayDate}
+        onClose={() => setShowDatePicker(false)}
+        onConfirm={setNewBirthdayDate}
+        theme={currentTheme}
+      />
 
-      {showTimePicker && (
-        <DateTimePicker
-          value={newBirthdayTime}
-          mode="time"
-          is24Hour={false}
-          display="default"
-          onChange={(event, selectedDate) => {
-            setShowTimePicker(false);
-            if (event.type === 'set' && selectedDate) {
-              setNewBirthdayTime(selectedDate);
-            }
-          }}
-        />
-      )}
+      <CustomTimePickerModal
+        visible={showTimePicker}
+        value={newBirthdayTime}
+        onClose={() => setShowTimePicker(false)}
+        onConfirm={setNewBirthdayTime}
+        theme={currentTheme}
+        is24Hour={false}
+      />
 
     </View>
   );

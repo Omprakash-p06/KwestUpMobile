@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { ScrollView, View, Text, StyleSheet, TextInput, TouchableOpacity, Animated, Platform } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Modal from "react-native-modal";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import { CustomTimePickerModal } from "../components/CustomDateTimePicker";
 import * as Haptics from "expo-haptics";
 import { useNavigation } from "@react-navigation/native";
 import { LiquidGlassCard } from "../components/LiquidGlassCard";
@@ -70,14 +70,12 @@ export const DailyTasksScreen = ({
     }
   };
 
-  const handleTimeChange = (event, selectedDate) => {
+  const handleTimeConfirm = (selectedDate) => {
+    setTempTime(selectedDate);
+    const hours = String(selectedDate.getHours()).padStart(2, '0');
+    const minutes = String(selectedDate.getMinutes()).padStart(2, '0');
+    setNewTaskTime(`${hours}:${minutes}`);
     setShowTimePicker(false);
-    if (selectedDate) {
-      setTempTime(selectedDate);
-      const hours = String(selectedDate.getHours()).padStart(2, '0');
-      const minutes = String(selectedDate.getMinutes()).padStart(2, '0');
-      setNewTaskTime(`${hours}:${minutes}`);
-    }
   };
 
   const toggleDailyTaskComplete = (id) => {
@@ -354,15 +352,14 @@ export const DailyTasksScreen = ({
             ) : null}
           </View>
 
-          {showTimePicker && (
-            <DateTimePicker
-              value={tempTime}
-              mode="time"
-              is24Hour={true}
-              display="default"
-              onChange={handleTimeChange}
-            />
-          )}
+          <CustomTimePickerModal
+            visible={showTimePicker}
+            value={tempTime}
+            onClose={() => setShowTimePicker(false)}
+            onConfirm={handleTimeConfirm}
+            theme={currentTheme}
+            is24Hour={true}
+          />
 
           <View style={styles.dialogActions}>
             <TouchableOpacity
