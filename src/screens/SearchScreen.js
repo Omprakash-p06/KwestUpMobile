@@ -9,7 +9,7 @@ import TaskCard from '../components/TaskCard';
 import { useVault } from '../utils/vaultService';
 import TaskEditModal from '../components/TaskEditModal';
 
-const SearchScreen = () => {
+export const SearchScreen = () => {
   const { currentTheme } = useTheme();
   const { 
     tasks, 
@@ -200,4 +200,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SearchScreen;
+
