@@ -1,57 +1,57 @@
-import React, { useState, useEffect } from "react";
-import { Modal, View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import React, { useState, useEffect, useRef } from "react";
+import { Modal, View, Text, TouchableOpacity, StyleSheet, FlatList } from "react-native";
 import { CustomButton } from "./CustomButton";
+
+const ITEM_HEIGHT = 44;
 
 export const CustomDatePickerModal = ({ visible, value, onClose, onConfirm, theme }) => {
   const initialDate = value || new Date();
   const [selectedYear, setSelectedYear] = useState(initialDate.getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(initialDate.getMonth()); // 0-11
+  const [selectedMonth, setSelectedMonth] = useState(initialDate.getMonth());
   const [selectedDay, setSelectedDay] = useState(initialDate.getDate());
 
-  useEffect(() => {
-    if (visible) {
-      const activeDate = value || new Date();
-      setSelectedYear(activeDate.getFullYear());
-      setSelectedMonth(activeDate.getMonth());
-      setSelectedDay(activeDate.getDate());
-    }
-  }, [visible, value]);
+  const yearListRef = useRef(null);
+  const monthListRef = useRef(null);
+  const dayListRef = useRef(null);
 
   const monthNames = [
-    "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
-    "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"
+    "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+    "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"
   ];
 
-  const daysOfWeek = ["S", "M", "T", "W", "T", "F", "S"];
-
+  // Years from 1930 to 2050
+  const years = Array.from({ length: 2050 - 1930 + 1 }, (_, i) => 1930 + i);
   const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-  const firstDayIndex = new Date(selectedYear, selectedMonth, 1).getDay();
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  // Adjust selectedDay if it exceeds the new month's daysInMonth
+  // Adjust selected day if it exceeds current month's days
   useEffect(() => {
     if (selectedDay > daysInMonth) {
       setSelectedDay(daysInMonth);
     }
   }, [selectedMonth, selectedYear, daysInMonth]);
 
-  const handlePrevMonth = () => {
-    if (selectedMonth === 0) {
-      setSelectedMonth(11);
-      setSelectedYear(prev => prev - 1);
-    } else {
-      setSelectedMonth(prev => prev - 1);
+  // Scroll to active items when visible
+  useEffect(() => {
+    if (visible) {
+      setTimeout(() => {
+        // Scroll Year
+        const yIndex = years.indexOf(selectedYear);
+        if (yIndex !== -1 && yearListRef.current) {
+          yearListRef.current.scrollToIndex({ index: yIndex, animated: false, viewPosition: 0.5 });
+        }
+        // Scroll Month
+        if (monthListRef.current) {
+          monthListRef.current.scrollToIndex({ index: selectedMonth, animated: false, viewPosition: 0.5 });
+        }
+        // Scroll Day
+        const dIndex = days.indexOf(selectedDay);
+        if (dIndex !== -1 && dayListRef.current) {
+          dayListRef.current.scrollToIndex({ index: dIndex, animated: false, viewPosition: 0.5 });
+        }
+      }, 100);
     }
-  };
-
-  const handleNextMonth = () => {
-    if (selectedMonth === 11) {
-      setSelectedMonth(0);
-      setSelectedYear(prev => prev + 1);
-    } else {
-      setSelectedMonth(prev => prev + 1);
-    }
-  };
+  }, [visible]);
 
   const handleConfirm = () => {
     const newDate = new Date(selectedYear, selectedMonth, selectedDay);
@@ -59,16 +59,22 @@ export const CustomDatePickerModal = ({ visible, value, onClose, onConfirm, them
     onClose();
   };
 
-  // Generate day grid cells
-  const gridCells = [];
-  // Empty cells for alignment
-  for (let i = 0; i < firstDayIndex; i++) {
-    gridCells.push({ key: `empty-${i}`, dayNum: null });
-  }
-  // Days of the month
-  for (let i = 1; i <= daysInMonth; i++) {
-    gridCells.push({ key: `day-${i}`, dayNum: i });
-  }
+  const renderItem = ({ item, isSelected, onPress }) => (
+    <TouchableOpacity
+      onPress={onPress}
+      style={[
+        styles.scrollItem,
+        isSelected && { backgroundColor: theme.primary }
+      ]}
+    >
+      <Text style={[
+        styles.scrollItemText,
+        { color: isSelected ? theme.onPrimary : theme.text }
+      ]}>
+        {item}
+      </Text>
+    </TouchableOpacity>
+  );
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -76,61 +82,61 @@ export const CustomDatePickerModal = ({ visible, value, onClose, onConfirm, them
         <View style={[styles.dialogCard, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
           <Text style={[styles.dialogTitle, { color: theme.text }]}>SELECT DATE VALUE</Text>
 
-          {/* Month/Year selector header */}
-          <View style={styles.monthHeader}>
-            <TouchableOpacity onPress={handlePrevMonth} style={styles.arrowBtn}>
-              <MaterialCommunityIcons name="chevron-left" size={24} color={theme.primary} />
-            </TouchableOpacity>
-            <View style={styles.monthYearTextContainer}>
-              <Text style={[styles.monthText, { color: theme.text }]}>
-                {monthNames[selectedMonth]} {selectedYear}
-              </Text>
-            </View>
-            <TouchableOpacity onPress={handleNextMonth} style={styles.arrowBtn}>
-              <MaterialCommunityIcons name="chevron-right" size={24} color={theme.primary} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Weekday headers */}
-          <View style={styles.weekdaysRow}>
-            {daysOfWeek.map((day, idx) => (
-              <Text key={idx} style={[styles.weekdayText, { color: theme.secondaryText }]}>
-                {day}
-              </Text>
-            ))}
-          </View>
-
-          {/* Calendar grid */}
-          <View style={styles.gridContainer}>
-            {Array.from({ length: Math.ceil(gridCells.length / 7) }).map((_, rowIndex) => (
-              <View key={rowIndex} style={styles.gridRow}>
-                {gridCells.slice(rowIndex * 7, (rowIndex + 1) * 7).map((cell, colIndex) => {
-                  const isSelected = cell.dayNum === selectedDay;
-                  return (
-                    <TouchableOpacity
-                      key={cell.key}
-                      disabled={cell.dayNum === null}
-                      onPress={() => setSelectedDay(cell.dayNum)}
-                      style={[
-                        styles.dayCell,
-                        isSelected && { backgroundColor: theme.primary, borderColor: theme.primary }
-                      ]}
-                    >
-                      {cell.dayNum !== null && (
-                        <Text
-                          style={[
-                            styles.dayText,
-                            { color: isSelected ? theme.onPrimary : theme.text }
-                          ]}
-                        >
-                          {cell.dayNum}
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  );
+          {/* Three Column Scroll View */}
+          <View style={styles.columnsContainer}>
+            {/* Month Column */}
+            <View style={styles.columnWrapper}>
+              <Text style={[styles.columnHeader, { color: theme.secondaryText }]}>MONTH</Text>
+              <FlatList
+                ref={monthListRef}
+                data={monthNames}
+                keyExtractor={(item) => item}
+                renderItem={({ item, index }) => renderItem({
+                  item,
+                  isSelected: index === selectedMonth,
+                  onPress: () => setSelectedMonth(index)
                 })}
-              </View>
-            ))}
+                style={styles.columnList}
+                getItemLayout={(data, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
+                showsVerticalScrollIndicator={false}
+              />
+            </View>
+
+            {/* Day Column */}
+            <View style={styles.columnWrapper}>
+              <Text style={[styles.columnHeader, { color: theme.secondaryText }]}>DAY</Text>
+              <FlatList
+                ref={dayListRef}
+                data={days}
+                keyExtractor={(item) => String(item)}
+                renderItem={({ item }) => renderItem({
+                  item: String(item).padStart(2, '0'),
+                  isSelected: item === selectedDay,
+                  onPress: () => setSelectedDay(item)
+                })}
+                style={styles.columnList}
+                getItemLayout={(data, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
+                showsVerticalScrollIndicator={false}
+              />
+            </View>
+
+            {/* Year Column */}
+            <View style={styles.columnWrapper}>
+              <Text style={[styles.columnHeader, { color: theme.secondaryText }]}>YEAR</Text>
+              <FlatList
+                ref={yearListRef}
+                data={years}
+                keyExtractor={(item) => String(item)}
+                renderItem={({ item }) => renderItem({
+                  item,
+                  isSelected: item === selectedYear,
+                  onPress: () => setSelectedYear(item)
+                })}
+                style={styles.columnList}
+                getItemLayout={(data, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
+                showsVerticalScrollIndicator={false}
+              />
+            </View>
           </View>
 
           {/* Dialog Action Buttons */}
@@ -147,70 +153,65 @@ export const CustomDatePickerModal = ({ visible, value, onClose, onConfirm, them
 export const CustomTimePickerModal = ({ visible, value, onClose, onConfirm, theme, is24Hour = false }) => {
   const initialDate = value || new Date();
   
-  // States for hours, minutes, and AM/PM
-  const [hours, setHours] = useState(0);
-  const [minutes, setMinutes] = useState(0);
+  const [selectedHour, setSelectedHour] = useState(12);
+  const [selectedMinute, setSelectedMinute] = useState(0);
   const [isAm, setIsAm] = useState(true);
+
+  const hourListRef = useRef(null);
+  const minuteListRef = useRef(null);
+
+  // Generate hours (1-12 or 0-23)
+  const hours = is24Hour 
+    ? Array.from({ length: 24 }, (_, i) => i) 
+    : Array.from({ length: 12 }, (_, i) => i + 1);
+
+  // Generate minutes (0-59)
+  const minutes = Array.from({ length: 60 }, (_, i) => i);
 
   useEffect(() => {
     if (visible) {
       const activeDate = value || new Date();
       const rawHours = activeDate.getHours();
-      setMinutes(activeDate.getMinutes());
+      const rawMinutes = activeDate.getMinutes();
       
+      setSelectedMinute(rawMinutes);
+
+      let currentHour;
       if (is24Hour) {
-        setHours(rawHours);
+        currentHour = rawHours;
       } else {
-        const displayHours = rawHours % 12 === 0 ? 12 : rawHours % 12;
-        setHours(displayHours);
+        currentHour = rawHours % 12 === 0 ? 12 : rawHours % 12;
         setIsAm(rawHours < 12);
       }
+      setSelectedHour(currentHour);
+
+      setTimeout(() => {
+        // Scroll Hour
+        const hIndex = hours.indexOf(currentHour);
+        if (hIndex !== -1 && hourListRef.current) {
+          hourListRef.current.scrollToIndex({ index: hIndex, animated: false, viewPosition: 0.5 });
+        }
+        // Scroll Minute
+        if (minuteListRef.current) {
+          minuteListRef.current.scrollToIndex({ index: rawMinutes, animated: false, viewPosition: 0.5 });
+        }
+      }, 100);
     }
   }, [visible, value, is24Hour]);
 
-  const incrementHours = () => {
-    if (is24Hour) {
-      setHours(prev => (prev + 1) % 24);
-    } else {
-      setHours(prev => {
-        const next = prev + 1;
-        return next > 12 ? 1 : next;
-      });
-    }
-  };
-
-  const decrementHours = () => {
-    if (is24Hour) {
-      setHours(prev => (prev - 1 + 24) % 24);
-    } else {
-      setHours(prev => {
-        const next = prev - 1;
-        return next < 1 ? 12 : next;
-      });
-    }
-  };
-
-  const incrementMinutes = () => {
-    setMinutes(prev => (prev + 1) % 60);
-  };
-
-  const decrementMinutes = () => {
-    setMinutes(prev => (prev - 1 + 60) % 60);
-  };
-
   const handleConfirm = () => {
-    let finalHours = hours;
+    let finalHours = selectedHour;
     if (!is24Hour) {
       if (isAm) {
-        finalHours = hours === 12 ? 0 : hours;
+        finalHours = selectedHour === 12 ? 0 : selectedHour;
       } else {
-        finalHours = hours === 12 ? 12 : hours + 12;
+        finalHours = selectedHour === 12 ? 12 : selectedHour + 12;
       }
     }
     
     const resultDate = new Date(initialDate);
     resultDate.setHours(finalHours);
-    resultDate.setMinutes(minutes);
+    resultDate.setMinutes(selectedMinute);
     resultDate.setSeconds(0);
     
     onConfirm(resultDate);
@@ -219,56 +220,102 @@ export const CustomTimePickerModal = ({ visible, value, onClose, onConfirm, them
 
   const formatNum = (num) => String(num).padStart(2, '0');
 
+  const renderItem = ({ item, isSelected, onPress }) => (
+    <TouchableOpacity
+      onPress={onPress}
+      style={[
+        styles.scrollItem,
+        isSelected && { backgroundColor: theme.primary }
+      ]}
+    >
+      <Text style={[
+        styles.scrollItemText,
+        { color: isSelected ? theme.onPrimary : theme.text }
+      ]}>
+        {item}
+      </Text>
+    </TouchableOpacity>
+  );
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={[styles.dialogCard, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
           <Text style={[styles.dialogTitle, { color: theme.text }]}>SELECT TIME VALUE</Text>
 
-          {/* Time Display */}
-          <View style={styles.timePickerContainer}>
-            {/* Hours */}
-            <View style={styles.timeColumn}>
-              <TouchableOpacity onPress={incrementHours} style={styles.adjustBtn}>
-                <MaterialCommunityIcons name="chevron-up" size={32} color={theme.primary} />
-              </TouchableOpacity>
-              <Text style={[styles.timeValueText, { color: theme.text }]}>
-                {is24Hour ? formatNum(hours) : hours}
-              </Text>
-              <TouchableOpacity onPress={decrementHours} style={styles.adjustBtn}>
-                <MaterialCommunityIcons name="chevron-down" size={32} color={theme.primary} />
-              </TouchableOpacity>
+          {/* Time Picker Columns */}
+          <View style={styles.columnsContainer}>
+            {/* Hour Column */}
+            <View style={styles.columnWrapper}>
+              <Text style={[styles.columnHeader, { color: theme.secondaryText }]}>HOUR</Text>
+              <FlatList
+                ref={hourListRef}
+                data={hours}
+                keyExtractor={(item) => String(item)}
+                renderItem={({ item }) => renderItem({
+                  item: is24Hour ? formatNum(item) : String(item),
+                  isSelected: item === selectedHour,
+                  onPress: () => setSelectedHour(item)
+                })}
+                style={styles.columnList}
+                getItemLayout={(data, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
+                showsVerticalScrollIndicator={false}
+              />
             </View>
 
-            <Text style={[styles.timeSeparatorText, { color: theme.text }]}>:</Text>
-
-            {/* Minutes */}
-            <View style={styles.timeColumn}>
-              <TouchableOpacity onPress={incrementMinutes} style={styles.adjustBtn}>
-                <MaterialCommunityIcons name="chevron-up" size={32} color={theme.primary} />
-              </TouchableOpacity>
-              <Text style={[styles.timeValueText, { color: theme.text }]}>
-                {formatNum(minutes)}
-              </Text>
-              <TouchableOpacity onPress={decrementMinutes} style={styles.adjustBtn}>
-                <MaterialCommunityIcons name="chevron-down" size={32} color={theme.primary} />
-              </TouchableOpacity>
+            {/* Minute Column */}
+            <View style={styles.columnWrapper}>
+              <Text style={[styles.columnHeader, { color: theme.secondaryText }]}>MINUTE</Text>
+              <FlatList
+                ref={minuteListRef}
+                data={minutes}
+                keyExtractor={(item) => String(item)}
+                renderItem={({ item }) => renderItem({
+                  item: formatNum(item),
+                  isSelected: item === selectedMinute,
+                  onPress: () => setSelectedMinute(item)
+                })}
+                style={styles.columnList}
+                getItemLayout={(data, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
+                showsVerticalScrollIndicator={false}
+              />
             </View>
 
-            {/* AM/PM toggle (if 12h) */}
+            {/* AM/PM Column (if 12h) */}
             {!is24Hour && (
-              <View style={styles.ampmColumn}>
-                <TouchableOpacity 
-                  onPress={() => setIsAm(prev => !prev)} 
-                  style={[
-                    styles.ampmBtn, 
-                    { borderColor: theme.border, backgroundColor: theme.cardBackground }
-                  ]}
-                >
-                  <Text style={[styles.ampmBtnText, { color: theme.primary }]}>
-                    {isAm ? "AM" : "PM"}
-                  </Text>
-                </TouchableOpacity>
+              <View style={styles.columnWrapper}>
+                <Text style={[styles.columnHeader, { color: theme.secondaryText }]}>AM/PM</Text>
+                <View style={[styles.columnList, { justifyContent: "center", gap: 12 }]}>
+                  <TouchableOpacity
+                    onPress={() => setIsAm(true)}
+                    style={[
+                      styles.scrollItem,
+                      isAm && { backgroundColor: theme.primary }
+                    ]}
+                  >
+                    <Text style={[
+                      styles.scrollItemText,
+                      { color: isAm ? theme.onPrimary : theme.text }
+                    ]}>
+                      AM
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => setIsAm(false)}
+                    style={[
+                      styles.scrollItem,
+                      !isAm && { backgroundColor: theme.primary }
+                    ]}
+                  >
+                    <Text style={[
+                      styles.scrollItemText,
+                      { color: !isAm ? theme.onPrimary : theme.text }
+                    ]}>
+                      PM
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
           </View>
@@ -306,103 +353,38 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     textAlign: "center",
   },
-  monthHeader: {
+  columnsContainer: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    width: "100%",
-    marginBottom: 16,
-  },
-  arrowBtn: {
-    padding: 8,
-  },
-  monthYearTextContainer: {
-    flex: 1,
-    alignItems: "center",
-  },
-  monthText: {
-    fontSize: 14,
-    fontFamily: "JetBrainsMono-Bold",
-    fontWeight: "900",
-  },
-  weekdaysRow: {
-    flexDirection: "row",
-    width: "100%",
     justifyContent: "space-around",
-    marginBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#8883",
-    paddingBottom: 4,
-  },
-  weekdayText: {
-    width: 32,
-    textAlign: "center",
-    fontSize: 12,
-    fontFamily: "JetBrainsMono-Bold",
-    fontWeight: "900",
-  },
-  gridContainer: {
     width: "100%",
-    gap: 4,
+    height: 200,
     marginBottom: 20,
   },
-  gridRow: {
-    flexDirection: "row",
-    width: "100%",
-    justifyContent: "space-around",
-  },
-  dayCell: {
-    width: 34,
-    height: 34,
-    justifyContent: "center",
+  columnWrapper: {
+    flex: 1,
     alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: "transparent",
+    paddingHorizontal: 4,
   },
-  dayText: {
-    fontSize: 12,
-    fontFamily: "JetBrainsMono-Bold",
-    fontWeight: "900",
-  },
-  timePickerContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    marginVertical: 16,
-    width: "100%",
-  },
-  timeColumn: {
-    alignItems: "center",
-    width: 60,
-  },
-  adjustBtn: {
-    padding: 2,
-  },
-  timeValueText: {
-    fontSize: 28,
-    fontFamily: "JetBrainsMono-Bold",
-    fontWeight: "900",
-    marginVertical: 4,
-  },
-  timeSeparatorText: {
-    fontSize: 28,
+  columnHeader: {
+    fontSize: 10,
     fontFamily: "JetBrainsMono-Bold",
     fontWeight: "900",
     marginBottom: 8,
+    letterSpacing: 0.5,
   },
-  ampmColumn: {
+  columnList: {
+    flex: 1,
+    width: "100%",
+    borderWidth: 1.5,
+    borderColor: "#8883",
+  },
+  scrollItem: {
+    height: ITEM_HEIGHT,
     justifyContent: "center",
     alignItems: "center",
-    paddingTop: 8,
+    width: "100%",
   },
-  ampmBtn: {
-    borderWidth: 2,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    borderRadius: 0,
-  },
-  ampmBtnText: {
+  scrollItemText: {
     fontSize: 14,
     fontFamily: "JetBrainsMono-Bold",
     fontWeight: "900",
