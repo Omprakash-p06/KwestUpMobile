@@ -229,7 +229,7 @@ export const TaskListScreen = ({
                       style={[
                         styles.taskRowTitle, 
                         { 
-                          color: task.completed ? currentTheme.secondaryText : currentTheme.text,
+                          color: task.completed ? currentTheme.secondaryText : (task.color || currentTheme.text),
                           textDecorationLine: task.completed ? "line-through" : "none",
                           opacity: task.completed ? 0.6 : 1
                         }
@@ -237,6 +237,11 @@ export const TaskListScreen = ({
                     >
                       {task.title}
                     </Text>
+                    {task.description ? (
+                      <Text style={[styles.taskRowDesc, { color: currentTheme.secondaryText }]} numberOfLines={2}>
+                        {task.description}
+                      </Text>
+                    ) : null}
                     <Text style={[styles.taskRowMeta, { color: currentTheme.secondaryText }]}>
                       PRIORITY: {(task.priority || (task.important ? "high" : "normal")).toUpperCase()}
                     </Text>
@@ -293,16 +298,6 @@ export const TaskListScreen = ({
 
       </ScrollView>
 
-      {/* Floating Action Button (FAB) */}
-      <TouchableOpacity
-        style={[styles.fab, { backgroundColor: currentTheme.primary, borderColor: "#000000" }]}
-        onPress={() => {
-          setSelectedTask({ listId: activeList.id });
-          setModalVisible(true);
-        }}
-      >
-        <MaterialCommunityIcons name="plus" size={24} color={currentTheme.onPrimary} />
-      </TouchableOpacity>
 
       {/* Create List Modal */}
       <Modal
@@ -540,6 +535,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "800",
     fontFamily: "JetBrainsMono-Bold",
+  },
+  taskRowDesc: {
+    fontSize: 12,
+    fontFamily: "JetBrainsMono-Regular",
+    marginTop: 4,
+    opacity: 0.9,
   },
   taskRowMeta: {
     fontSize: 10,

@@ -9,7 +9,7 @@ export const TaskCard = ({ task, onPress, onComplete, onUncomplete, onDelete, th
   const { colors: themeColors } = useTheme();
   const currentTheme = theme || themeColors;
   const cardBg = currentTheme.cardBackground || '#fff';
-  const cardAccent = accent || currentTheme.primary;
+  const cardAccent = task.color || accent || currentTheme.primary;
   const borderColor = task.important ? cardAccent : (currentTheme.border || '#E5EAF1');
   const isAccentDark = Color(cardAccent).isDark();
   const accentTextColor = isAccentDark ? '#fff' : '#222';
@@ -107,7 +107,7 @@ export const TaskCard = ({ task, onPress, onComplete, onUncomplete, onDelete, th
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
           <View style={{ flex: 1, marginRight: 10 }}>
-            <Text style={{ color: textColor, fontWeight: '700', fontSize: 17, marginBottom: 2 }}>{task.title || task.name || 'Birthday'}</Text>
+            <Text style={{ color: task.completed ? (currentTheme.secondaryText || '#888') : (task.color || textColor), fontWeight: '700', fontSize: 17, marginBottom: 2 }}>{task.title || task.name || 'Birthday'}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2, flexWrap: 'wrap' }}>
               <MaterialCommunityIcons name="cake-variant" size={18} color={cardAccent} style={{ marginRight: 4 }} />
               <Text style={{ color: cardAccent, fontWeight: '700', fontSize: 14, marginRight: 8 }}>{displayDate}</Text>
@@ -169,7 +169,7 @@ export const TaskCard = ({ task, onPress, onComplete, onUncomplete, onDelete, th
           <Text style={{ color: accentTextColor, fontWeight: '700', fontSize: 12 }}>{(task.completed ? 'COMPLETED' : (task.subtasks && task.subtasks.some(st => st.completed) ? 'IN PROGRESS' : 'NOT STARTED')).toUpperCase()}</Text>
         </View>
         <TouchableOpacity onPress={onPress ? () => onPress(task) : null} activeOpacity={onPress ? 0.93 : 1}>
-          <Text style={{ color: textColor, fontWeight: '700', fontSize: 17, marginBottom: 2 }} numberOfLines={1}>{task.title || task.name || 'Untitled'}</Text>
+          <Text style={{ color: task.completed ? (currentTheme.secondaryText || '#888') : (task.color || textColor), fontWeight: '700', fontSize: 17, marginBottom: 2 }} numberOfLines={1}>{task.title || task.name || 'Untitled'}</Text>
           {task.description ? <Text style={{ color: currentTheme.secondaryText || '#888', fontSize: 14, marginBottom: 6 }} numberOfLines={2}>{task.description}</Text> : null}
         </TouchableOpacity>
         {task.dueDate && (
