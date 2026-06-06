@@ -8,7 +8,7 @@ import { CustomTextInput } from "../components/CustomTextInput";
 import { CustomSegmentedButtons } from "../components/CustomSegmentedButtons";
 import { CustomButton } from "../components/CustomButton";
 import { QRScannerModal } from "../components/QRScannerModal";
-import { isModelDownloaded, unloadModel } from "../utils/aiService";
+import { isModelDownloaded, unloadModel, downloadModel } from "../utils/aiService";
 import { APP_VERSION } from "../utils/storage";
 
 const MODEL_PATH = `${FileSystem.documentDirectory}models/qwen2.5-0.5b-instruct-q4_k_m.gguf`;
@@ -33,6 +33,36 @@ export const SettingsScreen = ({
   const [modelSize, setModelSize] = useState(null);
   const [checkingModel, setCheckingModel] = useState(false);
   const [deletingModel, setDeletingModel] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [downloadedBytes, setDownloadedBytes] = useState(0);
+  const [totalBytes, setTotalBytes] = useState(0);
+  const [downloadError, setDownloadError] = useState(null);
+
+  const handleDownloadModel = async () => {
+    setIsDownloading(true);
+    setDownloadError(null);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      await downloadModel(({ progress, bytesReceived, totalBytes: total }) => {
+        setDownloadProgress(progress);
+        setDownloadedBytes(bytesReceived);
+        setTotalBytes(total);
+      });
+      setModelDownloaded(true);
+      try {
+        const info = await FileSystem.getInfoAsync(MODEL_PATH);
+        if (info.exists) setModelSize(info.size);
+      } catch {}
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      showConfirmation("AI model downloaded successfully! Offline AI features are now enabled.", () => {});
+    } catch (err) {
+      setDownloadError(err.message);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   const checkModel = async () => {
     setCheckingModel(true);
@@ -220,7 +250,7 @@ export const SettingsScreen = ({
                 <View style={[styles.indicatorDot, { backgroundColor: modelDownloaded ? "#4CAF50" : "#FF9800" }]} />
               )}
               <Text style={[styles.consoleLogText, { color: currentTheme.text, fontWeight: "900" }]}>
-                {checkingModel ? "SCANNING..." : modelDownloaded ? "MODEL: DOWNLOADED" : "MODEL: NOT FOUND"}
+                {checkingModel ? "SCANNING..." : modelDownloaded ? "MODEL: DOWNLOADED" : isDownloading ? "MODEL: DOWNLOADING..." : "MODEL: NOT FOUND"}
               </Text>
             </View>
             {modelDownloaded && modelSize && (
@@ -228,9 +258,29 @@ export const SettingsScreen = ({
                 SIZE: {formatBytes(modelSize)} — qwen2.5-0.5b-instruct-q4_k_m.gguf
               </Text>
             )}
-            {!modelDownloaded && !checkingModel && (
+            {!modelDownloaded && !checkingModel && !isDownloading && (
               <Text style={[styles.consoleLogText, { color: currentTheme.secondaryText, marginTop: 4 }]}>
-                Download the AI model from the Notes screen to enable on-device AI features.
+                Offline AI model (~460 MB) runs 100% locally on your device, keeping all data fully private.
+              </Text>
+            )}
+            {isDownloading && (
+              <View style={{ marginTop: 8 }}>
+                <View style={[styles.progressBarTrack, { backgroundColor: currentTheme.border }]}>
+                  <View
+                    style={[
+                      styles.progressBarFill,
+                      { backgroundColor: currentTheme.primary, width: `${Math.round(downloadProgress * 100)}%` },
+                    ]}
+                  />
+                </View>
+                <Text style={[styles.consoleLogText, { color: currentTheme.text }]}>
+                  Downloading: {Math.round(downloadProgress * 100)}% — {formatBytes(downloadedBytes)} / {formatBytes(totalBytes)}
+                </Text>
+              </View>
+            )}
+            {downloadError && (
+              <Text style={[styles.consoleLogText, { color: currentTheme.error, marginTop: 4, fontWeight: "bold" }]}>
+                ERROR: {downloadError}
               </Text>
             )}
           </View>
@@ -248,6 +298,23 @@ export const SettingsScreen = ({
               )}
               <Text style={[styles.destroyBtnText, { color: currentTheme.error }]}>
                 {deletingModel ? "DELETING..." : "DELETE AI MODEL"}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {!modelDownloaded && !checkingModel && (
+            <TouchableOpacity
+              style={[styles.syncBtn, { borderColor: currentTheme.primary }]}
+              onPress={handleDownloadModel}
+              disabled={isDownloading}
+            >
+              {isDownloading ? (
+                <ActivityIndicator size="small" color={currentTheme.primary} style={{ marginRight: 6 }} />
+              ) : (
+                <MaterialCommunityIcons name="download-outline" size={16} color={currentTheme.primary} style={{ marginRight: 6 }} />
+              )}
+              <Text style={[styles.syncBtnText, { color: currentTheme.primary }]}>
+                {isDownloading ? "DOWNLOADING AI MODEL..." : "DOWNLOAD OFFLINE AI MODEL"}
               </Text>
             </TouchableOpacity>
           )}
@@ -502,5 +569,15 @@ const styles = StyleSheet.create({
     marginTop: 6,
     textAlign: "center",
     lineHeight: 18,
+  },
+  progressBarTrack: {
+    height: 8,
+    borderRadius: 0,
+    marginBottom: 8,
+    overflow: "hidden",
+  },
+  progressBarFill: {
+    height: "100%",
+    borderRadius: 0,
   },
 });
