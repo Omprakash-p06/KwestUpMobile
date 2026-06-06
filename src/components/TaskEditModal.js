@@ -129,7 +129,7 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme, taskLists
           contentContainerStyle={[styles.modalContent, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={[styles.modalTitle, { color: theme.text }]}>EDIT_OBJECTIVE</Text>
+          <Text style={[styles.modalTitle, { color: theme.text }]}>{task ? 'EDIT_OBJECTIVE' : 'NEW_OBJECTIVE'}</Text>
 
           <View style={[styles.fieldGroup, { borderBottomColor: theme.border + '30' }]}>
             <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>TITLE</Text>

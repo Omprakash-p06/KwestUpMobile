@@ -1,7 +1,6 @@
 import React, { useState } from "react";
-import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
+import { ScrollView, View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import Modal from "react-native-modal";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as Haptics from "expo-haptics";
 import { LiquidGlassCard } from "../components/LiquidGlassCard";
@@ -346,53 +345,35 @@ export const BirthdaysScreen = ({
 
       </ScrollView>
 
-      {/* DateTimePicker Modals */}
-      <Modal
-        isVisible={showDatePicker}
-        onBackdropPress={() => setShowDatePicker(false)}
-        style={styles.modalOverlay}
-      >
-        <View style={[styles.dialogCard, { backgroundColor: currentTheme.cardBackground, borderColor: currentTheme.border }]}>
-          <Text style={[styles.dialogTitle, { color: currentTheme.text }]}>
-            SELECT DATE VALUE
-          </Text>
-          <DateTimePicker
-            value={newBirthdayDate || new Date()}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={(event, selectedDate) => {
-              if (event.type === 'set' && selectedDate) {
-                setNewBirthdayDate(selectedDate);
-              }
-              setShowDatePicker(false);
-            }}
-          />
-        </View>
-      </Modal>
+      {/* Native system date/time pickers — rendered inline so Android opens its own system dialog */}
+      {showDatePicker && (
+        <DateTimePicker
+          value={newBirthdayDate || new Date()}
+          mode="date"
+          display="default"
+          onChange={(event, selectedDate) => {
+            setShowDatePicker(false);
+            if (event.type === 'set' && selectedDate) {
+              setNewBirthdayDate(selectedDate);
+            }
+          }}
+        />
+      )}
 
-      <Modal
-        isVisible={showTimePicker}
-        onBackdropPress={() => setShowTimePicker(false)}
-        style={styles.modalOverlay}
-      >
-        <View style={[styles.dialogCard, { backgroundColor: currentTheme.cardBackground, borderColor: currentTheme.border }]}>
-          <Text style={[styles.dialogTitle, { color: currentTheme.text }]}>
-            SELECT REMINDER TIME
-          </Text>
-          <DateTimePicker
-            value={newBirthdayTime}
-            mode="time"
-            is24Hour={false}
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={(event, selectedDate) => {
-              if (event.type === 'set' && selectedDate) {
-                setNewBirthdayTime(selectedDate);
-              }
-              setShowTimePicker(false);
-            }}
-          />
-        </View>
-      </Modal>
+      {showTimePicker && (
+        <DateTimePicker
+          value={newBirthdayTime}
+          mode="time"
+          is24Hour={false}
+          display="default"
+          onChange={(event, selectedDate) => {
+            setShowTimePicker(false);
+            if (event.type === 'set' && selectedDate) {
+              setNewBirthdayTime(selectedDate);
+            }
+          }}
+        />
+      )}
 
     </View>
   );
@@ -586,25 +567,5 @@ const styles = StyleSheet.create({
   },
   deleteIconButton: {
     padding: 4,
-  },
-  modalOverlay: {
-    justifyContent: "center",
-    alignItems: "center",
-    margin: 20,
-  },
-  dialogCard: {
-    borderWidth: 2.5,
-    padding: 24,
-    borderRadius: 0,
-    width: "90%",
-    maxWidth: 340,
-    alignItems: "center",
-  },
-  dialogTitle: {
-    fontSize: 14,
-    fontWeight: "900",
-    fontFamily: "JetBrainsMono-Bold",
-    marginBottom: 16,
-    textAlign: "center",
   },
 });

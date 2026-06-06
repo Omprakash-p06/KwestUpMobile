@@ -197,42 +197,31 @@ export const TaskListScreen = ({
             </View>
           </View>
 
+          {/* ── Active Objectives ─────────────────────── */}
           <View style={styles.taskListQueue}>
-            {listTasks.length === 0 ? (
+            {activeTasks.length === 0 ? (
               <Text style={[styles.emptyLabelText, { color: currentTheme.secondaryText }]}>
-                NO OBJECTIVES LOGGED IN SYSTEMS.
+                NO ACTIVE OBJECTIVES. ALL CLEAR.
               </Text>
             ) : (
-              listTasks.map((task) => (
+              activeTasks.map((task) => (
                 <View key={task.id} style={[styles.taskRowItem, { borderColor: currentTheme.border + "20" }]}>
                   <TouchableOpacity
                     onPress={() => toggleTaskComplete(task.id)}
                     style={[
-                      styles.squareCheck, 
-                      { 
+                      styles.squareCheck,
+                      {
                         borderColor: currentTheme.primary,
-                        backgroundColor: task.completed ? currentTheme.primary : "transparent"
+                        backgroundColor: "transparent"
                       }
                     ]}
-                  >
-                    {task.completed && (
-                      <MaterialCommunityIcons 
-                        name="close" 
-                        size={12} 
-                        color={currentTheme.onPrimary} 
-                      />
-                    )}
-                  </TouchableOpacity>
+                  />
 
                   <View style={{ flex: 1 }}>
-                    <Text 
+                    <Text
                       style={[
-                        styles.taskRowTitle, 
-                        { 
-                          color: task.completed ? currentTheme.secondaryText : (task.color || currentTheme.text),
-                          textDecorationLine: task.completed ? "line-through" : "none",
-                          opacity: task.completed ? 0.6 : 1
-                        }
+                        styles.taskRowTitle,
+                        { color: task.color || currentTheme.text }
                       ]}
                     >
                       {task.title}
@@ -247,13 +236,25 @@ export const TaskListScreen = ({
                     </Text>
                   </View>
 
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={() => {
                       setSelectedTask(task);
                       setModalVisible(true);
                     }}
+                    style={{ marginRight: 4 }}
                   >
-                    <MaterialCommunityIcons name="chevron-right" size={20} color={currentTheme.secondaryText} />
+                    <MaterialCommunityIcons name="pencil-outline" size={18} color={currentTheme.secondaryText} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() =>
+                      showConfirmation(
+                        `Delete "${task.title}"?`,
+                        () => deleteTask(task.id),
+                        () => {}
+                      )
+                    }
+                  >
+                    <MaterialCommunityIcons name="trash-can-outline" size={18} color={currentTheme.error || "#F44336"} />
                   </TouchableOpacity>
                 </View>
               ))
@@ -275,6 +276,71 @@ export const TaskListScreen = ({
             </View>
           </View>
         </LiquidGlassCard>
+
+        {/* ── Completed Objectives Card ─────────────── */}
+        {completedTasks.length > 0 && (
+          <LiquidGlassCard theme={currentTheme} style={styles.taskQueueCard}>
+            <View style={styles.taskQueueHeader}>
+              <View style={[styles.sectionBadge, { backgroundColor: currentTheme.border + "30" }]}>
+                <Text style={[styles.sectionBadgeText, { color: currentTheme.secondaryText }]}>COMPLETED</Text>
+              </View>
+              <Text style={[styles.taskQueueTitle, { color: currentTheme.secondaryText }]}>
+                {completedTasks.length} OBJECTIVE{completedTasks.length !== 1 ? "S" : ""}
+              </Text>
+            </View>
+
+            <View style={styles.taskListQueue}>
+              {completedTasks.map((task) => (
+                <View key={task.id} style={[styles.taskRowItem, { borderColor: currentTheme.border + "20" }]}>
+                  <TouchableOpacity
+                    onPress={() => toggleTaskComplete(task.id)}
+                    style={[
+                      styles.squareCheck,
+                      {
+                        borderColor: currentTheme.primary,
+                        backgroundColor: currentTheme.primary
+                      }
+                    ]}
+                  >
+                    <MaterialCommunityIcons name="close" size={12} color={currentTheme.onPrimary} />
+                  </TouchableOpacity>
+
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[
+                        styles.taskRowTitle,
+                        {
+                          color: currentTheme.secondaryText,
+                          textDecorationLine: "line-through",
+                          opacity: 0.6
+                        }
+                      ]}
+                    >
+                      {task.title}
+                    </Text>
+                    {task.description ? (
+                      <Text style={[styles.taskRowDesc, { color: currentTheme.secondaryText }]} numberOfLines={1}>
+                        {task.description}
+                      </Text>
+                    ) : null}
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={() =>
+                      showConfirmation(
+                        `Delete "${task.title}"?`,
+                        () => deleteTask(task.id),
+                        () => {}
+                      )
+                    }
+                  >
+                    <MaterialCommunityIcons name="trash-can-outline" size={18} color={currentTheme.error || "#F44336"} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          </LiquidGlassCard>
+        )}
 
         {/* 4. Asymmetric Velocity & Terminal Card */}
         <LiquidGlassCard theme={currentTheme} style={styles.velocityCard}>
@@ -690,5 +756,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "900",
     fontFamily: "JetBrainsMono-Bold",
+  },
+  sectionBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginRight: 8,
+  },
+  sectionBadgeText: {
+    fontSize: 9,
+    fontWeight: "900",
+    fontFamily: "JetBrainsMono-Bold",
+    letterSpacing: 1,
   },
 });
