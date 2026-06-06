@@ -45,7 +45,7 @@ import { initNotesFolder, getAllNotesFromFilesystem, wipeNotesFilesystem, saveNo
 import { migrateToVaultSystem, getVaults, getActiveVaultId, setActiveVaultId } from "./src/utils/vaultService";
 
 // Utility imports
-import { APP_VERSION, STORAGE_VERSION, clearAllCaches } from "./src/utils/storage";
+import { APP_VERSION, STORAGE_VERSION, clearAllCaches, migrateUserDataIfNeeded } from "./src/utils/storage";
 import { runDeviceDiagnostics, runNetworkDiagnostics, checkForUpdates, DEBUG_MODE } from "./src/utils/diagnostics";
 import {
   requestNotificationPermissions,
@@ -203,6 +203,9 @@ const App = () => {
     if (!isInitialized) return;
 
     try {
+      // Scan and migrate any legacy user data from older storage versions if current version has no data
+      await migrateUserDataIfNeeded(STORAGE_VERSION);
+
       const storageKey = `kwestup_data_${STORAGE_VERSION}`;
       const timerKey = `kwestup_timer_state_${STORAGE_VERSION}`;
       const themeModeKey = `kwestup_theme_mode_${STORAGE_VERSION}`;
