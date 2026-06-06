@@ -35,7 +35,6 @@ import { CustomTextInput } from "./src/components/CustomTextInput";
 import { TaskEditModal } from "./src/components/TaskEditModal";
 import { TimerLockoutOverlay } from "./src/components/TimerLockoutOverlay";
 import { LiquidGlassBackground } from "./src/components/LiquidGlassBackground";
-import { AIAssistant } from "./src/components/AIAssistant";
 
 // Theme and Navigation imports
 import { themes } from "./src/theme/colors";
@@ -935,56 +934,6 @@ const App = () => {
               />
             </NavigationContainer>
 
-            {/* Global Unified AI Assistant — shown only when no active note is open to prevent duplicate FAB */}
-            {!activeNote && (
-              <AIAssistant
-                currentTheme={currentTheme}
-                noteContent={activeNote ? activeNote.content : ""}
-                noteTitle={activeNote ? activeNote.title : ""}
-                onTasksExtracted={(extractedTaskTitles) => {
-                  const newTasks = extractedTaskTitles.map((title) => ({
-                    id: Date.now().toString() + Math.random().toString(36).slice(2),
-                    title,
-                    listId: "default_inbox",
-                    completed: false,
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                  }));
-                  setTasks((prev) => [...prev, ...newTasks]);
-                }}
-                onTaskCreated={(taskData) => {
-                  const newTask = {
-                    id: Date.now().toString(),
-                    title: taskData.title,
-                    description: taskData.description || "",
-                    dueDate: taskData.dueDate || null,
-                    listId: "default_inbox",
-                    completed: false,
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                  };
-                  setTasks((prev) => [...prev, newTask]);
-                  if (newTask.dueDate) {
-                    scheduleDueDateNotification(newTask).then(notificationId => {
-                      setTasks(prev => prev.map(t => t.id === newTask.id ? { ...t, notificationId } : t));
-                    });
-                  }
-                }}
-                onBirthdayCreated={async (birthdayData) => {
-                  const newBday = {
-                    id: Date.now().toString(),
-                    name: birthdayData.name,
-                    birthDate: birthdayData.date,
-                    remindAtTime: "09:00",
-                    advanceReminder: "none",
-                    notificationIds: []
-                  };
-                  const notificationIds = await scheduleCustomBirthdayReminders(newBday);
-                  const finalBday = { ...newBday, notificationIds };
-                  setBirthdays((prev) => [...prev, finalBday]);
-                }}
-              />
-            )}
 
             {/* Confirmation Modal */}
             <Modal

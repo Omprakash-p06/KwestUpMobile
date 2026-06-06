@@ -298,6 +298,23 @@ export const TaskListScreen = ({
 
       </ScrollView>
 
+      {/* Floating Action Button (FAB) to add task */}
+      <TouchableOpacity
+        style={[
+          styles.fab,
+          {
+            backgroundColor: currentTheme.primary,
+            borderColor: currentTheme.text || "#000000",
+          },
+        ]}
+        onPress={() => {
+          setSelectedTask(null);
+          setModalVisible(true);
+        }}
+        activeOpacity={0.8}
+      >
+        <MaterialCommunityIcons name="plus" size={24} color={currentTheme.onPrimary} />
+      </TouchableOpacity>
 
       {/* Create List Modal */}
       <Modal
