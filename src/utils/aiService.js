@@ -124,7 +124,7 @@ export const downloadModel = async (onProgress) => {
     } catch (err) {
       attempt++;
       const errMsg = err.message || "";
-      console.warn(`Download attempt ${attempt} failed:`, errMsg);
+      console.warn("Download attempt %d failed:", attempt, errMsg);
       
       const isNetworkError = 
         errMsg.includes("ENOTFOUND") || 

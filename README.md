@@ -108,54 +108,46 @@ KwestUp Mobile has been optimized to handle Android's split-screen (multi-window
 
 ---
 
-## 🧩 Widget Status & Future Blueprint
+## 🧩 Native Android App Widgets
 
-### Current Implementation Status
-> [!IMPORTANT]
-> **Widgets are currently NOT implemented in the KwestUp Mobile codebase.**
-> 
-> As of Phase 6, the core mobile database, local LLM integration, and local sync algorithms are fully functional. Android App Widgets are planned for the next feature release milestone.
+KwestUp Mobile includes full native Android App Widgets for productivity at a glance, directly from the device's home screen.
 
-### Widget Engineering Blueprint
-To integrate Android App Widgets in the next milestone, developers should follow this blueprint:
+### Implemented Widgets:
+1. **Focus Timer Widget (2x2)**: Real-time focus countdown tracking sync'd with the active session.
+2. **Daily Tasks Widget (2x2)**: Displays today's task statistics (total logged vs completed).
+3. **Important Tasks Widget (2x2)**: Displays the top 5 high-priority tasks currently in the queue.
+4. **Interactive Tasks List Widget (4x3)**: A large, interactive list displaying the user's upcoming tasks. Allows users to mark off tasks directly from the widget on their home screen without opening the app.
 
-```
-                  ┌──────────────────────────────┐
-                  │   KwestUp SQLite / MMKV      │
-                  │   (Shared Local Storage)     │
-                  └──────────────┬───────────────┘
-                                 │
-                                 ▼
-                  ┌──────────────────────────────┐
-                  │    React Native App logic    │
-                  └──────────────┬───────────────┘
-                                 │ Writes updates
-                                 ▼
-                  ┌──────────────────────────────┐
-                  │ Android SharedPreferences /  │
-                  │ SQLite Database              │
-                  └──────────────┬───────────────┘
-                                 │
-                                 ▼
-                ┌─────────────────────────────────┐
-                │ react-native-android-widget     │
-                │ (Custom AppWidgetProvider)      │
-                ├─────────────────────────────────┤
-                │ • Layout defined in XML/React   │
-                │ • Reads tasks & focus timer     │
-                │ • Standard broadcast updates    │
-                └─────────────────────────────────┘
+These widgets are powered by `react-native-android-widget` and use throttled and staggered background updates to protect system resources and avoid background Binder flooding.
+
+---
+
+## 🏗️ Building and Compiling the App
+
+KwestUp Mobile is built using Expo (managed workflow with custom native directories). Follow these steps to build the development build or compile a production-ready APK locally.
+
+### Local Development Build
+To run a local development build on a physical device or emulator:
+```bash
+# Start the Metro bundler
+npm run start
+
+# Press 'a' to build and run on a connected Android device/emulator
 ```
 
-#### Android Implementation Steps
-1. **Dependencies**: Use the highly efficient `react-native-android-widget` library to build widgets using React-style layouts, or build custom Kotlin providers in `android/app/src/main/java`.
-2. **Provider**: Create `KwestUpWidgetProvider.kt` extending `AppWidgetProvider`.
-3. **Layout**: Define widget layouts using Android's remote views (`widget_layout.xml` in resources) containing:
-   - Quick-add note button (Deep link launcher: `kwestup://notes/new`).
-   - Active task lists with checkboxes.
-   - Focus Timer progress circle.
-4. **Data Sync**: Store active tasks in Android's `SharedPreferences` during React Native saves, and fetch them in `AppWidgetProvider`'s `onUpdate()`.
+### Compiling the Production APK (Local Release)
+To compile the final signed production release package on a local machine:
 
+1. Ensure the Android SDK, JDK 17, and Gradle environments are fully configured.
+2. Navigate to the `android/` directory and run the Gradle build:
+   ```bash
+   cd android
+   ./gradlew clean assembleRelease
+   ```
+3. Once completed successfully, the production-ready APK package will be available at:
+   ```
+   android/app/build/outputs/apk/release/app-release.apk
+   ```
 
 ---
 
