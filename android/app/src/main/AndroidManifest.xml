@@ -1,12 +1,12 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.omprakashp06.kwestupmobile">
   <uses-permission android:name="android.permission.CAMERA"/>
   <uses-permission android:name="android.permission.INTERNET"/>
-  <!-- Scoped to API ≤32: Android 13+ (API 33+) uses READ_MEDIA_* permissions instead -->
+  <!-- Scoped to API <=32: Android 13+ (API 33+) uses READ_MEDIA_* permissions instead -->
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
   <uses-permission android:name="android.permission.RECORD_AUDIO"/>
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
   <uses-permission android:name="android.permission.VIBRATE"/>
-  <!-- Scoped to API ≤29: Android 10+ (API 29+) blocks WRITE_EXTERNAL_STORAGE entirely -->
+  <!-- Scoped to API <=29: Android 10+ (API 29+) blocks WRITE_EXTERNAL_STORAGE entirely -->
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29"/>
   <queries>
     <intent>
