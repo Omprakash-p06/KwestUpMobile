@@ -122,6 +122,7 @@ const App = () => {
   const [activeNote, setActiveNote] = useState(null);
 
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const appState = useRef(AppState.currentState);
 
@@ -193,15 +194,17 @@ const App = () => {
 
   // Save userName to AsyncStorage immediately when set
   useEffect(() => {
-    if (userName && userName.trim()) {
+    if (isDataLoaded && userName && userName.trim()) {
       AsyncStorage.setItem(`kwestup_userName_${STORAGE_VERSION}`, userName);
     }
-  }, [userName]);
+  }, [userName, isDataLoaded]);
 
   const loadData = useCallback(async () => {
     if (!isInitialized) return;
 
     try {
+      const storageKey = `kwestup_data_${STORAGE_VERSION}`;
+      const timerKey = `kwestup_timer_state_${STORAGE_VERSION}`;
       const themeModeKey = `kwestup_theme_mode_${STORAGE_VERSION}`;
       const themeNameKey = `kwestup_theme_name_${STORAGE_VERSION}`;
       const [storedDataRaw, storedTimerRaw, storedUserName, storedThemeMode, storedThemeName] = await Promise.all([
@@ -284,7 +287,9 @@ const App = () => {
         setLastSynced(null);
         setUserName(storedUserName || "");
       }
+      setIsDataLoaded(true);
     } catch (error) {
+      console.error("❌ Failed to load data:", error);
       setDailyTasks([]);
       setBirthdays([]);
       setTasks([]);
@@ -296,6 +301,7 @@ const App = () => {
       setThemeMode("light");
       setSelectedThemeName("dribbble");
       setLastSynced(null);
+      setIsDataLoaded(true);
     }
   }, [isInitialized, activeVaultId]);
 
@@ -340,7 +346,7 @@ const App = () => {
   ]);
 
   const saveTimerState = useCallback(async () => {
-    if (!isInitialized) return;
+    if (!isDataLoaded) return;
 
     const timerState = {
       duration: timerDuration,
@@ -356,7 +362,7 @@ const App = () => {
     } catch (error) {
       console.error("❌ Failed to save timer state:", error);
     }
-  }, [timerDuration, timerRemaining, isTimerRunning, isInitialized]);
+  }, [timerDuration, timerRemaining, isTimerRunning, isDataLoaded]);
 
   useEffect(() => {
     if (isInitialized) {
@@ -367,7 +373,7 @@ const App = () => {
 
   // Main data save trigger with 15-second throttle to protect Binder buffer
   useEffect(() => {
-    if (isInitialized) {
+    if (isDataLoaded) {
       const now = Date.now();
       if (now - lastSaveTimeRef.current > 15000) {
         saveData();
@@ -386,29 +392,29 @@ const App = () => {
     selectedThemeName,
     userName,
     lastSynced,
-    isInitialized,
+    isDataLoaded,
     saveData,
   ]);
 
   // High-frequency timer state save (minimal payload)
   useEffect(() => {
-    if (isInitialized) {
+    if (isDataLoaded) {
       saveTimerState();
     }
-  }, [timerRemaining, isTimerRunning, isInitialized, saveTimerState]);
+  }, [timerRemaining, isTimerRunning, isDataLoaded, saveTimerState]);
 
   // Save theme state immediately to separate keys
   useEffect(() => {
-    if (isInitialized) {
+    if (isDataLoaded) {
       AsyncStorage.setItem(`kwestup_theme_mode_${STORAGE_VERSION}`, themeMode);
     }
-  }, [themeMode, isInitialized]);
+  }, [themeMode, isDataLoaded]);
 
   useEffect(() => {
-    if (isInitialized) {
+    if (isDataLoaded) {
       AsyncStorage.setItem(`kwestup_theme_name_${STORAGE_VERSION}`, selectedThemeName);
     }
-  }, [selectedThemeName, isInitialized]);
+  }, [selectedThemeName, isDataLoaded]);
 
   // Background check for updates after initialization finishes
   useEffect(() => {

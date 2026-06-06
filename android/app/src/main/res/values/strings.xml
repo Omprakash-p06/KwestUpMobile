@@ -5,4 +5,5 @@
   <string name="widget_focustimer_description" translatable="false">Shows your current focus session timer status</string>
   <string name="widget_dailytasks_description" translatable="false">Shows your daily task completion progress</string>
   <string name="widget_importanttasks_description" translatable="false">Shows your important unfinished tasks</string>
+  <string name="widget_taskslist_description" translatable="false">Shows all pending tasks with toggle capabilities</string>
 </resources>

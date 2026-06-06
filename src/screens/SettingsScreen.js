@@ -10,6 +10,7 @@ import { CustomButton } from "../components/CustomButton";
 import { QRScannerModal } from "../components/QRScannerModal";
 import { isModelDownloaded, unloadModel, downloadModel } from "../utils/aiService";
 import { APP_VERSION } from "../utils/storage";
+import { checkForUpdates } from "../utils/diagnostics";
 
 const MODEL_PATH = `${FileSystem.documentDirectory}models/qwen2.5-0.5b-instruct-q4_k_m.gguf`;
 
@@ -28,6 +29,33 @@ export const SettingsScreen = ({
   isSyncing
 }) => {
   const [tempUserName, setTempUserName] = useState(userName);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+
+  const handleCheckForUpdates = async () => {
+    setCheckingUpdate(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      const result = await checkForUpdates();
+      if (result && result.hasUpdate) {
+        showConfirmation(
+          `A new update is available: ${result.latestVersion}\n\nWould you like to visit the release page to download it?`,
+          () => {
+            if (result.releaseUrl) {
+              Linking.openURL(result.releaseUrl).catch((err) =>
+                console.error("Failed to open update URL:", err)
+              );
+            }
+          }
+        );
+      } else {
+        showConfirmation("Your application is fully updated to the latest release version.", () => {});
+      }
+    } catch (err) {
+      showConfirmation("Failed to check for updates: " + err.message, () => {});
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
   const [isScannerVisible, setIsScannerVisible] = useState(false);
   const [modelDownloaded, setModelDownloaded] = useState(false);
   const [modelSize, setModelSize] = useState(null);
@@ -364,6 +392,19 @@ export const SettingsScreen = ({
             <Text style={[styles.aboutLabelText, { color: currentTheme.text }]}>APP VERSION</Text>
             <Text style={[styles.aboutValText, { color: currentTheme.primary }]}>{APP_VERSION}</Text>
           </View>
+
+          <TouchableOpacity 
+            style={[styles.aboutItemRow, { borderColor: currentTheme.border + "12" }]}
+            onPress={handleCheckForUpdates}
+            disabled={checkingUpdate}
+          > 
+            <Text style={[styles.aboutLabelText, { color: currentTheme.text }]}>CHECK FOR UPDATES</Text>
+            {checkingUpdate ? (
+              <ActivityIndicator size="small" color={currentTheme.primary} />
+            ) : (
+              <MaterialCommunityIcons name="update" size={20} color={currentTheme.primary} />
+            )}
+          </TouchableOpacity>
         </LiquidGlassCard>
 
       </ScrollView>

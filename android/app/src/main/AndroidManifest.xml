@@ -54,5 +54,12 @@
       </intent-filter>
       <meta-data android:name="android.appwidget.provider" android:resource="@xml/widgetprovider_importanttasks"/>
     </receiver>
+    <receiver android:name=".widget.TasksList" android:exported="false" android:label="Tasks List">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+        <action android:name="com.omprakashp06.kwestupmobile.WIDGET_CLICK"/>
+      </intent-filter>
+      <meta-data android:name="android.appwidget.provider" android:resource="@xml/widgetprovider_taskslist"/>
+    </receiver>
   </application>
 </manifest>
