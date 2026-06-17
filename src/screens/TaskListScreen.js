@@ -35,6 +35,26 @@ export const TaskListScreen = ({
   const [renameListName, setRenameListName] = useState("");
   const [selectedListId, setSelectedListId] = useState("");
 
+  // Completed section collapse state
+  const [completedExpanded, setCompletedExpanded] = useState(false);
+  const chevronAnim = useRef(new Animated.Value(0)).current;
+
+  const toggleCompleted = () => {
+    const toValue = completedExpanded ? 0 : 1;
+    Animated.timing(chevronAnim, {
+      toValue,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setCompletedExpanded((prev) => !prev);
+  };
+
+  const chevronRotate = chevronAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '180deg'],
+  });
+
   // AI Task Optimizer scanning loop
   const scanAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -277,68 +297,82 @@ export const TaskListScreen = ({
           </View>
         </LiquidGlassCard>
 
-        {/* ── Completed Objectives Card ─────────────── */}
+        {/* ── Completed Objectives Card (Collapsible) ── */}
         {completedTasks.length > 0 && (
           <LiquidGlassCard theme={currentTheme} style={styles.taskQueueCard}>
-            <View style={styles.taskQueueHeader}>
+            {/* Collapsible header — tap to expand/collapse */}
+            <TouchableOpacity
+              onPress={toggleCompleted}
+              style={styles.taskQueueHeader}
+              activeOpacity={0.7}
+            >
               <View style={[styles.sectionBadge, { backgroundColor: currentTheme.border + "30" }]}>
                 <Text style={[styles.sectionBadgeText, { color: currentTheme.secondaryText }]}>COMPLETED</Text>
               </View>
-              <Text style={[styles.taskQueueTitle, { color: currentTheme.secondaryText }]}>
+              <Text style={[styles.taskQueueTitle, { color: currentTheme.secondaryText, flex: 1 }]}>
                 {completedTasks.length} OBJECTIVE{completedTasks.length !== 1 ? "S" : ""}
               </Text>
-            </View>
+              <Animated.View style={{ transform: [{ rotate: chevronRotate }] }}>
+                <MaterialCommunityIcons
+                  name="chevron-down"
+                  size={18}
+                  color={currentTheme.secondaryText}
+                />
+              </Animated.View>
+            </TouchableOpacity>
 
-            <View style={styles.taskListQueue}>
-              {completedTasks.map((task) => (
-                <View key={task.id} style={[styles.taskRowItem, { borderColor: currentTheme.border + "20" }]}>
-                  <TouchableOpacity
-                    onPress={() => toggleTaskComplete(task.id)}
-                    style={[
-                      styles.squareCheck,
-                      {
-                        borderColor: currentTheme.primary,
-                        backgroundColor: currentTheme.primary
-                      }
-                    ]}
-                  >
-                    <MaterialCommunityIcons name="close" size={12} color={currentTheme.onPrimary} />
-                  </TouchableOpacity>
-
-                  <View style={{ flex: 1 }}>
-                    <Text
+            {completedExpanded && (
+              <View style={styles.taskListQueue}>
+                {completedTasks.map((task) => (
+                  <View key={task.id} style={[styles.taskRowItem, { borderColor: currentTheme.border + "20" }]}>
+                    <TouchableOpacity
+                      onPress={() => toggleTaskComplete(task.id)}
                       style={[
-                        styles.taskRowTitle,
+                        styles.squareCheck,
                         {
-                          color: currentTheme.secondaryText,
-                          textDecorationLine: "line-through",
-                          opacity: 0.6
+                          borderColor: currentTheme.primary,
+                          backgroundColor: currentTheme.primary
                         }
                       ]}
                     >
-                      {task.title}
-                    </Text>
-                    {task.description ? (
-                      <Text style={[styles.taskRowDesc, { color: currentTheme.secondaryText }]} numberOfLines={1}>
-                        {task.description}
-                      </Text>
-                    ) : null}
-                  </View>
+                      <MaterialCommunityIcons name="close" size={12} color={currentTheme.onPrimary} />
+                    </TouchableOpacity>
 
-                  <TouchableOpacity
-                    onPress={() =>
-                      showConfirmation(
-                        `Delete "${task.title}"?`,
-                        () => deleteTask(task.id),
-                        () => {}
-                      )
-                    }
-                  >
-                    <MaterialCommunityIcons name="trash-can-outline" size={18} color={currentTheme.error || "#F44336"} />
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </View>
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={[
+                          styles.taskRowTitle,
+                          {
+                            color: currentTheme.secondaryText,
+                            textDecorationLine: "line-through",
+                            opacity: 0.6
+                          }
+                        ]}
+                      >
+                        {task.title}
+                      </Text>
+                      {task.description ? (
+                        <Text style={[styles.taskRowDesc, { color: currentTheme.secondaryText }]} numberOfLines={1}>
+                          {task.description}
+                        </Text>
+                      ) : null}
+                    </View>
+
+                    <TouchableOpacity
+                      onPress={() =>
+                        showConfirmation(
+                          `Delete "${task.title}"?`,
+                          () => deleteTask(task.id),
+                          () => {}
+                        )
+                      }
+                    >
+                      <MaterialCommunityIcons name="trash-can-outline" size={18} color={currentTheme.error || "#F44336"} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
           </LiquidGlassCard>
         )}
 
@@ -767,5 +801,19 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     fontFamily: "JetBrainsMono-Bold",
     letterSpacing: 1,
+  },
+  taskQueueCard: {
+    borderWidth: 2,
+    overflow: "hidden",
+  },
+  taskQueueHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+  },
+  taskQueueTitle: {
+    fontSize: 11,
+    fontFamily: "JetBrainsMono-Bold",
+    fontWeight: "900",
   },
 });

@@ -146,31 +146,23 @@ const App = () => {
   const initializeApp = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Run one-time migration from flat Notes/ to multi-vault Notes/Vaults/
-      await migrateToVaultSystem();
+      // PHASE 1: Parallelize all critical AsyncStorage reads in one round-trip
+      const [
+        lastVersion,
+        storedUserName,
+        loadedVaults,
+        activeId,
+      ] = await Promise.all([
+        AsyncStorage.getItem("kwestup_last_version"),
+        AsyncStorage.getItem(`kwestup_userName_${STORAGE_VERSION}`),
+        getVaults(),
+        getActiveVaultId(),
+      ]);
 
-      // Load vault metadata
-      const loadedVaults = await getVaults();
       setVaults(loadedVaults);
-      const activeId = await getActiveVaultId();
       const resolvedActiveId = activeId || "default";
       setActiveVaultIdState(resolvedActiveId);
 
-      await initNotesFolder(resolvedActiveId);
-      runDeviceDiagnostics();
-      await runNetworkDiagnostics();
-
-      if (FORCE_CLEAR_ALL_STORAGE) {
-        await clearAllCaches();
-      }
-
-      const lastVersion = await AsyncStorage.getItem("kwestup_last_version");
-      if (lastVersion !== APP_VERSION) {
-        console.log("🔄 Version change detected, clearing caches...");
-        await clearAllCaches();
-      }
-
-      const storedUserName = await AsyncStorage.getItem(`kwestup_userName_${STORAGE_VERSION}`);
       if (storedUserName) {
         setUserName(storedUserName);
         setShowNameDialog(false);
@@ -178,6 +170,30 @@ const App = () => {
         setShowNameDialog(true);
       }
 
+      // PHASE 2: Initialize folder structure (fast local FS op)
+      await initNotesFolder(resolvedActiveId);
+
+      // PHASE 3: Run one-time vault migration (no-op if already migrated)
+      // and version-cache clearing in background — does NOT block UI
+      const backgroundInit = async () => {
+        try {
+          await migrateToVaultSystem();
+          if (FORCE_CLEAR_ALL_STORAGE) {
+            await clearAllCaches();
+          } else if (lastVersion !== APP_VERSION) {
+            console.log("🔄 Version change detected, clearing caches...");
+            await clearAllCaches();
+          }
+          // Network & device diagnostics are purely informational
+          runDeviceDiagnostics();
+          runNetworkDiagnostics();
+        } catch (bgErr) {
+          console.warn("⚠️ Background init step failed (non-critical):", bgErr);
+        }
+      };
+      backgroundInit(); // fire-and-forget
+
+      // Unblock UI immediately after essential setup is done
       setIsInitialized(true);
       setIsLoading(false);
     } catch (error) {
