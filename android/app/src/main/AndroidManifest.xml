@@ -36,7 +36,7 @@
         <data android:scheme="exp+kwestupmobile"/>
       </intent-filter>
     </activity>
-    <receiver android:name=".widget.FocusTimer" android:exported="false" android:label="Focus Timer">
+    <receiver android:name=".widget.FocusTimer" android:exported="true" android:label="Focus Timer">
       <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
         <action android:name="com.omprakashp06.kwestupmobile.WIDGET_CLICK"/>
@@ -45,7 +45,7 @@
       </intent-filter>
       <meta-data android:name="android.appwidget.provider" android:resource="@xml/widgetprovider_focustimer"/>
     </receiver>
-    <receiver android:name=".widget.DailyTasks" android:exported="false" android:label="Daily Tasks">
+    <receiver android:name=".widget.DailyTasks" android:exported="true" android:label="Daily Tasks">
       <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
         <action android:name="com.omprakashp06.kwestupmobile.WIDGET_CLICK"/>
@@ -54,7 +54,7 @@
       </intent-filter>
       <meta-data android:name="android.appwidget.provider" android:resource="@xml/widgetprovider_dailytasks"/>
     </receiver>
-    <receiver android:name=".widget.ImportantTasks" android:exported="false" android:label="Important Tasks">
+    <receiver android:name=".widget.ImportantTasks" android:exported="true" android:label="Important Tasks">
       <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
         <action android:name="com.omprakashp06.kwestupmobile.WIDGET_CLICK"/>
@@ -63,7 +63,7 @@
       </intent-filter>
       <meta-data android:name="android.appwidget.provider" android:resource="@xml/widgetprovider_importanttasks"/>
     </receiver>
-    <receiver android:name=".widget.TasksList" android:exported="false" android:label="Tasks List">
+    <receiver android:name=".widget.TasksList" android:exported="true" android:label="Tasks List">
       <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
         <action android:name="com.omprakashp06.kwestupmobile.WIDGET_CLICK"/>
