@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { ScrollView, View, Text, StyleSheet, TouchableOpacity, Animated, Platform } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -16,6 +16,11 @@ export const FocusTimerScreen = ({
   setShowTimerLockout,
   showConfirmation
 }) => {
+  const [localMinutes, setLocalMinutes] = useState((timerDuration / 60).toString());
+
+  useEffect(() => {
+    setLocalMinutes((timerDuration / 60).toString());
+  }, [timerDuration]);
 
   // Looping neon laser sweep inside the Focus Coach card
   const scanAnim = useRef(new Animated.Value(0)).current;
@@ -68,14 +73,23 @@ export const FocusTimerScreen = ({
   };
 
   const handleDurationChange = (minutes) => {
-    const parsedMinutes = Number.parseInt(minutes, 10);
-    if (!isNaN(parsedMinutes) && parsedMinutes > 0) {
-      const newDuration = parsedMinutes * 60;
-      setTimerDuration(newDuration);
-      if (!isTimerRunning) {
-        setTimerRemaining(newDuration);
+    const cleanMinutes = minutes.replace(/[^0-9]/g, "");
+    setLocalMinutes(cleanMinutes);
+
+    if (cleanMinutes !== "") {
+      const parsedMinutes = Number.parseInt(cleanMinutes, 10);
+      if (parsedMinutes > 0) {
+        const newDuration = parsedMinutes * 60;
+        setTimerDuration(newDuration);
+        if (!isTimerRunning) {
+          setTimerRemaining(newDuration);
+        }
       }
     }
+  };
+
+  const handleBlur = () => {
+    setLocalMinutes((timerDuration / 60).toString());
   };
 
   // Animated second hand rotation
@@ -155,8 +169,9 @@ export const FocusTimerScreen = ({
         <Text style={[styles.durationLabel, { color: currentTheme.text }]}>SET TIMER DURATION:</Text>
         <CustomTextInput
           keyboardType="numeric"
-          value={(timerDuration / 60).toString()}
+          value={localMinutes}
           onChangeText={handleDurationChange}
+          onBlur={handleBlur}
           editable={!isTimerRunning}
           style={styles.durationInput}
           placeholderTextColor={currentTheme.secondaryText}

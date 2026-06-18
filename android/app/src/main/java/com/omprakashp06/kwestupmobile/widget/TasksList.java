@@ -37,6 +37,12 @@ public class TasksList extends RNWidgetProvider {
         super.onUpdate(context, appWidgetManager, appWidgetIds);
     }
 
+    @Override
+    public void onAppWidgetOptionsChanged(Context context, AppWidgetManager appWidgetManager, int appWidgetId, Bundle newOptions) {
+        ensureFallbackSize(context, appWidgetManager, appWidgetId);
+        super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions);
+    }
+
     /**
      * Seeds fallback dimensions directly into AppWidgetManager options so that
      * RNWidgetUtil.getWidgetWidth/Height() returns a non-zero value on first render.
@@ -46,14 +52,16 @@ public class TasksList extends RNWidgetProvider {
         Bundle options = appWidgetManager.getAppWidgetOptions(widgetId);
 
         int minWidth  = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH,  0);
-        int minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0);
+        int maxWidth  = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH,  0);
+        int minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0);
+        int maxHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0);
 
-        if (minWidth <= 0 || minHeight <= 0) {
+        if (minWidth <= 0 || maxWidth <= 0 || minHeight <= 0 || maxHeight <= 0) {
             Bundle newOptions = new Bundle();
-            newOptions.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH,   MIN_WIDTH_DP);
-            newOptions.putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH,   MIN_WIDTH_DP);
-            newOptions.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,  MIN_HEIGHT_DP);
-            newOptions.putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT,  MIN_HEIGHT_DP);
+            newOptions.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH,   minWidth > 0 ? minWidth : MIN_WIDTH_DP);
+            newOptions.putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH,   maxWidth > 0 ? maxWidth : MIN_WIDTH_DP);
+            newOptions.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,  minHeight > 0 ? minHeight : MIN_HEIGHT_DP);
+            newOptions.putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT,  maxHeight > 0 ? maxHeight : MIN_HEIGHT_DP);
             appWidgetManager.updateAppWidgetOptions(widgetId, newOptions);
         }
     }
