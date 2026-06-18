@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { ScrollView, View, Text, TouchableOpacity, Linking, ActivityIndicator, StyleSheet } from "react-native";
+import { ScrollView, View, Text, TouchableOpacity, Linking, ActivityIndicator, StyleSheet, Modal, Alert } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as FileSystem from "expo-file-system";
+import * as DocumentPicker from "expo-document-picker";
 import { LiquidGlassCard } from "../components/LiquidGlassCard";
 import { CustomTextInput } from "../components/CustomTextInput";
 import { CustomSegmentedButtons } from "../components/CustomSegmentedButtons";
@@ -11,6 +12,7 @@ import { QRScannerModal } from "../components/QRScannerModal";
 import { isModelDownloaded, unloadModel, downloadModel } from "../utils/aiService";
 import { APP_VERSION } from "../utils/storage";
 import { checkForUpdates } from "../utils/diagnostics";
+import { exportArchive, importArchive } from "../utils/exportService";
 
 const MODEL_PATH = `${FileSystem.documentDirectory}models/qwen2.5-0.5b-instruct-q4_k_m.gguf`;
 
@@ -67,6 +69,19 @@ export const SettingsScreen = ({
   const [downloadedBytes, setDownloadedBytes] = useState(0);
   const [totalBytes, setTotalBytes] = useState(0);
   const [downloadError, setDownloadError] = useState(null);
+
+  // ── DATA ARCHIVE state ────────────────────────────────────────────────────
+  const [archiveModalVisible, setArchiveModalVisible] = useState(false);
+  const [archiveModalMode, setArchiveModalMode] = useState("export"); // "export" | "import"
+  const [processingMode, setProcessingMode] = useState("export");
+  const [exportPassphrase, setExportPassphrase] = useState("");
+  const [confirmPassphrase, setConfirmPassphrase] = useState("");
+  const [importPassphrase, setImportPassphrase] = useState("");
+  const [archiveProgress, setArchiveProgress] = useState(0);
+  const [archiveProcessing, setArchiveProcessing] = useState(false);
+  const [archiveError, setArchiveError] = useState(null);
+  const [passphraseError, setPassphraseError] = useState(null);
+  const [selectedArchiveFile, setSelectedArchiveFile] = useState(null);
 
   const handleDownloadModel = async () => {
     setIsDownloading(true);
@@ -150,6 +165,113 @@ export const SettingsScreen = ({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setIsScannerVisible(false);
     await handleExecuteSync(config);
+  };
+
+  // ── DATA ARCHIVE handlers ─────────────────────────────────────────────────
+  const handleExportPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setExportPassphrase("");
+    setConfirmPassphrase("");
+    setPassphraseError(null);
+    setArchiveModalMode("export");
+    setArchiveModalVisible(true);
+  };
+
+  const handleImportPress = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "*/*",
+        copyToCacheDirectory: true,
+      });
+      if (!result.canceled && result.assets?.length > 0) {
+        setSelectedArchiveFile(result.assets[0]);
+        setImportPassphrase("");
+        setPassphraseError(null);
+        setArchiveModalMode("import");
+        setArchiveModalVisible(true);
+      }
+    } catch (err) {
+      setArchiveError("Failed to open file picker. Please try again.");
+    }
+  };
+
+  const handleExportConfirm = async () => {
+    if (!exportPassphrase) {
+      setPassphraseError("PASSPHRASE CANNOT BE EMPTY");
+      return;
+    }
+    if (exportPassphrase !== confirmPassphrase) {
+      setPassphraseError("PASSPHRASES DO NOT MATCH");
+      return;
+    }
+    setArchiveModalVisible(false);
+    setProcessingMode("export");
+    setArchiveProcessing(true);
+    setArchiveProgress(0);
+    setArchiveError(null);
+    try {
+      await exportArchive(exportPassphrase, (progress) => {
+        setArchiveProgress(progress);
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (err) {
+      setArchiveError(err.message || "ARCHIVE ERROR: Failed to export.");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setArchiveProcessing(false);
+      setArchiveProgress(0);
+    }
+  };
+
+  const handleImportConfirm = async () => {
+    if (!importPassphrase) {
+      setPassphraseError("PASSPHRASE CANNOT BE EMPTY");
+      return;
+    }
+    if (!selectedArchiveFile) {
+      setPassphraseError("NO ARCHIVE FILE SELECTED");
+      return;
+    }
+    setArchiveModalVisible(false);
+    setProcessingMode("import");
+    setArchiveProcessing(true);
+    setArchiveProgress(0);
+    setArchiveError(null);
+    try {
+      await importArchive(
+        selectedArchiveFile.uri,
+        importPassphrase,
+        (progress) => setArchiveProgress(progress)
+      );
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(
+        "RESTORE COMPLETE",
+        "Archive restored successfully. Please restart the app to reload your data.",
+        [{ text: "OK" }]
+      );
+    } catch (err) {
+      const msg = err.message || "ARCHIVE ERROR";
+      if (msg.includes("INVALID PASSPHRASE") || msg.includes("CORRUPTED ARCHIVE")) {
+        setPassphraseError(msg);
+        setArchiveModalVisible(true);
+      } else {
+        setArchiveError(msg);
+      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setArchiveProcessing(false);
+      setArchiveProgress(0);
+      setSelectedArchiveFile(null);
+    }
+  };
+
+  const handleModalCancel = () => {
+    setArchiveModalVisible(false);
+    setPassphraseError(null);
+    setExportPassphrase("");
+    setConfirmPassphrase("");
+    setImportPassphrase("");
   };
 
   return (
@@ -350,6 +472,56 @@ export const SettingsScreen = ({
           )}
         </LiquidGlassCard>
 
+        {/* DATA ARCHIVE Card */}
+        <LiquidGlassCard theme={currentTheme} style={styles.configCard}>
+          <View style={styles.chassisHeader}>
+            <Text style={[styles.chassisTitle, { color: currentTheme.text }]}>DATA ARCHIVE.sys</Text>
+          </View>
+
+          <Text style={[styles.sysDescText, { color: currentTheme.secondaryText }]}>
+            Packs all vaults, notes, tasks, birthdays, and preferences into a single AES-256 encrypted .kwestup backup file.
+          </Text>
+
+          {archiveError && (
+            <View style={[styles.archiveErrorBanner, { borderColor: currentTheme.error, backgroundColor: currentTheme.error + "22" }]}>
+              <Text style={[styles.archiveErrorText, { color: currentTheme.error }]}>
+                {archiveError}
+              </Text>
+              <TouchableOpacity onPress={() => setArchiveError(null)}>
+                <MaterialCommunityIcons name="close" size={16} color={currentTheme.error} />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {archiveProcessing ? (
+            <View style={styles.archiveProgressContainer}>
+              <View style={[styles.progressBarTrack, { backgroundColor: currentTheme.border }]}>
+                <View style={[styles.progressBarFill, { backgroundColor: currentTheme.primary, width: `${Math.round(archiveProgress * 100)}%` }]} />
+              </View>
+              <Text style={[styles.archiveProgressLabel, { color: currentTheme.secondaryText }]}>
+                {processingMode === "export"
+                  ? (archiveProgress < 0.5 ? "COLLECTING DATA..." : archiveProgress < 0.8 ? "ENCRYPTING..." : "SHARING...")
+                  : (archiveProgress < 0.3 ? "READING ARCHIVE..." : archiveProgress < 0.6 ? "DECRYPTING..." : "RESTORING DATA...")}
+                {"  "}{Math.round(archiveProgress * 100)}%
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.archiveButtonRow}>
+              <CustomButton
+                title="EXPORT ENCRYPTED"
+                onPress={handleExportPress}
+                style={styles.archiveButton}
+              />
+              <CustomButton
+                title="RESTORE BACKUP"
+                onPress={handleImportPress}
+                variant="outline"
+                style={styles.archiveButton}
+              />
+            </View>
+          )}
+        </LiquidGlassCard>
+
         {/* 5. Reset Data Section */}
         <LiquidGlassCard theme={currentTheme} style={[styles.configCard, { borderColor: currentTheme.error }]}>
           <View style={[styles.chassisHeader, { borderBottomColor: currentTheme.error }]}>
@@ -433,6 +605,80 @@ export const SettingsScreen = ({
         onConnectionScanned={handleScannedConnection}
         currentTheme={currentTheme}
       />
+
+      {/* DATA ARCHIVE Passphrase Modal */}
+      <Modal
+        visible={archiveModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={handleModalCancel}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.archiveModalContent, { backgroundColor: currentTheme.cardBackground, borderColor: currentTheme.border }]}>
+            <Text style={[styles.archiveModalTitle, { color: currentTheme.text }]}>
+              {archiveModalMode === "export" ? "EXPORT ENCRYPTED" : "RESTORE BACKUP"}
+            </Text>
+            <View style={[styles.chassisHeader, { borderBottomColor: currentTheme.border, marginBottom: 16 }]} />
+
+            {archiveModalMode === "import" && (
+              <View style={[styles.archiveWarningBox, { borderColor: currentTheme.error, backgroundColor: currentTheme.error + "18" }]}>
+                <MaterialCommunityIcons name="alert" size={14} color={currentTheme.error} style={{ marginTop: 2 }} />
+                <Text style={[styles.archiveWarningText, { color: currentTheme.error }]}>
+                  WARNING: This will overwrite all existing data. This action cannot be undone.
+                </Text>
+              </View>
+            )}
+
+            {archiveModalMode === "export" ? (
+              <>
+                <Text style={[styles.archiveFieldLabel, { color: currentTheme.text }]}>ENTER PASSPHRASE</Text>
+                <CustomTextInput
+                  value={exportPassphrase}
+                  onChangeText={setExportPassphrase}
+                  secureTextEntry
+                  placeholder="••••••••"
+                />
+                <Text style={[styles.archiveFieldLabel, { color: currentTheme.text, marginTop: 12 }]}>CONFIRM PASSPHRASE</Text>
+                <CustomTextInput
+                  value={confirmPassphrase}
+                  onChangeText={(t) => { setConfirmPassphrase(t); setPassphraseError(null); }}
+                  secureTextEntry
+                  placeholder="••••••••"
+                />
+              </>
+            ) : (
+              <>
+                <Text style={[styles.archiveFieldLabel, { color: currentTheme.text }]}>ENTER PASSPHRASE</Text>
+                <CustomTextInput
+                  value={importPassphrase}
+                  onChangeText={(t) => { setImportPassphrase(t); setPassphraseError(null); }}
+                  secureTextEntry
+                  placeholder="••••••••"
+                />
+              </>
+            )}
+
+            {passphraseError && (
+              <Text style={[styles.archiveFieldError, { color: currentTheme.error }]}>{passphraseError}</Text>
+            )}
+
+            <View style={styles.archiveModalActions}>
+              <CustomButton
+                title="CANCEL"
+                onPress={handleModalCancel}
+                variant="outline"
+                style={styles.archiveModalBtn}
+              />
+              <CustomButton
+                title={archiveModalMode === "export" ? "CONFIRM" : "CONTINUE"}
+                onPress={archiveModalMode === "export" ? handleExportConfirm : handleImportConfirm}
+                style={styles.archiveModalBtn}
+                disabled={archiveModalMode === "export" ? exportPassphrase.length === 0 : importPassphrase.length === 0}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -622,5 +868,99 @@ const styles = StyleSheet.create({
   progressBarFill: {
     height: "100%",
     borderRadius: 0,
+  },
+  // ── DATA ARCHIVE styles ───────────────────────────────────────────────────
+  archiveButtonRow: {
+    gap: 8,
+    marginTop: 4,
+  },
+  archiveButton: {
+    marginTop: 4,
+  },
+  archiveProgressContainer: {
+    marginTop: 12,
+  },
+  archiveProgressLabel: {
+    fontSize: 11,
+    fontFamily: "JetBrainsMono-Bold",
+    letterSpacing: 0.5,
+    marginTop: 6,
+    textTransform: "uppercase",
+  },
+  archiveErrorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderRadius: 6,
+    padding: 8,
+    marginTop: 8,
+    gap: 8,
+  },
+  archiveErrorText: {
+    fontSize: 11,
+    fontFamily: "JetBrainsMono-Regular",
+    flex: 1,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  archiveModalContent: {
+    borderRadius: 8,
+    borderWidth: 2,
+    padding: 20,
+    width: "90%",
+    maxWidth: 400,
+  },
+  archiveModalTitle: {
+    fontSize: 14,
+    fontFamily: "JetBrainsMono-Bold",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    marginBottom: 4,
+  },
+  archiveWarningBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 6,
+    padding: 10,
+    marginBottom: 16,
+  },
+  archiveWarningText: {
+    fontSize: 11,
+    fontFamily: "JetBrainsMono-Regular",
+    flex: 1,
+    lineHeight: 16,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  archiveFieldLabel: {
+    fontSize: 11,
+    fontFamily: "JetBrainsMono-Bold",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    marginBottom: 6,
+  },
+  archiveFieldError: {
+    fontSize: 11,
+    fontFamily: "JetBrainsMono-Bold",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    marginTop: 6,
+  },
+  archiveModalActions: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 20,
+  },
+  archiveModalBtn: {
+    flex: 1,
   },
 });

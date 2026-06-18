@@ -20,6 +20,7 @@
     "@react-native-community/datetimepicker": "8.4.1",
     "@react-navigation/drawer": "^6.6.6",
     "@react-navigation/native": "^6.1.9",
+    "crypto-js": "^4.2.0",
     "expo": "~53.0.20",
     "expo-build-properties": "~0.14.8",
     "expo-camera": "~16.1.11",
@@ -42,7 +43,8 @@
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
-    "use-latest-callback": "^0.2.4"
+    "use-latest-callback": "^0.2.4",
+    "expo-sharing": "~13.1.5"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
