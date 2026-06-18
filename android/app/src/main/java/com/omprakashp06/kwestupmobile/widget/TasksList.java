@@ -2,25 +2,26 @@ package com.omprakashp06.kwestupmobile.widget;
 
 import android.appwidget.AppWidgetManager;
 import android.content.Context;
-import android.content.SharedPreferences;
+import android.os.Bundle;
 
 import com.reactnativeandroidwidget.RNWidgetProvider;
 
 /**
  * TasksList widget provider.
  *
- * Overrides onUpdate to ensure a non-zero fallback dimension is always stored
- * in SharedPreferences before the background render task is enqueued.
+ * Overrides onUpdate to ensure non-zero fallback dimensions are seeded directly
+ * into AppWidgetManager options BEFORE super.onUpdate() reads them.
  *
  * Root cause: On WIDGET_ADDED (and sometimes after reboot), Android hasn't
  * measured the widget yet, so AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH
- * returns 0. The library's WidgetFactory then creates a 0×0 Bitmap, which
- * renders as a completely transparent / invisible widget.
+ * returns 0. The library's RNWidgetUtil.getWidgetWidth() reads directly from
+ * AppWidgetManager.getAppWidgetOptions() — NOT from SharedPreferences — so the
+ * previous SharedPreferences fix had no effect.
  *
- * Fix: Before super.onUpdate() is called (which reads the stored sizes), we
- * write the minimum widget dimensions into the same SharedPreferences store
- * the library uses, but only when the stored value is 0 or absent. This
- * ensures the Bitmap is always at least minWidth × minHeight in size.
+ * Fix: Before super.onUpdate() is called, we call
+ * appWidgetManager.updateAppWidgetOptions() to inject the minimum dimensions
+ * from widgetprovider_taskslist.xml. Values are only written when the existing
+ * options are 0 or absent, so real Android-measured sizes always take precedence.
  */
 public class TasksList extends RNWidgetProvider {
 
@@ -31,28 +32,29 @@ public class TasksList extends RNWidgetProvider {
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         for (int widgetId : appWidgetIds) {
-            ensureFallbackSize(context, widgetId);
+            ensureFallbackSize(context, appWidgetManager, widgetId);
         }
         super.onUpdate(context, appWidgetManager, appWidgetIds);
     }
 
     /**
-     * Writes fallback dimensions into the library's SharedPreferences store
-     * (package.WIDGET_SIZES) only when the existing stored value is 0 or -1
-     * (i.e. the widget hasn't been measured by Android yet).
+     * Seeds fallback dimensions directly into AppWidgetManager options so that
+     * RNWidgetUtil.getWidgetWidth/Height() returns a non-zero value on first render.
+     * Only writes when the stored value is 0 or absent (Android hasn't measured yet).
      */
-    private void ensureFallbackSize(Context context, int widgetId) {
-        String prefName = context.getPackageName() + ".WIDGET_SIZES";
-        SharedPreferences prefs = context.getSharedPreferences(prefName, Context.MODE_PRIVATE);
+    private void ensureFallbackSize(Context context, AppWidgetManager appWidgetManager, int widgetId) {
+        Bundle options = appWidgetManager.getAppWidgetOptions(widgetId);
 
-        int storedWidth  = prefs.getInt(widgetId + "-width",  0);
-        int storedHeight = prefs.getInt(widgetId + "-height", 0);
+        int minWidth  = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH,  0);
+        int minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0);
 
-        if (storedWidth <= 0 || storedHeight <= 0) {
-            prefs.edit()
-                .putInt(widgetId + "-width",  MIN_WIDTH_DP)
-                .putInt(widgetId + "-height", MIN_HEIGHT_DP)
-                .apply();
+        if (minWidth <= 0 || minHeight <= 0) {
+            Bundle newOptions = new Bundle();
+            newOptions.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH,   MIN_WIDTH_DP);
+            newOptions.putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH,   MIN_WIDTH_DP);
+            newOptions.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,  MIN_HEIGHT_DP);
+            newOptions.putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT,  MIN_HEIGHT_DP);
+            appWidgetManager.updateAppWidgetOptions(widgetId, newOptions);
         }
     }
 }
