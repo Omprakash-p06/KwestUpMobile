@@ -13,3 +13,8 @@ These standards apply to all agents (main and subagents) operating in this works
 - **Requirement:** Agents MUST run code quality tests and lint tests before committing changes.
 - **Goal:** Ensure all changes meet project quality standards and do not introduce regressions.
 - **Verification:** All tests and lint checks MUST pass before the agent considers a task or fix "verified".
+
+### 3. Branching & Deployment Strategy
+- **Requirement:** Agents MUST commit and push all intermediate work (including debug sessions, individual phase completions, and task executions) to the `development` branch.
+- **Production Guardrails:** The `production` branch is reserved strictly for major updates, milestones, and fully validated release builds. Only push to `production` once the code compiles cleanly and passes all validation checks.
+
