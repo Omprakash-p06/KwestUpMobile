@@ -12,7 +12,8 @@ export const isUserDataKey = (key) => {
     key.startsWith("kwestup_theme_name_") ||
     key.startsWith("kwestup_timer_state_") ||
     key.startsWith("kwestup_activeVault_") ||
-    key.startsWith("kwestup_vaults_")
+    key.startsWith("kwestup_vaults_") ||
+    key.startsWith("kwestup_widget_")
   );
 };
 

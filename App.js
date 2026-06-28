@@ -123,19 +123,24 @@ const App = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [widgetActiveTab, setWidgetActiveTab] = useState("tasks");
   const appState = useRef(AppState.currentState);
 
   // Throttling refs to prevent Binder flooding on sensitive devices (NothingOS)
   const lastSaveTimeRef = useRef(0);
   const lastWidgetUpdateTimeRef = useRef(0);
 
-  // AppState monitoring to prevent background Binder flooding
+  // AppState monitoring to prevent background Binder flooding and reload widget-changed data
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextAppState) => {
+      if (appState.current.match(/inactive|background/) && nextAppState === "active") {
+        console.log("[App] Came to foreground, reloading state from AsyncStorage...");
+        loadData();
+      }
       appState.current = nextAppState;
     });
     return () => subscription.remove();
-  }, []);
+  }, [loadData]);
 
   // Define currentTheme with fallback to prevent undefined errors
   const resolvedThemeName = resolveThemeName(selectedThemeName);
@@ -225,16 +230,21 @@ const App = () => {
       const timerKey = `kwestup_timer_state_${STORAGE_VERSION}`;
       const themeModeKey = `kwestup_theme_mode_${STORAGE_VERSION}`;
       const themeNameKey = `kwestup_theme_name_${STORAGE_VERSION}`;
-      const [storedDataRaw, storedTimerRaw, storedUserName, storedThemeMode, storedThemeName] = await Promise.all([
+      const [storedDataRaw, storedTimerRaw, storedUserName, storedThemeMode, storedThemeName, storedWidgetTab] = await Promise.all([
         AsyncStorage.getItem(storageKey),
         AsyncStorage.getItem(timerKey),
         AsyncStorage.getItem(`kwestup_userName_${STORAGE_VERSION}`),
         AsyncStorage.getItem(themeModeKey),
         AsyncStorage.getItem(themeNameKey),
+        AsyncStorage.getItem("kwestup_widget_active_tab"),
       ]);
 
       // Resolve active vault for this load cycle
       const activeId = activeVaultId || (await getActiveVaultId()) || "default";
+
+      if (storedWidgetTab) {
+        setWidgetActiveTab(storedWidgetTab);
+      }
 
       if (storedDataRaw) {
         const parsedData = JSON.parse(storedDataRaw);
@@ -495,7 +505,7 @@ const App = () => {
     return () => clearTimeout(staggerTimer);
   }, [timerRemaining, isTimerRunning, dailyTasks, isInitialized]);
 
-  // Update ImportantTasks and TasksList widgets when tasks list changes
+  // Update ImportantTasks widget when tasks list changes
   useEffect(() => {
     if (!isInitialized || Platform.OS !== 'android') return;
 
@@ -513,23 +523,47 @@ const App = () => {
         <ImportantTasksWidget tasks={importantUnfinished} />
       ),
     });
+  }, [tasks, isInitialized]);
+
+  // Update the unified interactive TasksList widget
+  useEffect(() => {
+    if (!isInitialized || Platform.OS !== 'android') return;
+
+    // RULE 1: Only push updates if the app is ACTIVE.
+    if (appState.current !== 'active') return;
 
     // Stagger the TasksList update to split binder transactions
     const tasksListTimer = setTimeout(() => {
-      const tasksListUnfinished = tasks
-        .filter((t) => !t.completed)
-        .slice(0, 8);
+      const sortedTasks = [...tasks].sort((a, b) => {
+        if (a.completed && !b.completed) return 1;
+        if (!a.completed && b.completed) return -1;
+        return 0;
+      }).slice(0, 8);
 
       requestWidgetUpdate({
         widgetName: 'TasksList',
         renderWidget: () => (
-          <TasksListWidget tasks={tasksListUnfinished} />
+          <TasksListWidget
+            activeTab={widgetActiveTab}
+            tasks={sortedTasks}
+            dailyTaskCount={dailyTasks.length}
+            dailyTasksCompleted={dailyTasks.filter(t => t.completed).length}
+            timerRemaining={timerRemaining}
+            isTimerRunning={isTimerRunning}
+          />
         ),
       });
     }, 250);
 
     return () => clearTimeout(tasksListTimer);
-  }, [tasks, isInitialized]);
+  }, [
+    widgetActiveTab,
+    tasks,
+    dailyTasks,
+    timerRemaining,
+    isTimerRunning,
+    isInitialized
+  ]);
 
   const showConfirmation = (message, onConfirm, onCancel = null) => {
     setConfirmationMessage(message);

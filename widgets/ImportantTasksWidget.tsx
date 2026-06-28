@@ -102,7 +102,7 @@ export function ImportantTasksWidget({ tasks }: ImportantTasksWidgetProps) {
                 alignItems: 'center',
                 marginBottom: 6,
               }}
-              clickAction="COMPLETE_TASK"
+              clickAction="TOGGLE_TASK"
               clickActionData={{ taskId: task.id }}
             >
               <TextWidget
