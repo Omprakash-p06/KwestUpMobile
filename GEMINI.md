@@ -15,6 +15,7 @@ These standards apply to all agents (main and subagents) operating in this works
 - **Verification:** All tests and lint checks MUST pass before the agent considers a task or fix "verified".
 
 ### 3. Branching & Deployment Strategy
-- **Requirement:** Agents MUST commit and push all intermediate work (including debug sessions, individual phase completions, and task executions) to the `development` branch.
+- **Requirement:** Agents MUST commit and push all intermediate work (including debug sessions, bug fixes, individual phase completions, and task executions) to the `development` branch. The `development` branch must always remain ahead of the `main` (and/or `production`) branch until a proper build has been confirmed and approved by the user.
 - **Production Guardrails:** The `production` branch is reserved strictly for major updates, milestones, and fully validated release builds. Only push to `production` once the code compiles cleanly and passes all validation checks.
+
 
