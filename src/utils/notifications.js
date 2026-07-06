@@ -167,7 +167,7 @@ export async function scheduleCustomBirthdayReminders(birthday) {
   // Extract month and day safely depending on whether year is present
   const month = parseInt(parts[parts.length === 3 ? 1 : 0], 10);
   const day = parseInt(parts[parts.length === 3 ? 2 : 1], 10);
-  const [hours, minutes] = (remindAtTime || "09:00").split(":").map(Number);
+  const [hours, minutes] = (remindAtTime || "23:59").split(":").map(Number);
 
   const notificationIds = [];
 

@@ -27,7 +27,44 @@ const getDailyCompletions = (tasks) => {
   });
 
   const max = Math.max(...counts, 1);
-  return { labels: buckets.map((b) => dayLabels[new Date(b).getDay()]), counts, max };
+  const total = counts.reduce((s, c) => s + c, 0);
+
+  // Streak: count trailing days (today backwards) with at least 1 completion
+  let streak = 0;
+  for (let i = counts.length - 1; i >= 0; i--) {
+    if (counts[i] > 0) streak++;
+    else break;
+  }
+
+  const activeDays = counts.filter((c) => c > 0).length;
+  const completionRate = Math.round((activeDays / DAYS) * 100);
+
+  return { labels: buckets.map((b) => dayLabels[new Date(b).getDay()]), counts, max, total, streak, completionRate };
+};
+
+const computeBirthdayDaysRemaining = (bday) => {
+  const dateStr = bday.birthDate || bday.date || "";
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const parts = dateStr.split("-");
+  let month = 0, day = 1;
+  if (parts.length === 3) {
+    month = parseInt(parts[1], 10) - 1;
+    day = parseInt(parts[2], 10);
+  } else if (parts.length === 2) {
+    month = parseInt(parts[0], 10) - 1;
+    day = parseInt(parts[1], 10);
+  } else return { ...bday, daysRemaining: 999 };
+
+  const currentYear = today.getFullYear();
+  let nextBday = new Date(currentYear, month, day);
+  if (nextBday.getMonth() !== month) nextBday = new Date(currentYear, month, day + 1);
+  if (nextBday < today) {
+    nextBday = new Date(currentYear + 1, month, day);
+    if (nextBday.getMonth() !== month) nextBday = new Date(currentYear + 1, month, day + 1);
+  }
+  const diffDays = Math.ceil((nextBday.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  return { ...bday, daysRemaining: diffDays };
 };
 
 export const DashboardScreen = ({
@@ -43,12 +80,15 @@ export const DashboardScreen = ({
 
   const priorityTasks = tasks.filter(t => !t.completed).slice(0, 5);
 
-  const upcomingBirthdays = [...birthdays]
-    .filter(b => b.daysRemaining !== undefined && b.daysRemaining <= 30)
-    .sort((a, b) => a.daysRemaining - b.daysRemaining)
+  const enrichedBirthdays = [...birthdays]
+    .map(computeBirthdayDaysRemaining)
+    .sort((a, b) => a.daysRemaining - b.daysRemaining);
+
+  const upcomingBirthdays = enrichedBirthdays
+    .filter(b => b.daysRemaining <= 30)
     .slice(0, 5);
 
-  const { labels, counts, max } = getDailyCompletions(tasks);
+  const { labels, counts, max, total, streak, completionRate } = getDailyCompletions(tasks);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
@@ -100,7 +140,7 @@ export const DashboardScreen = ({
           </View>
         </LiquidGlassCard>
 
-        {/* 2. Consistency Graph */}
+        {/* 2. Consistency Metrics */}
         <LiquidGlassCard theme={currentTheme} style={styles.listCard}>
           <View style={styles.listCardHeader}>
             <View style={styles.listTitleContainer}>
@@ -112,26 +152,44 @@ export const DashboardScreen = ({
             </Text>
           </View>
 
+          {/* Stats Row */}
+          <View style={styles.statsRow}>
+            <View style={[styles.statBox, { borderColor: currentTheme.primary + "40", backgroundColor: currentTheme.primary + "10" }]}>
+              <Text style={[styles.statValue, { color: currentTheme.primary }]}>{streak}</Text>
+              <Text style={[styles.statLabel, { color: currentTheme.secondaryText }]}>DAY{`\n`}STREAK</Text>
+            </View>
+            <View style={[styles.statBox, { borderColor: currentTheme.border + "40", backgroundColor: currentTheme.surface }]}>
+              <Text style={[styles.statValue, { color: currentTheme.text }]}>{total}</Text>
+              <Text style={[styles.statLabel, { color: currentTheme.secondaryText }]}>TOTAL{`\n`}DONE</Text>
+            </View>
+            <View style={[styles.statBox, { borderColor: currentTheme.border + "40", backgroundColor: currentTheme.surface }]}>
+              <Text style={[styles.statValue, { color: completionRate >= 70 ? currentTheme.primary : currentTheme.secondaryText }]}>{completionRate}%</Text>
+              <Text style={[styles.statLabel, { color: currentTheme.secondaryText }]}>ACTIVE{`\n`}RATE</Text>
+            </View>
+          </View>
+
+          {/* Bar chart */}
           <View style={styles.graphContainer}>
             {counts.map((count, idx) => {
               const barHeight = (count / max) * 100;
+              const isToday = idx === counts.length - 1;
               return (
                 <View key={idx} style={styles.graphCol}>
-                  <Text style={[styles.graphBarLabel, { color: currentTheme.secondaryText }]}>
-                    {count}
+                  <Text style={[styles.graphBarLabel, { color: isToday ? currentTheme.primary : currentTheme.secondaryText }]}>
+                    {count > 0 ? count : ""}
                   </Text>
-                  <View style={[styles.graphBarWrapper, { borderColor: currentTheme.border + "40" }]}>
+                  <View style={[styles.graphBarWrapper, { borderColor: isToday ? currentTheme.primary + "60" : currentTheme.border + "40" }]}>
                     <View
                       style={[
                         styles.graphBar,
                         {
-                          height: `${Math.max(barHeight, 4)}%`,
-                          backgroundColor: currentTheme.primary,
+                          height: `${Math.max(barHeight, count > 0 ? 8 : 4)}%`,
+                          backgroundColor: isToday ? currentTheme.primary : count > 0 ? currentTheme.primary + "80" : currentTheme.border + "30",
                         },
                       ]}
                     />
                   </View>
-                  <Text style={[styles.graphDayLabel, { color: currentTheme.secondaryText }]}>
+                  <Text style={[styles.graphDayLabel, { color: isToday ? currentTheme.primary : currentTheme.secondaryText, fontWeight: isToday ? "900" : "normal" }]}>
                     {labels[idx]}
                   </Text>
                 </View>
@@ -302,6 +360,30 @@ const rawStyles = {
     fontSize: 9,
     fontFamily: "JetBrainsMono-Bold",
     fontWeight: "900",
+  },
+  statsRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 12,
+  },
+  statBox: {
+    flex: 1,
+    borderWidth: 1,
+    padding: 10,
+    alignItems: "center",
+  },
+  statValue: {
+    fontSize: 22,
+    fontFamily: "JetBrainsMono-Bold",
+    fontWeight: "900",
+    lineHeight: 26,
+  },
+  statLabel: {
+    fontSize: 8,
+    fontFamily: "JetBrainsMono-Regular",
+    textAlign: "center",
+    marginTop: 2,
+    letterSpacing: 0.5,
   },
 };
 

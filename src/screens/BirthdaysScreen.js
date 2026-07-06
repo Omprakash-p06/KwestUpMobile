@@ -17,7 +17,7 @@ export const BirthdaysScreen = ({
 }) => {
   const [newBirthdayName, setNewBirthdayName] = useState("");
   const [newBirthdayDate, setNewBirthdayDate] = useState(null);
-  const [newBirthdayTime, setNewBirthdayTime] = useState(new Date(1970, 0, 1, 9, 0));
+  const [newBirthdayTime, setNewBirthdayTime] = useState(new Date(1970, 0, 1, 23, 59));
   const [advanceReminder, setAdvanceReminder] = useState("none");
   const [includeYear, setIncludeYear] = useState(true);
 
@@ -66,7 +66,7 @@ export const BirthdaysScreen = ({
       // Reset
       setNewBirthdayName("");
       setNewBirthdayDate(null);
-      setNewBirthdayTime(new Date(1970, 0, 1, 9, 0));
+      setNewBirthdayTime(new Date(1970, 0, 1, 23, 59));
       setAdvanceReminder("none");
       setIncludeYear(true);
     }
