@@ -15,6 +15,7 @@ import {
   scheduleDueDateNotification,
   scheduleCustomBirthdayReminders,
 } from "../utils/notifications";
+import { useNavigationState } from "@react-navigation/native";
 
 const Drawer = createDrawerNavigator();
 
@@ -67,6 +68,14 @@ export const AppNavigator = ({
   setActiveNote,
 }) => {
   const { width } = useWindowDimensions();
+  const activeRouteName = useNavigationState((state) => {
+    if (!state) return null;
+    let route = state.routes[state.index];
+    while (route.state) {
+      route = route.state.routes[route.state.index];
+    }
+    return route.name;
+  });
 
   const onTaskCreated = (taskData) => {
     const newTask = {
@@ -274,7 +283,7 @@ export const AppNavigator = ({
         </Drawer.Screen>
       </Drawer.Navigator>
 
-      {!activeNote && (
+      {!activeNote && activeRouteName !== "Settings" && (
         <AIAssistant
           currentTheme={currentTheme}
           noteContent={activeNote ? activeNote.content : ""}

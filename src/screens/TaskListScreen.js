@@ -7,6 +7,7 @@ import { useNavigation } from "@react-navigation/native";
 import { LiquidGlassCard } from "../components/LiquidGlassCard";
 import { CustomTextInput } from "../components/CustomTextInput";
 import { CustomButton } from "../components/CustomButton";
+import { injectFontFamily } from "../theme/styles";
 
 export const TaskListScreen = ({
   tasks = [],
@@ -55,24 +56,7 @@ export const TaskListScreen = ({
     outputRange: ['0deg', '180deg'],
   });
 
-  // AI Task Optimizer scanning loop
-  const scanAnim = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const scan = Animated.loop(
-      Animated.timing(scanAnim, {
-        toValue: 1,
-        duration: 3000,
-        useNativeDriver: false,
-      })
-    );
-    scan.start();
-    return () => scan.stop();
-  }, [scanAnim]);
 
-  const laserY = scanAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0%", "100%"],
-  });
 
   const activeList = taskLists[activeIndex] || taskLists[0] || { id: "default_inbox", name: "My Tasks" };
   const listTasks = tasks.filter((t) => (t.listId || "default_inbox") === activeList.id);
@@ -160,29 +144,7 @@ export const TaskListScreen = ({
 
       <ScrollView style={styles.contentScroll} contentContainerStyle={styles.scrollPadding}>
         
-        {/* 2. AI Task Optimizer (Glass AI) */}
-        <View style={[styles.glassAi, { borderColor: currentTheme.primary + "40" }]}>
-          <Animated.View style={[styles.scanLine, { top: laserY, backgroundColor: currentTheme.primary, shadowColor: currentTheme.primary }]} />
-          <View style={styles.glassAiInner}>
-            <View>
-              <View style={styles.glassAiHeader}>
-                <MaterialCommunityIcons name="auto-fix" size={18} color={currentTheme.primary} style={{ marginRight: 6 }} />
-                <Text style={[styles.glassAiTitle, { color: currentTheme.text }]}>AI_TASK_OPTIMIZER</Text>
-              </View>
-              <Text style={[styles.glassAiDesc, { color: currentTheme.secondaryText }]}>
-                Analyzing {activeTasks.length} objectives in queue. Systems nominal.
-              </Text>
-            </View>
-            <TouchableOpacity 
-              style={[styles.glassAiBtn, { backgroundColor: currentTheme.primary }]}
-              onPress={() => navigation.navigate("Notes")}
-            >
-              <Text style={[styles.glassAiBtnText, { color: currentTheme.onPrimary }]}>
-                PLAN
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+
 
         {/* 3. Project Chassis Box */}
         <LiquidGlassCard theme={currentTheme} style={styles.projectChassis}>
@@ -503,7 +465,7 @@ export const TaskListScreen = ({
   );
 };
 
-const styles = StyleSheet.create({
+const rawStyles = {
   container: {
     flex: 1,
   },
@@ -816,4 +778,7 @@ const styles = StyleSheet.create({
     fontFamily: "JetBrainsMono-Bold",
     fontWeight: "900",
   },
-});
+};
+
+injectFontFamily(rawStyles);
+const styles = StyleSheet.create(rawStyles);

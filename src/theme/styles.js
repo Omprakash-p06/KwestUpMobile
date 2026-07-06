@@ -57,8 +57,11 @@ const rawStyles = {
   customTextInputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1, // This is now controlled inline
-    borderRadius: 8,
+    borderRadius: 0,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderBottomWidth: 1.5,
+    borderRightWidth: 1.5,
   },
   customTextInputIcon: {
     left: 12,
@@ -818,11 +821,11 @@ const rawStyles = {
   },
 };
 
-const injectFontFamily = (obj) => {
-  const fontRegular = "JetBrainsMono-Regular";
-  const fontMedium = "JetBrainsMono-Medium";
-  const fontSemiBold = "JetBrainsMono-Bold";
-  const fontBold = "JetBrainsMono-Bold";
+export const injectFontFamily = (obj) => {
+  const fontRegular = "HankenGrotesk-Regular";
+  const fontMedium = "HankenGrotesk-Medium";
+  const fontSemiBold = "HankenGrotesk-Bold";
+  const fontBold = "HankenGrotesk-ExtraBold";
 
   const monoRegular = "JetBrainsMono-Regular";
   const monoMedium = "JetBrainsMono-Medium";
@@ -850,7 +853,14 @@ const injectFontFamily = (obj) => {
           key.toLowerCase().includes("code") ||
           key.toLowerCase().includes("logs") ||
           key.toLowerCase().includes("tag") ||
-          key.toLowerCase().includes("version");
+          key.toLowerCase().includes("version") ||
+          key.toLowerCase().includes("badge") ||
+          key.toLowerCase().includes("status") ||
+          key.toLowerCase().includes("stamp") ||
+          key.toLowerCase().includes("velocity") ||
+          key.toLowerCase().includes("console") ||
+          key.toLowerCase().includes("btn") ||
+          key.toLowerCase().includes("button");
 
         if (isMono) {
           if (style.fontWeight && (style.fontWeight === "bold" || style.fontWeight === "700" || style.fontWeight === "800" || style.fontWeight === "900")) {

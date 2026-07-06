@@ -6,6 +6,7 @@ import * as Haptics from "expo-haptics";
 import { LiquidGlassCard } from "../components/LiquidGlassCard";
 import { CustomTextInput } from "../components/CustomTextInput";
 import { scheduleCustomBirthdayReminders, cancelCustomBirthdayReminders } from "../utils/notifications";
+import { injectFontFamily } from "../theme/styles";
 
 export const BirthdaysScreen = ({
   currentTheme,
@@ -366,7 +367,7 @@ export const BirthdaysScreen = ({
   );
 };
 
-const styles = StyleSheet.create({
+const rawStyles = {
   container: {
     flex: 1,
   },
@@ -555,4 +556,7 @@ const styles = StyleSheet.create({
   deleteIconButton: {
     padding: 4,
   },
-});
+};
+
+injectFontFamily(rawStyles);
+const styles = StyleSheet.create(rawStyles);

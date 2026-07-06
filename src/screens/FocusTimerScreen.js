@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LiquidGlassCard } from "../components/LiquidGlassCard";
 import { CustomTextInput } from "../components/CustomTextInput";
+import { injectFontFamily } from "../theme/styles";
 
 export const FocusTimerScreen = ({
   currentTheme,
@@ -248,7 +249,7 @@ export const FocusTimerScreen = ({
   );
 };
 
-const styles = StyleSheet.create({
+const rawStyles = {
   container: {
     flex: 1,
   },
@@ -489,4 +490,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontFamily: "JetBrainsMono-Regular",
   },
-});
+};
+
+injectFontFamily(rawStyles);
+const styles = StyleSheet.create(rawStyles);

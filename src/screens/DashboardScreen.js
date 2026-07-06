@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
 import { LiquidGlassCard } from "../components/LiquidGlassCard";
+import { injectFontFamily } from "../theme/styles";
 
 const DAYS = 7;
 const dayLabels = ["S", "M", "T", "W", "T", "F", "S"];
@@ -184,7 +185,7 @@ export const DashboardScreen = ({
   );
 };
 
-const styles = StyleSheet.create({
+const rawStyles = {
   container: {
     flex: 1,
   },
@@ -302,4 +303,7 @@ const styles = StyleSheet.create({
     fontFamily: "JetBrainsMono-Bold",
     fontWeight: "900",
   },
-});
+};
+
+injectFontFamily(rawStyles);
+const styles = StyleSheet.create(rawStyles);

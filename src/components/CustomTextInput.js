@@ -11,7 +11,10 @@ export const CustomTextInput = ({ label, value, onChangeText, style, icon, theme
       <View style={[
         styles.customTextInputWrapper,
         {
-          borderColor: currentTheme.secondaryText, // Use a more visible color for the border
+          borderTopColor: "#000000",
+          borderLeftColor: "#000000",
+          borderBottomColor: currentTheme.secondaryText ? currentTheme.secondaryText + "40" : "rgba(255, 255, 255, 0.15)",
+          borderRightColor: currentTheme.secondaryText ? currentTheme.secondaryText + "40" : "rgba(255, 255, 255, 0.15)",
           backgroundColor: currentTheme.cardBackground,
         },
       ]}>

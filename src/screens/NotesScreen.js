@@ -796,25 +796,10 @@ export const NotesScreen = ({
                           size={24}
                           color={isActive ? currentTheme.primary : currentTheme.secondaryText}
                         />
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginRight: folder.toLowerCase() !== "uncategorized" ? 28 : 0 }}>
                           <Text style={[styles.folderFileCount, { color: currentTheme.secondaryText }]}>
                             {fileCount < 10 ? `0${fileCount}` : fileCount}_FILES
                           </Text>
-                          {folder.toLowerCase() !== "uncategorized" && (
-                            <TouchableOpacity
-                              onPress={(e) => {
-                                e.stopPropagation();
-                                handleDeleteFolder(folder);
-                              }}
-                              style={{ padding: 4 }}
-                            >
-                              <MaterialCommunityIcons
-                                name="trash-can-outline"
-                                size={16}
-                                color={currentTheme.error}
-                              />
-                            </TouchableOpacity>
-                          )}
                         </View>
                       </View>
                       <Text style={[styles.folderLabel, { color: currentTheme.text }]}>
@@ -825,25 +810,66 @@ export const NotesScreen = ({
                   );
 
                   return (
-                    <TouchableOpacity
-                      key={folder}
-                      onPress={() => setActiveFolder(folder)}
-                      activeOpacity={0.8}
-                    >
+                    <View key={folder} style={folderCardStyle}>
                       {textureUri ? (
                         <ImageBackground
                           source={{ uri: textureUri }}
-                          style={folderCardStyle}
                           imageStyle={{ opacity: isLight ? 0.3 : 0.12, borderRadius: 0 }}
                         >
-                          {folderContent}
+                          <TouchableOpacity
+                            onPress={() => setActiveFolder(folder)}
+                            activeOpacity={0.8}
+                          >
+                            {folderContent}
+                          </TouchableOpacity>
+                          {folder.toLowerCase() !== "uncategorized" && (
+                            <TouchableOpacity
+                              onPress={() => handleDeleteFolder(folder)}
+                              style={{
+                                position: "absolute",
+                                right: 8,
+                                top: 12,
+                                padding: 6,
+                                zIndex: 15,
+                              }}
+                            >
+                              <MaterialCommunityIcons
+                                name="trash-can-outline"
+                                size={16}
+                                color={currentTheme.error}
+                              />
+                            </TouchableOpacity>
+                          )}
                         </ImageBackground>
                       ) : (
-                        <View style={folderCardStyle}>
-                          {folderContent}
+                        <View>
+                          <TouchableOpacity
+                            onPress={() => setActiveFolder(folder)}
+                            activeOpacity={0.8}
+                          >
+                            {folderContent}
+                          </TouchableOpacity>
+                          {folder.toLowerCase() !== "uncategorized" && (
+                            <TouchableOpacity
+                              onPress={() => handleDeleteFolder(folder)}
+                              style={{
+                                position: "absolute",
+                                right: 8,
+                                top: 12,
+                                padding: 6,
+                                zIndex: 15,
+                              }}
+                            >
+                              <MaterialCommunityIcons
+                                name="trash-can-outline"
+                                size={16}
+                                color={currentTheme.error}
+                              />
+                            </TouchableOpacity>
+                          )}
                         </View>
                       )}
-                    </TouchableOpacity>
+                    </View>
                   );
                 })}
               </View>

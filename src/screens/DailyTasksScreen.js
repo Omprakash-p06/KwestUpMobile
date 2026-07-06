@@ -8,6 +8,7 @@ import { useNavigation } from "@react-navigation/native";
 import { LiquidGlassCard } from "../components/LiquidGlassCard";
 import { scheduleDailyTaskNotification, cancelDueDateNotification } from "../utils/notifications";
 import { CustomTextInput } from "../components/CustomTextInput";
+import { injectFontFamily } from "../theme/styles";
 
 export const DailyTasksScreen = ({
   currentTheme,
@@ -25,24 +26,7 @@ export const DailyTasksScreen = ({
   const [tempTime, setTempTime] = useState(new Date());
   const today = new Date().toISOString().slice(0, 10);
 
-  // AI activator sweep animation
-  const scanAnim = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const scan = Animated.loop(
-      Animated.timing(scanAnim, {
-        toValue: 1,
-        duration: 3000,
-        useNativeDriver: false,
-      })
-    );
-    scan.start();
-    return () => scan.stop();
-  }, [scanAnim]);
 
-  const laserY = scanAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0%", "100%"],
-  });
 
   const addDailyTask = () => {
     if (newTaskName.trim()) {
@@ -243,30 +227,6 @@ export const DailyTasksScreen = ({
         {/* Side Actions Area */}
         <View style={styles.sideArea}>
           
-          {/* 1. AI Activator Button */}
-          <TouchableOpacity
-            style={[styles.aiActivator, { backgroundColor: currentTheme.primary, borderColor: currentTheme.border }]}
-            activeOpacity={0.9}
-            onPress={() => navigation.navigate("Notes")}
-          >
-            <Animated.View style={[styles.scanLine, { top: laserY, backgroundColor: currentTheme.onPrimary }]} />
-            <View style={styles.aiActivatorInner}>
-              <MaterialCommunityIcons 
-                name="robot-outline" 
-                size={24} 
-                color={currentTheme.onPrimary} 
-              />
-              <Text 
-                style={[
-                  styles.aiActivatorText, 
-                  { color: currentTheme.onPrimary }
-                ]}
-              >
-                AI ASSIST_ACTIVATE
-              </Text>
-            </View>
-          </TouchableOpacity>
-
           {/* 2. Insights Card (Brushed Metal) */}
           <View style={[styles.insightsCard, { backgroundColor: currentTheme.cardBackground, borderColor: currentTheme.border }]}>
             <View style={styles.insightsHeader}>
@@ -386,7 +346,7 @@ export const DailyTasksScreen = ({
   );
 };
 
-const styles = StyleSheet.create({
+const rawStyles = {
   container: {
     flex: 1,
   },
@@ -695,4 +655,7 @@ const styles = StyleSheet.create({
     fontFamily: "JetBrainsMono-Bold",
     fontWeight: "900",
   },
-});
+};
+
+injectFontFamily(rawStyles);
+const styles = StyleSheet.create(rawStyles);

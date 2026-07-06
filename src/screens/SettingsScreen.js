@@ -13,6 +13,7 @@ import { isModelDownloaded, unloadModel, downloadModel } from "../utils/aiServic
 import { APP_VERSION } from "../utils/storage";
 import { checkForUpdates } from "../utils/diagnostics";
 import { exportArchive, importArchive } from "../utils/exportService";
+import { injectFontFamily } from "../theme/styles";
 
 const MODEL_PATH = `${FileSystem.documentDirectory}models/qwen2.5-0.5b-instruct-q4_k_m.gguf`;
 
@@ -683,7 +684,7 @@ export const SettingsScreen = ({
   );
 };
 
-const styles = StyleSheet.create({
+const rawStyles = {
   container: {
     flex: 1,
   },
@@ -963,4 +964,7 @@ const styles = StyleSheet.create({
   archiveModalBtn: {
     flex: 1,
   },
-});
+};
+
+injectFontFamily(rawStyles);
+const styles = StyleSheet.create(rawStyles);

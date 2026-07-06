@@ -5,6 +5,7 @@ import { LiquidGlassCard } from '../components/LiquidGlassCard';
 import { LiquidGlassBackground } from '../components/LiquidGlassBackground';
 import { CustomTextInput } from '../components/CustomTextInput';
 import { TaskCard } from '../components/TaskCard';
+import { injectFontFamily } from "../theme/styles";
 
 export const SearchScreen = ({
   currentTheme,
@@ -182,7 +183,7 @@ export const SearchScreen = ({
   );
 };
 
-const styles = StyleSheet.create({
+const rawStyles = {
   searchHeader: {
     padding: 16,
     paddingTop: 8,
@@ -236,4 +237,7 @@ const styles = StyleSheet.create({
     fontFamily: 'JetBrainsMono-Regular',
     fontSize: 12,
   },
-});
+};
+
+injectFontFamily(rawStyles);
+const styles = StyleSheet.create(rawStyles);
