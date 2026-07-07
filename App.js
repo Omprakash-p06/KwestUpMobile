@@ -45,7 +45,6 @@ import { migrateToVaultSystem, getVaults, getActiveVaultId, setActiveVaultId } f
 
 // Utility imports
 import { APP_VERSION, STORAGE_VERSION, clearAllCaches, migrateUserDataIfNeeded } from "./src/utils/storage";
-import { runDeviceDiagnostics, runNetworkDiagnostics, checkForUpdates, DEBUG_MODE } from "./src/utils/diagnostics";
 import {
   requestNotificationPermissions,
   scheduleDailyTaskNotification,
@@ -56,6 +55,7 @@ import {
   scheduleCustomBirthdayReminders
 } from "./src/utils/notifications";
 import { performSync } from "./src/utils/syncService";
+import { runDeviceDiagnostics, runNetworkDiagnostics, checkForUpdates, sendTelemetryEvent, DEBUG_MODE } from "./src/utils/diagnostics";
 import { loadBillingData, saveBillingData } from "./src/utils/billingStorage";
 import { requestWidgetUpdate } from 'react-native-android-widget';
 import { FocusTimerWidget } from './widgets/FocusTimerWidget';
@@ -121,6 +121,8 @@ const App = () => {
   const [activeVaultId, setActiveVaultIdState] = useState("default");
   const [activeNote, setActiveNote] = useState(null);
 
+  const [telemetryEnabled, setTelemetryEnabled] = useState(false);
+  const [showTelemetryDialog, setShowTelemetryDialog] = useState(false);
   const [billingData, setBillingData] = useState({ transactions: [], budgets: [], recurringBills: [], currency: "₹" });
   const [isInitialized, setIsInitialized] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
@@ -153,17 +155,18 @@ const App = () => {
   const initializeApp = useCallback(async () => {
     setIsLoading(true);
     try {
-      // PHASE 1: Parallelize all critical AsyncStorage reads in one round-trip
       const [
         lastVersion,
         storedUserName,
         loadedVaults,
         activeId,
+        storedTelemetry,
       ] = await Promise.all([
         AsyncStorage.getItem("kwestup_last_version"),
         AsyncStorage.getItem(`kwestup_userName_${STORAGE_VERSION}`),
         getVaults(),
         getActiveVaultId(),
+        AsyncStorage.getItem("kwestup_telemetry_optin"),
       ]);
 
       setVaults(loadedVaults);
@@ -173,8 +176,19 @@ const App = () => {
       if (storedUserName) {
         setUserName(storedUserName);
         setShowNameDialog(false);
+        if (storedTelemetry === null) {
+          setShowTelemetryDialog(true);
+        }
       } else {
         setShowNameDialog(true);
+      }
+
+      if (storedTelemetry !== null) {
+        const isOptIn = storedTelemetry === "true";
+        setTelemetryEnabled(isOptIn);
+        if (isOptIn) {
+          sendTelemetryEvent("launch");
+        }
       }
 
       // PHASE 2: Initialize folder structure (fast local FS op)
@@ -994,6 +1008,8 @@ const App = () => {
                 setActiveNote={setActiveNote}
                 billingData={billingData}
                 setBillingData={setBillingData}
+                telemetryEnabled={telemetryEnabled}
+                setTelemetryEnabled={setTelemetryEnabled}
               />
             </NavigationContainer>
 
@@ -1053,14 +1069,61 @@ const App = () => {
                 <View style={styles.dialogActions}>
                   <CustomButton
                     title="Continue"
-                    onPress={() => {
+                    onPress={async () => {
                       if (userName.trim()) {
                         setShowNameDialog(false);
+                        const optin = await AsyncStorage.getItem("kwestup_telemetry_optin");
+                        if (optin === null) {
+                          setShowTelemetryDialog(true);
+                        }
                       }
                     }}
                     color={currentTheme.primary}
                     style={styles.dialogButton}
                     disabled={!userName.trim()}
+                  />
+                </View>
+              </View>
+            </Modal>
+
+            {/* Telemetry Opt-in Dialog */}
+            <Modal
+              isVisible={showTelemetryDialog}
+              onBackdropPress={() => {}}
+              style={styles.modalOverlay}
+            >
+              <View style={[styles.dialogContent, { backgroundColor: currentTheme.cardBackground }]}>
+                <Text style={[styles.dialogTitle, { color: currentTheme.text }]}>Anonymous Telemetry</Text>
+                <Text style={[styles.dialogMessage, { color: currentTheme.secondaryText, marginBottom: 14 }]}>
+                  To help us count active installations and improve the app, KwestUp can anonymously track app launches and OS platforms. No personal data, notes, or files are ever sent.
+                  {"\n\n"}
+                  Do you want to enable anonymous usage telemetry? You can toggle this setting in the configuration panel at any time.
+                </Text>
+                <View style={styles.dialogActions}>
+                  <CustomButton
+                    title="ALLOW (OPT IN)"
+                    onPress={async () => {
+                      await AsyncStorage.setItem("kwestup_telemetry_optin", "true");
+                      setTelemetryEnabled(true);
+                      setShowTelemetryDialog(false);
+                      // Trigger launch event after state update completes
+                      setTimeout(() => {
+                        sendTelemetryEvent("launch");
+                      }, 100);
+                    }}
+                    color={currentTheme.primary}
+                    style={[styles.dialogButton, { marginRight: 8 }]}
+                  />
+                  <CustomButton
+                    title="DECLINE (OFFLINE)"
+                    onPress={async () => {
+                      await AsyncStorage.setItem("kwestup_telemetry_optin", "false");
+                      setTelemetryEnabled(false);
+                      setShowTelemetryDialog(false);
+                    }}
+                    outline
+                    color={currentTheme.primary}
+                    style={styles.dialogButton}
                   />
                 </View>
               </View>

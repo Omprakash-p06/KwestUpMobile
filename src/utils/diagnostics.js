@@ -101,3 +101,30 @@ export const runDeviceDiagnostics = () => {
     console.log("🤖 Android Platform Constants:", Platform.constants);
   }
 };
+
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+export const sendTelemetryEvent = async (event, payload = {}) => {
+  try {
+    const isOptIn = await AsyncStorage.getItem("kwestup_telemetry_optin");
+    if (isOptIn !== "true") return;
+
+    await fetch("https://api.kwestup.com/telemetry", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        event,
+        version: APP_VERSION,
+        platform: Platform.OS,
+        timestamp: new Date().toISOString(),
+        ...payload,
+      }),
+    });
+    console.log("📊 Telemetry event sent:", event);
+  } catch (err) {
+    console.log("⚠️ Telemetry send skipped (offline/disabled):", err.message);
+  }
+};
+

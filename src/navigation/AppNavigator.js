@@ -69,6 +69,8 @@ export const AppNavigator = ({
   setActiveNote,
   billingData,
   setBillingData,
+  telemetryEnabled,
+  setTelemetryEnabled,
 }) => {
   const { width } = useWindowDimensions();
   const activeRouteName = useNavigationState((state) => {
@@ -272,6 +274,8 @@ export const AppNavigator = ({
               handleExecuteSync={handleExecuteSync}
               lastSynced={lastSynced}
               isSyncing={isSyncing}
+              telemetryEnabled={telemetryEnabled}
+              setTelemetryEnabled={setTelemetryEnabled}
             />
           )}
         </Drawer.Screen>

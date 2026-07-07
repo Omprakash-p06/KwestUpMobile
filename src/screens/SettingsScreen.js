@@ -14,6 +14,8 @@ import { APP_VERSION } from "../utils/storage";
 import { checkForUpdates } from "../utils/diagnostics";
 import { exportArchive, importArchive } from "../utils/exportService";
 import { injectFontFamily } from "../theme/styles";
+import { CustomSwitch } from "../components/CustomSwitch";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const MODEL_PATH = `${FileSystem.documentDirectory}models/qwen2.5-0.5b-instruct-q4_k_m.gguf`;
 
@@ -29,7 +31,9 @@ export const SettingsScreen = ({
   handleResetData,
   handleExecuteSync,
   lastSynced,
-  isSyncing
+  isSyncing,
+  telemetryEnabled,
+  setTelemetryEnabled
 }) => {
   const [tempUserName, setTempUserName] = useState(userName);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
@@ -353,6 +357,26 @@ export const SettingsScreen = ({
               theme={currentTheme}
             />
           </View>
+        </LiquidGlassCard>
+
+        {/* Telemetry settings card */}
+        <LiquidGlassCard theme={currentTheme} style={styles.configCard}>
+          <View style={styles.chassisHeader}>
+            <Text style={[styles.chassisTitle, { color: currentTheme.text }]}>TELEMETRY_LOG.sys</Text>
+          </View>
+          <Text style={[styles.sysDescText, { color: currentTheme.secondaryText, marginBottom: 12 }]}>
+            Enable anonymous launch statistics to help developers trace usage trends. No sensitive vault text, financial ledger transactions, or organizer assets are ever gathered or transmitted.
+          </Text>
+          <CustomSwitch
+            value={telemetryEnabled}
+            onValueChange={async (val) => {
+              setTelemetryEnabled(val);
+              await AsyncStorage.setItem("kwestup_telemetry_optin", val ? "true" : "false");
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }}
+            label="ANONYMOUS USAGE REPORTING"
+            theme={currentTheme}
+          />
         </LiquidGlassCard>
 
         {/* 3. Data Synchronization Section */}

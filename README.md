@@ -3,7 +3,9 @@
 [![React Native](https://img.shields.io/badge/React_Native-0.79-61dafb?logo=react&logoColor=black)](https://reactnative.dev/)
 [![Expo](https://img.shields.io/badge/Expo-53-000000?logo=expo&logoColor=white)](https://expo.dev/)
 [![Local AI](https://img.shields.io/badge/Local_AI-llama.cpp-red?logo=artificial-intelligence)](https://github.com/ggerganov/llama.cpp)
+[![Downloads](https://img.shields.io/github/downloads/Omprakash-p06/KwestUpMobile/total.svg?color=blue)](https://github.com/Omprakash-p06/KwestUpMobile/releases)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 
 KwestUp Mobile is a local-first personal workspace and productivity app focused on privacy, portability, and fast offline workflows. It provides Markdown-based note files, structured vaults, Google Tasks-style task lists, and local Wi‑Fi sync with a companion desktop app.
 
@@ -148,6 +150,15 @@ To compile the final signed production release package on a local machine:
    ```
    android/app/build/outputs/apk/release/app-release.apk
    ```
+
+---
+
+## 🔒 Telemetry & Privacy Policy
+
+Starting with version `v3.3.0`, KwestUp Mobile includes a fully opt-in, anonymous telemetry system to track app activations and launch events.
+* **Consent First**: The app explicitly requests your permission before tracking launches.
+* **Strict Privacy bounds**: Absolutely no personal identifiers, markdown notes, financial ledgers, or task assets are collected. Only the app version and OS platform are transmitted anonymously.
+* **Control**: You can enable or disable anonymous usage reporting in the configuration panel under Settings at any time.
 
 ---
 
