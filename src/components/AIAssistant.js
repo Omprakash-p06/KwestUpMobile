@@ -48,6 +48,7 @@ export const AIAssistant = ({
   onTaskCreated,
   onBirthdayCreated,
   onUpdateNoteContent,
+  onTransactionCreated,
 }) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [mode, setMode] = useState(null); // "summarize" | "extract" | "downloading" | "needDownload"
@@ -313,6 +314,12 @@ export const AIAssistant = ({
         await onBirthdayCreated(parsed);
         setAiSuccessMessage(`Created Birthday: "${parsed.name}"`);
 
+        setAiState("success");
+        setGlobalCommand("");
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else if (parsed.type === "transaction" && onTransactionCreated) {
+        await onTransactionCreated(parsed);
+        setAiSuccessMessage(`Logged ${parsed.transactionType}: "${parsed.description}" (${parsed.amount})`);
         setAiState("success");
         setGlobalCommand("");
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

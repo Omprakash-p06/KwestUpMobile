@@ -349,6 +349,7 @@ Today's date is ${today}.
 You MUST output ONLY a valid JSON object matching one of these formats:
 1. For tasks: {"type": "task", "title": "Task title", "description": "Optional description", "dueDate": "YYYY-MM-DDTHH:mm:ss.sssZ" (optional)}
 2. For birthdays: {"type": "birthday", "name": "Person's name", "date": "YYYY-MM-DD" or "MM-DD"}
+3. For billing transactions: {"type": "transaction", "transactionType": "expense" or "income", "amount": Number, "description": "Transaction description", "category": "Food" or "Transport" or "Housing" or "Health" or "Salary" or "Other"}
 
 No explanation, no other text — only the JSON object.
 <|im_end|>
@@ -395,6 +396,34 @@ Parse this command: "${command}"
 
   // Robust fallback parsing using regex/keywords if GGUF returns invalid JSON or wrong format
   const lower = command.toLowerCase();
+
+  const expenseKeywords = ["spent", "spend", "bought", "cost", "expense", "paid"];
+  const incomeKeywords = ["earned", "salary", "income", "received", "bonus"];
+  const matchesExpense = expenseKeywords.some(kw => lower.includes(kw));
+  const matchesIncome = incomeKeywords.some(kw => lower.includes(kw));
+
+  if (matchesExpense || matchesIncome) {
+    const transactionType = matchesIncome ? "income" : "expense";
+    const amtMatch = command.match(/\d+(\.\d+)?/);
+    const amount = amtMatch ? parseFloat(amtMatch[0]) : 0;
+    let category = "Other";
+    if (lower.includes("food") || lower.includes("eat") || lower.includes("dinner") || lower.includes("lunch")) category = "Food";
+    else if (lower.includes("car") || lower.includes("bus") || lower.includes("cab") || lower.includes("taxi") || lower.includes("uber") || lower.includes("transport")) category = "Transport";
+    else if (lower.includes("rent") || lower.includes("room") || lower.includes("flat") || lower.includes("house") || lower.includes("housing")) category = "Housing";
+    else if (lower.includes("doctor") || lower.includes("medicine") || lower.includes("hospital") || lower.includes("health") || lower.includes("gym")) category = "Health";
+    else if (lower.includes("salary") || lower.includes("job") || lower.includes("work")) category = "Salary";
+
+    let description = command.replace(/\d+(\.\d+)?/g, "").replace(/(spent|spend|bought|cost|expense|paid|earned|salary|income|received|bonus|on|for|rs|rupees|dollars|\$)/gi, "").trim();
+    description = description.replace(/\s+/g, " ");
+    return {
+      type: "transaction",
+      transactionType,
+      amount,
+      category,
+      description: description || (transactionType === "income" ? "Income" : "Expense")
+    };
+  }
+
   if (lower.includes("birthday") || lower.includes("born") || lower.includes("bday")) {
     // Extract a name: e.g. "Mom's birthday on Oct 10" -> "Mom's birthday" or "Mom"
     let name = command;

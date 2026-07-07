@@ -18,7 +18,9 @@ import { scheduleRecurringBillReminder, cancelRecurringBillReminders } from "./b
 export const encryptBackup = (payloadObj, passphrase) => {
   try {
     const rawText = JSON.stringify(payloadObj);
-    return CryptoJS.AES.encrypt(rawText, passphrase).toString();
+    const salt = CryptoJS.enc.Hex.parse("4b77657374557053616c745f7632"); // Hex string for "KwestUpSalt_v2"
+    const key = CryptoJS.PBKDF2(passphrase, salt, { keySize: 256/32, iterations: 1000 });
+    return CryptoJS.AES.encrypt(rawText, key, { iv: salt }).toString();
   } catch (error) {
     console.error("❌ Encryption failed:", error);
     throw new Error("Failed to encrypt data.");
@@ -33,7 +35,9 @@ export const encryptBackup = (payloadObj, passphrase) => {
  */
 export const decryptBackup = (encryptedText, passphrase) => {
   try {
-    const bytes = CryptoJS.AES.decrypt(encryptedText, passphrase);
+    const salt = CryptoJS.enc.Hex.parse("4b77657374557053616c745f7632");
+    const key = CryptoJS.PBKDF2(passphrase, salt, { keySize: 256/32, iterations: 1000 });
+    const bytes = CryptoJS.AES.decrypt(encryptedText, key, { iv: salt });
     const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
     if (!decryptedText) {
       throw new Error("Invalid password or corrupted file.");

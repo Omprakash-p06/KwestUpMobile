@@ -115,6 +115,21 @@ export const AppNavigator = ({
     setBirthdays((prev) => [...prev, finalBday]);
   };
 
+  const onTransactionCreated = async (txData) => {
+    const { addTransaction } = await import("../utils/billingStorage");
+    const newTx = {
+      id: Date.now().toString(),
+      type: txData.transactionType,
+      amount: txData.amount,
+      category: txData.category,
+      description: txData.description,
+      date: new Date().toISOString().slice(0, 10),
+      createdAt: new Date().toISOString(),
+    };
+    const updated = await addTransaction(newTx);
+    setBillingData(updated);
+  };
+
   return (
     <View style={{ flex: 1 }}>
       <Drawer.Navigator
@@ -318,6 +333,7 @@ export const AppNavigator = ({
           }}
           onTaskCreated={onTaskCreated}
           onBirthdayCreated={onBirthdayCreated}
+          onTransactionCreated={onTransactionCreated}
         />
       )}
     </View>

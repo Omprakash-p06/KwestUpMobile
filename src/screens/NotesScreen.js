@@ -57,6 +57,7 @@ export const NotesScreen = ({
 
   const [isFolderModalVisible, setIsFolderModalVisible] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [selection, setSelection] = useState({ start: 0, end: 0 });
 
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const [editorTab, setEditorTab] = useState("edit"); // "edit" | "preview"
@@ -298,7 +299,20 @@ export const NotesScreen = ({
 
   // 5. Markdown Helper shortcuts
   const insertMarkdown = (syntax) => {
-    setEditContent((prev) => prev + syntax);
+    const start = selection.start || 0;
+    const end = selection.end || 0;
+    const content = editContent || "";
+    let newContent;
+    if (syntax === "**bold**") {
+      const selected = content.slice(start, end);
+      newContent = content.slice(0, start) + "**" + (selected || "bold") + "**" + content.slice(end);
+    } else if (syntax === "*italic*") {
+      const selected = content.slice(start, end);
+      newContent = content.slice(0, start) + "*" + (selected || "italic") + "*" + content.slice(end);
+    } else {
+      newContent = content.slice(0, start) + syntax + content.slice(end);
+    }
+    setEditContent(newContent);
   };
 
   const toggleMarkdownCheckbox = async (lineIndex) => {
@@ -1166,6 +1180,8 @@ export const NotesScreen = ({
                     value={editContent}
                     onChangeText={setEditContent}
                     textAlignVertical="top"
+                    onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
+                    selection={selection}
                   />
 
                   {/* Markdown keyboard accessory toolbar */}
