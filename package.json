@@ -29,8 +29,10 @@
     "expo-file-system": "~18.1.11",
     "expo-font": "~13.3.2",
     "expo-haptics": "~14.1.4",
+    "expo-intent-launcher": "^57.0.0",
     "expo-linear-gradient": "~14.1.5",
     "expo-notifications": "~0.31.4",
+    "expo-sharing": "~13.1.5",
     "expo-status-bar": "~2.2.3",
     "llama.rn": "^0.12.4",
     "react": "19.0.0",
@@ -43,8 +45,7 @@
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
-    "use-latest-callback": "^0.2.4",
-    "expo-sharing": "~13.1.5"
+    "use-latest-callback": "^0.2.4"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

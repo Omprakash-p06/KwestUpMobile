@@ -16,6 +16,8 @@ import { exportArchive, importArchive } from "../utils/exportService";
 import { injectFontFamily } from "../theme/styles";
 import { CustomSwitch } from "../components/CustomSwitch";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as IntentLauncher from 'expo-intent-launcher';
+import * as Sharing from 'expo-sharing';
 
 const MODEL_PATH = `${FileSystem.documentDirectory}models/qwen2.5-0.5b-instruct-q4_k_m.gguf`;
 
@@ -37,6 +39,84 @@ export const SettingsScreen = ({
 }) => {
   const [tempUserName, setTempUserName] = useState(userName);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [isDownloadingUpdate, setIsDownloadingUpdate] = useState(false);
+  const [updateProgress, setUpdateProgress] = useState(0);
+  const [updateDownloadedBytes, setUpdateDownloadedBytes] = useState(0);
+  const [updateTotalBytes, setUpdateTotalBytes] = useState(0);
+  const [updateError, setUpdateError] = useState(null);
+
+  const handleDownloadAndInstallUpdate = async (apkUrl) => {
+    if (!apkUrl) {
+      showConfirmation("Error: No APK file was found in the latest release details on GitHub.", () => {});
+      return;
+    }
+    
+    setIsDownloadingUpdate(true);
+    setUpdateProgress(0);
+    setUpdateDownloadedBytes(0);
+    setUpdateTotalBytes(0);
+    setUpdateError(null);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    const localUri = `${FileSystem.cacheDirectory}kwestup-update.apk`;
+
+    try {
+      // 1. Delete existing file if present to clean up space
+      const info = await FileSystem.getInfoAsync(localUri);
+      if (info.exists) {
+        await FileSystem.deleteAsync(localUri, { idempotent: true });
+      }
+
+      // 2. Setup progress tracker
+      const downloadCallback = (progressData) => {
+        const progress = progressData.totalBytesWritten / progressData.totalBytesExpectedToWrite;
+        setUpdateProgress(progress);
+        setUpdateDownloadedBytes(progressData.totalBytesWritten);
+        setUpdateTotalBytes(progressData.totalBytesExpectedToWrite);
+      };
+
+      const downloadResumable = FileSystem.createDownloadResumable(
+        apkUrl,
+        localUri,
+        {},
+        downloadCallback
+      );
+
+      const downloadResult = await downloadResumable.downloadAsync();
+      if (!downloadResult || downloadResult.status !== 200) {
+        throw new Error(`Download failed with status code ${downloadResult ? downloadResult.status : 'unknown'}`);
+      }
+
+      console.log("📥 APK download complete:", downloadResult.uri);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      // 3. Open Android Package Installer
+      const contentUri = await FileSystem.getContentUriAsync(downloadResult.uri);
+      await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+        data: contentUri,
+        type: 'application/vnd.android.package-archive',
+        flags: IntentLauncher.ActivityFlags.GRANT_READ_URI_PERMISSION,
+      });
+
+    } catch (err) {
+      console.error("❌ APK installation failed:", err);
+      setUpdateError(err.message);
+      
+      // Fallback: share the file using expo-sharing so user can open/install it manually
+      try {
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(localUri);
+        } else {
+          Alert.alert("Installation Error", "Unable to trigger package installer intent. Please manually install the update.");
+        }
+      } catch (shareErr) {
+        console.error("Fallback sharing failed:", shareErr);
+        Alert.alert("Installation Error", "Download failed or package installer could not launch: " + err.message);
+      }
+    } finally {
+      setIsDownloadingUpdate(false);
+    }
+  };
 
   const handleCheckForUpdates = async () => {
     setCheckingUpdate(true);
@@ -44,17 +124,27 @@ export const SettingsScreen = ({
     try {
       const result = await checkForUpdates();
       if (result && result.hasUpdate) {
-        showConfirmation(
-          `A new update is available: ${result.latestVersion}\n\nWould you like to visit the release page to download it?`,
-          () => {
-            if (result.releaseUrl) {
-              Linking.openURL(result.releaseUrl).catch((err) =>
-                console.error("Failed to open update URL:", err)
-              );
-            }
-          },
-          () => {}
-        );
+        if (result.apkUrl) {
+          showConfirmation(
+            `A new update is available: ${result.latestVersion}\n\nWould you like to download and install the update now inside the app?`,
+            () => {
+              handleDownloadAndInstallUpdate(result.apkUrl);
+            },
+            () => {}
+          );
+        } else {
+          showConfirmation(
+            `A new update is available: ${result.latestVersion}\n\nWould you like to visit the release page to download it?`,
+            () => {
+              if (result.releaseUrl) {
+                Linking.openURL(result.releaseUrl).catch((err) =>
+                  console.error("Failed to open update URL:", err)
+                );
+              }
+            },
+            () => {}
+          );
+        }
       } else {
         showConfirmation("Your application is fully updated to the latest release version.", () => {});
       }
@@ -595,7 +685,7 @@ export const SettingsScreen = ({
           <TouchableOpacity 
             style={[styles.aboutItemRow, { borderColor: currentTheme.border + "12" }]}
             onPress={handleCheckForUpdates}
-            disabled={checkingUpdate}
+            disabled={checkingUpdate || isDownloadingUpdate}
           > 
             <Text style={[styles.aboutLabelText, { color: currentTheme.text }]}>CHECK FOR UPDATES</Text>
             {checkingUpdate ? (
@@ -604,6 +694,30 @@ export const SettingsScreen = ({
               <MaterialCommunityIcons name="update" size={20} color={currentTheme.primary} />
             )}
           </TouchableOpacity>
+
+          {isDownloadingUpdate && (
+            <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderColor: currentTheme.border + "12" }}>
+              <View style={[styles.progressBarTrack, { backgroundColor: currentTheme.border }]}>
+                <View
+                  style={[
+                    styles.progressBarFill,
+                    { backgroundColor: currentTheme.primary, width: `${Math.round(updateProgress * 100)}%` },
+                  ]}
+                />
+              </View>
+              <Text style={[styles.consoleLogText, { color: currentTheme.text, marginTop: 6, fontSize: 11, fontFamily: "JetBrainsMono-Regular" }]}>
+                Downloading Update: {Math.round(updateProgress * 100)}% — {formatBytes(updateDownloadedBytes)} / {formatBytes(updateTotalBytes)}
+              </Text>
+            </View>
+          )}
+
+          {updateError && (
+            <View style={{ paddingHorizontal: 16, paddingVertical: 8, borderTopWidth: 1, borderColor: currentTheme.border + "12" }}>
+              <Text style={[styles.consoleLogText, { color: currentTheme.error, fontSize: 11, fontFamily: "JetBrainsMono-Bold" }]}>
+                UPDATE ERROR: {updateError}
+              </Text>
+            </View>
+          )}
         </LiquidGlassCard>
 
       </ScrollView>

@@ -62,6 +62,9 @@ export const checkForUpdates = async (onUpdateAvailable) => {
       const latestVersion = data.tag_name;
       const releaseUrl = data.html_url;
       const releaseNotes = data.body || "";
+      
+      const apkAsset = data.assets?.find(asset => asset.name.endsWith('.apk'));
+      const apkUrl = apkAsset ? apkAsset.browser_download_url : null;
 
       console.log(`Latest release version found: ${latestVersion}`);
       console.log(`Current app version: ${APP_VERSION}`);
@@ -72,10 +75,11 @@ export const checkForUpdates = async (onUpdateAvailable) => {
           onUpdateAvailable({
             latestVersion,
             releaseUrl,
-            releaseNotes
+            releaseNotes,
+            apkUrl
           });
         }
-        return { hasUpdate: true, latestVersion, releaseUrl, releaseNotes };
+        return { hasUpdate: true, latestVersion, releaseUrl, releaseNotes, apkUrl };
       } else {
         console.log("ℹ️ App is up to date.");
       }
