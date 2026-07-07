@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export const APP_VERSION = "v3.2.1";
-export const STORAGE_VERSION = "v6.0";
+export const STORAGE_VERSION = "v7.0";
 
 // Checks if a key contains active user data or settings that should never be deleted on update
 export const isUserDataKey = (key) => {
@@ -13,6 +13,7 @@ export const isUserDataKey = (key) => {
     key.startsWith("kwestup_timer_state_") ||
     key.startsWith("kwestup_activeVault_") ||
     key.startsWith("kwestup_vaults_") ||
+    key.startsWith("kwestup_billing_") ||
     key.startsWith("kwestup_widget_")
   );
 };

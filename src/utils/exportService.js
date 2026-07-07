@@ -4,6 +4,8 @@ import * as Sharing from "expo-sharing";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { isUserDataKey, APP_VERSION, STORAGE_VERSION } from "./storage";
 import { getVaults, getVaultPath, ensureVaultsDir, saveVaults } from "./vaultService";
+import { loadBillingData, saveBillingData } from "./billingStorage";
+import { scheduleRecurringBillReminder, cancelRecurringBillReminders } from "./billingNotifications";
 
 // ─── Encryption Helpers ───────────────────────────────────────────────────────
 
@@ -177,6 +179,7 @@ export const exportArchive = async (passphrase, onProgress) => {
       },
       storage: storageData,
       vaults: vaultData,
+      billing: await loadBillingData(),
     };
 
     // Step 4: Encrypt payload
@@ -311,4 +314,18 @@ export const importArchive = async (filePath, passphrase, onProgress) => {
 
   onProgress?.(1.0);
   console.log("✅ Archive import complete");
+
+  // Step 6: Restore billing data and reschedule bill reminders
+  if (payload.billing) {
+    const billingToRestore = payload.billing;
+    // Cancel stale notification IDs from export device (they won't exist here)
+    for (const bill of billingToRestore.recurringBills || []) {
+      await cancelRecurringBillReminders(bill.notificationIds || []);
+      // Reschedule fresh on this device
+      const notifId = await scheduleRecurringBillReminder(bill, billingToRestore.currency || "₹");
+      bill.notificationIds = notifId ? [notifId] : [];
+    }
+    await saveBillingData(billingToRestore);
+    console.log("✅ Billing data restored and bill reminders rescheduled");
+  }
 };

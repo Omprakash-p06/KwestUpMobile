@@ -56,6 +56,7 @@ import {
   scheduleCustomBirthdayReminders
 } from "./src/utils/notifications";
 import { performSync } from "./src/utils/syncService";
+import { loadBillingData, saveBillingData } from "./src/utils/billingStorage";
 import { requestWidgetUpdate } from 'react-native-android-widget';
 import { FocusTimerWidget } from './widgets/FocusTimerWidget';
 import { DailyTasksWidget } from './widgets/DailyTasksWidget';
@@ -120,6 +121,7 @@ const App = () => {
   const [activeVaultId, setActiveVaultIdState] = useState("default");
   const [activeNote, setActiveNote] = useState(null);
 
+  const [billingData, setBillingData] = useState({ transactions: [], budgets: [], recurringBills: [], currency: "₹" });
   const [isInitialized, setIsInitialized] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -396,6 +398,8 @@ const App = () => {
     if (isInitialized) {
       requestNotificationPermissions();
       loadData();
+      // Load billing data separately (its own storage key)
+      loadBillingData().then(setBillingData);
     }
   }, [isInitialized, loadData]);
 
@@ -424,12 +428,19 @@ const App = () => {
     saveData,
   ]);
 
+  // Save billing data whenever it changes
+  useEffect(() => {
+    if (!isInitialized) return;
+    saveBillingData(billingData);
+  }, [billingData, isInitialized]);
+
   // High-frequency timer state save (minimal payload)
   useEffect(() => {
     if (isDataLoaded) {
       saveTimerState();
     }
   }, [timerRemaining, isTimerRunning, isDataLoaded, saveTimerState]);
+
 
   // Save theme state immediately to separate keys
   useEffect(() => {
@@ -981,6 +992,8 @@ const App = () => {
                 handleSetActiveVault={handleSetActiveVault}
                 activeNote={activeNote}
                 setActiveNote={setActiveNote}
+                billingData={billingData}
+                setBillingData={setBillingData}
               />
             </NavigationContainer>
 

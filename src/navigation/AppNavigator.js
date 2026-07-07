@@ -11,6 +11,7 @@ import { FocusTimerScreen } from "../screens/FocusTimerScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import { SearchScreen } from "../screens/SearchScreen";
 import { NotesScreen } from "../screens/NotesScreen";
+import { BillingScreen } from "../screens/BillingScreen";
 import {
   scheduleDueDateNotification,
   scheduleCustomBirthdayReminders,
@@ -66,6 +67,8 @@ export const AppNavigator = ({
   handleSetActiveVault,
   activeNote,
   setActiveNote,
+  billingData,
+  setBillingData,
 }) => {
   const { width } = useWindowDimensions();
   const activeRouteName = useNavigationState((state) => {
@@ -186,6 +189,16 @@ export const AppNavigator = ({
               setBirthdays={setBirthdays}
               showConfirmation={showConfirmation}
               setConfettiVisible={setConfettiVisible}
+            />
+          )}
+        </Drawer.Screen>
+        <Drawer.Screen name="Billing" options={{ title: "Billing" }}>
+          {() => (
+            <BillingScreen
+              currentTheme={currentTheme}
+              billingData={billingData}
+              setBillingData={setBillingData}
+              showConfirmation={showConfirmation}
             />
           )}
         </Drawer.Screen>

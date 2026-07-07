@@ -13,6 +13,7 @@ export const CustomDrawerContent = (props) => {
     { key: "Dashboard", title: "Dashboard",    icon: "view-dashboard-outline", activeIcon: "view-dashboard",    route: "Dashboard" },
     { key: "Daily",     title: "Daily Tasks",   icon: "bell-outline",            activeIcon: "bell",              route: "Daily" },
     { key: "Birthdays", title: "Birthdays",     icon: "cake-variant-outline",    activeIcon: "cake-variant",      route: "Birthdays" },
+    { key: "Billing",   title: "Billing",       icon: "cash-multiple",           activeIcon: "cash-multiple",     route: "Billing" },
     { key: "Tasks",     title: "Task List",     icon: "clipboard-list-outline",  activeIcon: "clipboard-list",    route: "Tasks" },
     { key: "Notes",     title: "Notes",         icon: "notebook-outline",        activeIcon: "notebook",          route: "Notes" },
     { key: "Focus",     title: "Focus Timer",   icon: "timer-outline",           activeIcon: "timer",             route: "Focus" },
