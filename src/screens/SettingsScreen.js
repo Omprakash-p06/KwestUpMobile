@@ -16,7 +16,6 @@ import { exportArchive, importArchive } from "../utils/exportService";
 import { injectFontFamily } from "../theme/styles";
 import { CustomSwitch } from "../components/CustomSwitch";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as IntentLauncher from 'expo-intent-launcher';
 import * as Sharing from 'expo-sharing';
 
 const MODEL_PATH = `${FileSystem.documentDirectory}models/qwen2.5-0.5b-instruct-q4_k_m.gguf`;
@@ -90,29 +89,22 @@ export const SettingsScreen = ({
       console.log("📥 APK download complete:", downloadResult.uri);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-      // 3. Open Android Package Installer
-      const contentUri = await FileSystem.getContentUriAsync(downloadResult.uri);
-      await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-        data: contentUri,
-        type: 'application/vnd.android.package-archive',
-        flags: IntentLauncher.ActivityFlags.GRANT_READ_URI_PERMISSION,
-      });
+      // 3. Open Android Package Installer via sharing sheet
+      // (expo-intent-launcher requires a native rebuild; expo-sharing is already linked)
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(downloadResult.uri, {
+          mimeType: 'application/vnd.android.package-archive',
+          UTI: 'com.android.package-archive',
+          dialogTitle: 'Install KwestUp Update',
+        });
+      } else {
+        Alert.alert("Download Complete", "APK downloaded successfully. Please open it manually from your Downloads folder to install.");
+      }
 
     } catch (err) {
-      console.error("❌ APK installation failed:", err);
+      console.error("❌ APK download/install failed:", err);
       setUpdateError(err.message);
-      
-      // Fallback: share the file using expo-sharing so user can open/install it manually
-      try {
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(localUri);
-        } else {
-          Alert.alert("Installation Error", "Unable to trigger package installer intent. Please manually install the update.");
-        }
-      } catch (shareErr) {
-        console.error("Fallback sharing failed:", shareErr);
-        Alert.alert("Installation Error", "Download failed or package installer could not launch: " + err.message);
-      }
+      Alert.alert("Update Error", "Download failed: " + err.message);
     } finally {
       setIsDownloadingUpdate(false);
     }
