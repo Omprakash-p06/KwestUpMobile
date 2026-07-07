@@ -68,11 +68,35 @@ export const DailyTasksScreen = ({
       dailyTasks.map((task) => {
         if (task.id === id) {
           const newCompletedStatus = !task.completed;
+          let streak = task.streak || 0;
+          let totalCompleted = task.totalCompleted || 0;
+
+          if (newCompletedStatus) {
+            totalCompleted += 1;
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toISOString().slice(0, 10);
+
+            if (task.lastCompletedDate === yesterdayStr) {
+              streak += 1;
+            } else if (task.lastCompletedDate === today) {
+              // already completed today (e.g. toggled multiple times), keep streak unchanged
+            } else {
+              streak = 1; // new streak started
+            }
+          } else {
+            // untoggled
+            totalCompleted = Math.max(0, totalCompleted - 1);
+            streak = Math.max(0, streak - 1);
+          }
+
           return {
             ...task,
             completed: newCompletedStatus,
             completedDate: newCompletedStatus ? today : null,
             lastCompletedDate: newCompletedStatus ? today : null,
+            streak,
+            totalCompleted,
           };
         }
         return task;
@@ -180,6 +204,11 @@ export const DailyTasksScreen = ({
                       <Text style={[styles.metaSticker, { color: currentTheme.secondaryText, borderColor: currentTheme.border + "40" }]}>
                         {task.time ? `DUE: ${task.time}` : "OBJECTIVE"}
                       </Text>
+                      {task.streak > 0 && (
+                        <Text style={[styles.metaSticker, { color: currentTheme.primary, borderColor: currentTheme.primary + "40", fontWeight: "bold" }]}>
+                          🔥 DAY {task.streak}
+                        </Text>
+                      )}
                       {task.completed && (
                         <Text style={[styles.metaTime, { color: currentTheme.secondaryText }]}>
                           DONE

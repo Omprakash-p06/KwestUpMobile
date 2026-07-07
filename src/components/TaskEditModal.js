@@ -57,6 +57,7 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme, taskLists
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [tempDate, setTempDate] = useState(null);
   const [listId, setListId] = useState('default_inbox');
+  const [recurrence, setRecurrence] = useState('none');
 
   useEffect(() => {
     if (visible) {
@@ -70,6 +71,7 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme, taskLists
         setDueDate(initialDueDate);
         setDueDateText(formatDateToInputString(initialDueDate));
         setListId(task?.listId || 'default_inbox');
+        setRecurrence(task?.recurrence || 'none');
       } else {
         setTitle('');
         setDescription('');
@@ -79,6 +81,7 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme, taskLists
         setDueDate(null);
         setDueDateText('');
         setListId('default_inbox');
+        setRecurrence('none');
       }
     } else {
       setTitle('');
@@ -89,6 +92,7 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme, taskLists
       setDueDate(null);
       setDueDateText('');
       setListId('default_inbox');
+      setRecurrence('none');
     }
   }, [visible, task]);
 
@@ -124,7 +128,8 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme, taskLists
       priority,
       important: priority === 'high',
       listId,
-      dueDate: finalDueDate ? finalDueDate.toISOString() : undefined
+      dueDate: finalDueDate ? finalDueDate.toISOString() : undefined,
+      recurrence,
     });
     onClose();
   };
@@ -273,6 +278,35 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme, taskLists
               theme={theme}
               is24Hour={true}
             />
+          </View>
+
+          <View style={[styles.fieldGroup, { borderBottomColor: theme.border + '30' }]}>
+            <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>RECURRENCE</Text>
+            <View style={styles.priorityRow}>
+              {[
+                { key: 'none', label: 'NONE' },
+                { key: 'daily', label: 'DAILY' },
+                { key: 'weekly', label: 'WEEKLY' },
+                { key: 'monthly', label: 'MONTHLY' },
+              ].map((r) => (
+                <TouchableOpacity
+                  key={r.key}
+                  onPress={() => setRecurrence(r.key)}
+                  style={[
+                    styles.priorityBtn,
+                    {
+                      borderColor: recurrence === r.key ? theme.primary : theme.border,
+                      backgroundColor: recurrence === r.key ? theme.primary + "15" : "transparent",
+                    },
+                  ]}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.priorityBtnText, { color: recurrence === r.key ? theme.primary : theme.secondaryText }]}>
+                    {r.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
           <View style={[styles.fieldGroup, { borderBottomColor: theme.border + '30' }]}>

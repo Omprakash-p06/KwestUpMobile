@@ -57,6 +57,7 @@
               "minHeight": "100dp",
               "targetCellWidth": 3,
               "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
               "previewImage": "./assets/widget-preview/focus-timer-preview.png",
               "updatePeriodMillis": 1800000
             },
@@ -68,6 +69,7 @@
               "minHeight": "100dp",
               "targetCellWidth": 3,
               "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
               "previewImage": "./assets/widget-preview/daily-tasks-preview.png",
               "updatePeriodMillis": 1800000
             },
@@ -79,6 +81,7 @@
               "minHeight": "100dp",
               "targetCellWidth": 3,
               "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
               "previewImage": "./assets/widget-preview/important-tasks-preview.png",
               "updatePeriodMillis": 1800000
             },
@@ -90,6 +93,7 @@
               "minHeight": "180dp",
               "targetCellWidth": 4,
               "targetCellHeight": 3,
+              "resizeMode": "horizontal|vertical",
               "previewImage": "./assets/widget-preview/important-tasks-preview.png",
               "updatePeriodMillis": 1800000
             }

@@ -7,7 +7,7 @@
 
 
 
-    android:resizeMode="none"
+    android:resizeMode="horizontal|vertical"
 
     android:description="@string/widget_focustimer_description"
 

@@ -75,19 +75,50 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
           if (parsed.tasks) {
             const now = new Date().toISOString();
             let isToggled = false;
-            parsed.tasks = parsed.tasks.map((task: any) => {
+            const updatedTasks = [];
+            for (const task of parsed.tasks) {
               if (task.id === taskId) {
                 isToggled = true;
                 const nextCompletedState = !task.completed;
-                return {
+                updatedTasks.push({
                   ...task,
                   completed: nextCompletedState,
                   completedDate: nextCompletedState ? now.slice(0, 10) : undefined,
                   completedAt: nextCompletedState ? now : undefined,
-                };
+                });
+
+                if (nextCompletedState && task.recurrence && task.recurrence !== "none") {
+                  const date = new Date(task.dueDate || now);
+                  if (isNaN(date.getTime())) {
+                    date.setTime(Date.now());
+                  }
+
+                  if (task.recurrence === "daily") {
+                    date.setDate(date.getDate() + 1);
+                  } else if (task.recurrence === "weekly") {
+                    date.setDate(date.getDate() + 7);
+                  } else if (task.recurrence === "monthly") {
+                    date.setMonth(date.getMonth() + 1);
+                  }
+
+                  const spawnedTask = {
+                    ...task,
+                    id: Date.now().toString() + Math.random().toString(36).slice(2),
+                    completed: false,
+                    completedDate: null,
+                    completedAt: null,
+                    dueDate: date.toISOString(),
+                    createdAt: now,
+                    updatedAt: now,
+                    notificationId: null,
+                  };
+                  updatedTasks.push(spawnedTask);
+                }
+              } else {
+                updatedTasks.push(task);
               }
-              return task;
-            });
+            }
+            parsed.tasks = updatedTasks;
 
             if (isToggled) {
               await AsyncStorage.setItem(storageKey, JSON.stringify(parsed));
@@ -147,12 +178,7 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
                 widgetName: 'TasksList',
                 renderWidget: () => (
                   <TasksListWidget
-                    activeTab={globalTab}
                     tasks={sortedTasks}
-                    dailyTaskCount={dailyTasksCount}
-                    dailyTasksCompleted={dailyTasksCompletedCount}
-                    timerRemaining={timerRemaining}
-                    isTimerRunning={isTimerRunning}
                   />
                 ),
               });
@@ -259,12 +285,7 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
         
         props.renderWidget(
           <Widget
-            activeTab={activeTab}
             tasks={sortedTasks}
-            dailyTaskCount={widgetData.dailyTaskCount}
-            dailyTasksCompleted={widgetData.dailyTasksCompleted}
-            timerRemaining={widgetData.timerRemaining}
-            isTimerRunning={widgetData.isTimerRunning}
           />
         );
       }

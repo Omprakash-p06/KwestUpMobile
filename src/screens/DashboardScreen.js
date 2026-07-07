@@ -122,9 +122,19 @@ export const DashboardScreen = ({
                     <Text style={[styles.taskItemText, { color: currentTheme.text }]} numberOfLines={1}>
                       {task.title}
                     </Text>
-                    <Text style={[styles.taskItemMeta, { color: currentTheme.secondaryText }]}>
-                      {task.dueDate ? `DUE: ${new Date(task.dueDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : "LOGGED IN QUEUE"}
-                    </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 2 }}>
+                      <Text style={[styles.taskItemMeta, { color: currentTheme.secondaryText, marginTop: 0 }]}>
+                        {task.dueDate ? `DUE: ${new Date(task.dueDate).toLocaleDateString([], { month: "short", day: "numeric" })}` : "LOGGED IN QUEUE"}
+                      </Text>
+                      {task.recurrence && task.recurrence !== "none" && (
+                        <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: currentTheme.primary + "15", paddingHorizontal: 5, paddingVertical: 1, borderWidth: 1, borderColor: currentTheme.primary + "20" }}>
+                          <MaterialCommunityIcons name="sync" size={8} color={currentTheme.primary} style={{ marginRight: 2 }} />
+                          <Text style={{ fontSize: 8, fontFamily: "JetBrainsMono-Bold", color: currentTheme.primary, letterSpacing: 0.5 }}>
+                            {task.recurrence.toUpperCase()}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
                   <TouchableOpacity
                     onPress={() => {

@@ -264,7 +264,37 @@ const App = () => {
 
       if (storedDataRaw) {
         const parsedData = JSON.parse(storedDataRaw);
-        setDailyTasks(parsedData.dailyTasks || []);
+        const loadedDailyTasks = parsedData.dailyTasks || [];
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().slice(0, 10);
+
+        const resetDailyTasks = loadedDailyTasks.map((t) => {
+          // If the task was completed on a previous day, reset completion status
+          if (t.completed && t.completedDate !== todayStr) {
+            let streak = t.streak || 0;
+            // If the last completed date was not yesterday (meaning they missed a day), break the streak
+            if (t.lastCompletedDate !== yesterdayStr && t.lastCompletedDate !== todayStr) {
+              streak = 0;
+            }
+            return {
+              ...t,
+              completed: false,
+              completedDate: null,
+              streak,
+            };
+          } else if (!t.completed && t.lastCompletedDate && t.lastCompletedDate !== yesterdayStr && t.lastCompletedDate !== todayStr) {
+            // If they didn't complete it today or yesterday, they broke their streak
+            return {
+              ...t,
+              streak: 0,
+            };
+          }
+          return t;
+        });
+
+        setDailyTasks(resetDailyTasks);
         setBirthdays(parsedData.birthdays || []);
         setTasks(parsedData.tasks || []);
         setTaskLists(parsedData.taskLists || [
@@ -569,12 +599,7 @@ const App = () => {
         widgetName: 'TasksList',
         renderWidget: () => (
           <TasksListWidget
-            activeTab={widgetActiveTab}
             tasks={sortedTasks}
-            dailyTaskCount={dailyTasks.length}
-            dailyTasksCompleted={dailyTasks.filter(t => t.completed).length}
-            timerRemaining={timerRemaining}
-            isTimerRunning={isTimerRunning}
           />
         ),
       });
@@ -582,11 +607,7 @@ const App = () => {
 
     return () => clearTimeout(tasksListTimer);
   }, [
-    widgetActiveTab,
     tasks,
-    dailyTasks,
-    timerRemaining,
-    isTimerRunning,
     isInitialized
   ]);
 
@@ -653,21 +674,56 @@ const App = () => {
 
   const toggleTaskComplete = (id) => {
     console.log("🔄 Task toggle button pressed for task ID:", id);
-    setTasks(
-      tasks.map((task) => {
+    setTasks((currentTasks) => {
+      const updatedTasks = [];
+      for (const task of currentTasks) {
         if (task.id === id) {
           const newCompletedStatus = !task.completed;
           console.log("📊 Toggling task:", task.title || task.name, "from", task.completed, "to", newCompletedStatus);
-          return {
+          updatedTasks.push({
             ...task,
             completed: newCompletedStatus,
             completedDate: newCompletedStatus ? new Date().toISOString().slice(0, 10) : null,
             completedAt: newCompletedStatus ? new Date().toISOString() : null,
-          };
+          });
+
+          // If a recurring task is marked completed, automatically spawn the next recurrence instance
+          if (newCompletedStatus && task.recurrence && task.recurrence !== "none") {
+            const currentDueDate = task.dueDate || new Date().toISOString();
+            const date = new Date(currentDueDate);
+            if (isNaN(date.getTime())) {
+              date.setTime(Date.now());
+            }
+
+            if (task.recurrence === "daily") {
+              date.setDate(date.getDate() + 1);
+            } else if (task.recurrence === "weekly") {
+              date.setDate(date.getDate() + 7);
+            } else if (task.recurrence === "monthly") {
+              date.setMonth(date.getMonth() + 1);
+            }
+
+            const spawnedTask = {
+              ...task,
+              id: Date.now().toString() + Math.random().toString(36).slice(2),
+              completed: false,
+              completedDate: null,
+              completedAt: null,
+              dueDate: date.toISOString(),
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              notificationId: null, // Clear notification since it is a new instance
+            };
+
+            updatedTasks.push(spawnedTask);
+            console.log("🤖 Spawned next recurrence task:", spawnedTask.title, "for date:", spawnedTask.dueDate);
+          }
+        } else {
+          updatedTasks.push(task);
         }
-        return task;
-      })
-    );
+      }
+      return updatedTasks;
+    });
     console.log("✅ Task toggled:", id);
   };
 

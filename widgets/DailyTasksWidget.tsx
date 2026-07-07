@@ -8,16 +8,6 @@ interface DailyTasksWidgetProps {
   dailyTasksCompleted: number;
 }
 
-/**
- * DailyTasksWidget — Android home-screen widget showing daily task completion progress.
- *
- * Pure function — NO hooks, NO React Native components (View, Text).
- * Uses only FlexWidget and TextWidget from react-native-android-widget.
- *
- * Props:
- *   dailyTaskCount      — total number of daily tasks
- *   dailyTasksCompleted — number of completed daily tasks
- */
 export function DailyTasksWidget({ dailyTaskCount, dailyTasksCompleted }: DailyTasksWidgetProps) {
   const progress =
     dailyTaskCount > 0 ? Math.round((dailyTasksCompleted / dailyTaskCount) * 100) : 0;
@@ -31,73 +21,76 @@ export function DailyTasksWidget({ dailyTaskCount, dailyTasksCompleted }: DailyT
       style={{
         height: 'match_parent',
         width: 'match_parent',
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#131313',
-        borderWidth: 2,
-        borderColor: '#ffffff',
-        padding: 16,
+        backgroundColor: '#1b1b1b',
+        borderWidth: 3,
+        borderTopColor: '#3c3c3c',
+        borderLeftColor: '#3c3c3c',
+        borderBottomColor: '#0a0a0a',
+        borderRightColor: '#0a0a0a',
+        padding: 2,
       }}
       accessibilityLabel={`Daily tasks: ${dailyTasksCompleted} of ${dailyTaskCount} completed`}
     >
-      {/* Section label */}
-      <TextWidget
-        text="DAILY TASKS"
+      <FlexWidget
         style={{
-          fontSize: 10,
-          fontFamily: 'monospace',
-          color: '#888888',
-          letterSpacing: 2,
-          marginBottom: 4,
+          height: 'match_parent',
+          width: 'match_parent',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: '#121212',
+          borderWidth: 1.5,
+          borderTopColor: '#0a0a0a',
+          borderLeftColor: '#0a0a0a',
+          borderBottomColor: '#2b2b2b',
+          borderRightColor: '#2b2b2b',
+          padding: 10,
         }}
-      />
-
-      {/* Completed / Total count */}
-      <TextWidget
-        text={`${dailyTasksCompleted} / ${dailyTaskCount}`}
-        style={{
-          fontSize: 32,
-          fontFamily: 'monospace',
-          fontWeight: 'bold',
-          color: '#ffffff',
-          marginBottom: 6,
-        }}
-      />
-
-      {/* Progress bar and Percentage label */}
-      {dailyTaskCount > 0 ? (
+      >
         <TextWidget
-          text={progressBar}
+          text="DAILY OBJECTIVES"
           style={{
-            fontSize: 12,
+            fontSize: 9,
             fontFamily: 'monospace',
+            color: '#888888',
+            letterSpacing: 2,
+            marginBottom: 2,
+          }}
+        />
+
+        <TextWidget
+          text={`${dailyTasksCompleted} / ${dailyTaskCount}`}
+          style={{
+            fontSize: 32,
+            fontFamily: 'monospace',
+            fontWeight: 'bold',
             color: '#ffffff',
             marginBottom: 4,
           }}
         />
-      ) : null}
 
-      {dailyTaskCount > 0 ? (
+        {dailyTaskCount > 0 ? (
+          <TextWidget
+            text={progressBar}
+            style={{
+              fontSize: 10,
+              fontFamily: 'monospace',
+              color: '#8e7bef',
+              marginBottom: 2,
+            }}
+          />
+        ) : null}
+
         <TextWidget
-          text={`${progress}% COMPLETE`}
+          text={dailyTaskCount > 0 ? `${progress}% COMPLETE` : 'NO OBJECTIVES CHARGED'}
           style={{
-            fontSize: 10,
+            fontSize: 9,
             fontFamily: 'monospace',
-            color: '#888888',
+            color: '#666666',
             letterSpacing: 1,
           }}
         />
-      ) : (
-        <TextWidget
-          text="NO TASKS ACTIVE"
-          style={{
-            fontSize: 10,
-            fontFamily: 'monospace',
-            color: '#888888',
-            letterSpacing: 1,
-          }}
-        />
-      )}
+      </FlexWidget>
     </FlexWidget>
   );
 }

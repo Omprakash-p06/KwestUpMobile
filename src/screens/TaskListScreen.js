@@ -213,9 +213,19 @@ export const TaskListScreen = ({
                         {task.description}
                       </Text>
                     ) : null}
-                    <Text style={[styles.taskRowMeta, { color: currentTheme.secondaryText }]}>
-                      PRIORITY: {(task.priority || (task.important ? "high" : "normal")).toUpperCase()}
-                    </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+                      <Text style={[styles.taskRowMeta, { color: currentTheme.secondaryText, marginTop: 0 }]}>
+                        PRIORITY: {(task.priority || (task.important ? "high" : "normal")).toUpperCase()}
+                      </Text>
+                      {task.recurrence && task.recurrence !== "none" && (
+                        <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: currentTheme.primary + "15", paddingHorizontal: 6, paddingVertical: 1.5, borderWidth: 1, borderColor: currentTheme.primary + "30" }}>
+                          <MaterialCommunityIcons name="sync" size={10} color={currentTheme.primary} style={{ marginRight: 2 }} />
+                          <Text style={{ fontSize: 9, fontFamily: "JetBrainsMono-Bold", color: currentTheme.primary, letterSpacing: 0.5 }}>
+                            {task.recurrence.toUpperCase()}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
 
                   <TouchableOpacity
