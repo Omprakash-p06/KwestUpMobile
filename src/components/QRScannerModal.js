@@ -199,6 +199,7 @@ export const QRScannerModal = ({ isVisible, onClose, onConnectionScanned, curren
                       keyboardType="numeric"
                       autoCapitalize="none"
                       autoCorrect={false}
+                      selectionColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary + "40"}
                     />
                   </View>
                 </View>
@@ -217,6 +218,7 @@ export const QRScannerModal = ({ isVisible, onClose, onConnectionScanned, curren
                       keyboardType="number-pad"
                       autoCapitalize="none"
                       autoCorrect={false}
+                      selectionColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary + "40"}
                     />
                   </View>
                 </View>
@@ -235,6 +237,7 @@ export const QRScannerModal = ({ isVisible, onClose, onConnectionScanned, curren
                       secureTextEntry
                       autoCapitalize="none"
                       autoCorrect={false}
+                      selectionColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary + "40"}
                     />
                   </View>
                 </View>

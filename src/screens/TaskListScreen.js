@@ -259,6 +259,7 @@ export const TaskListScreen = ({
                 style={[styles.quickAddInput, { color: currentTheme.text }]}
                 placeholder="ADD OBJECTIVE..."
                 placeholderTextColor={currentTheme.secondaryText + "60"}
+                selectionColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary + "40"}
                 onSubmitEditing={(e) => {
                   handleAddQuickTask(e.nativeEvent.text);
                   e.currentTarget.clear();

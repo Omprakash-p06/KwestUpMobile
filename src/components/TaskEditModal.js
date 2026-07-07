@@ -172,6 +172,7 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme, taskLists
               placeholder="OBJECTIVE TITLE"
               style={[styles.textInput, { borderColor: theme.border, color: theme.text }]}
               placeholderTextColor={theme.secondaryText}
+              selectionColor={theme.primary === "#FFFFFF" || theme.primary === "#ffffff" ? "#8E7BEF" : theme.primary + "40"}
             />
           </View>
 
@@ -184,6 +185,7 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme, taskLists
               style={[styles.textInput, { borderColor: theme.border, color: theme.text, minHeight: 60 }]}
               placeholderTextColor={theme.secondaryText}
               multiline
+              selectionColor={theme.primary === "#FFFFFF" || theme.primary === "#ffffff" ? "#8E7BEF" : theme.primary + "40"}
             />
           </View>
 
@@ -261,6 +263,7 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme, taskLists
                 placeholder="YYYY-MM-DD HH:MM"
                 style={[styles.dateInput, { borderColor: theme.border, color: theme.text }]}
                 placeholderTextColor={theme.secondaryText}
+                selectionColor={theme.primary === "#FFFFFF" || theme.primary === "#ffffff" ? "#8E7BEF" : theme.primary + "40"}
               />
             </View>
             <CustomDatePickerModal
@@ -322,6 +325,7 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme, taskLists
                   placeholder={`SUBTASK ${idx + 1}`}
                   style={[styles.subtaskInput, { borderBottomColor: theme.border, color: theme.text }]}
                   placeholderTextColor={theme.secondaryText}
+                  selectionColor={theme.primary === "#FFFFFF" || theme.primary === "#ffffff" ? "#8E7BEF" : theme.primary + "40"}
                 />
                 <TouchableOpacity onPress={() => handleDeleteSubtask(idx)} style={styles.subtaskDelete}>
                   <MaterialCommunityIcons name="delete" size={18} color={theme.error || '#F44336'} />

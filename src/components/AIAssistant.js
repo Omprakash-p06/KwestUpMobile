@@ -476,6 +476,7 @@ export const AIAssistant = ({
                 onChangeText={setCustomNotePrompt}
                 onSubmitEditing={() => handleAssistCustom(customNotePrompt)}
                 editable={!isInferring}
+                selectionColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary + "40"}
               />
               {customNotePrompt.trim().length > 0 && (
                 <TouchableOpacity
@@ -514,6 +515,7 @@ export const AIAssistant = ({
             }}
             onSubmitEditing={handleQuickCreate}
             editable={aiState !== "parsing"}
+            selectionColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary + "40"}
           />
           {globalCommand.trim().length > 0 && aiState !== "parsing" && (
             <TouchableOpacity

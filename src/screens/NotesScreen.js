@@ -952,6 +952,7 @@ export const NotesScreen = ({
                     placeholderTextColor={currentTheme.secondaryText}
                     value={searchQuery}
                     onChangeText={setSearchQuery}
+                    selectionColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary + "40"}
                   />
                 </View>
                 <TouchableOpacity
@@ -1144,6 +1145,7 @@ export const NotesScreen = ({
                       placeholderTextColor={currentTheme.secondaryText}
                       value={editTitle}
                       onChangeText={setEditTitle}
+                      selectionColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary + "40"}
                     />
 
                     <View style={styles.metaRow}>
@@ -1155,6 +1157,7 @@ export const NotesScreen = ({
                         onChangeText={setEditFolder}
                         placeholder="Folder Name"
                         placeholderTextColor={currentTheme.secondaryText}
+                        selectionColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary + "40"}
                       />
                     </View>
 
@@ -1167,6 +1170,7 @@ export const NotesScreen = ({
                         onChangeText={setEditTags}
                         placeholder="work, idea, draft (comma separated)"
                         placeholderTextColor={currentTheme.secondaryText}
+                        selectionColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary + "40"}
                       />
                     </View>
                   </View>
@@ -1182,6 +1186,7 @@ export const NotesScreen = ({
                     textAlignVertical="top"
                     onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
                     selection={selection}
+                    selectionColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary + "40"}
                   />
 
                   {/* Markdown keyboard accessory toolbar */}
@@ -1297,6 +1302,7 @@ export const NotesScreen = ({
             placeholder="Folder Name"
             placeholderTextColor={currentTheme.secondaryText}
             autoFocus
+            selectionColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary + "40"}
           />
           <View style={styles.dialogActions}>
             <TouchableOpacity style={styles.cancelButton} onPress={() => setIsFolderModalVisible(false)}>
@@ -1330,6 +1336,7 @@ export const NotesScreen = ({
             placeholder="Vault Name"
             placeholderTextColor={currentTheme.secondaryText}
             autoFocus
+            selectionColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary + "40"}
           />
           <View style={styles.dialogActions}>
             <TouchableOpacity
@@ -1373,6 +1380,7 @@ export const NotesScreen = ({
             placeholder="Vault Name"
             placeholderTextColor={currentTheme.secondaryText}
             autoFocus
+            selectionColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary + "40"}
           />
           <View style={styles.dialogActions}>
             <TouchableOpacity

@@ -29,6 +29,7 @@ export const CustomTextInput = ({ label, value, onChangeText, style, icon, theme
           ]}
           placeholder={placeholder || "Enter text"}
           placeholderTextColor={currentTheme.secondaryText}
+          selectionColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary + "40"}
           {...props}
         />
       </View>

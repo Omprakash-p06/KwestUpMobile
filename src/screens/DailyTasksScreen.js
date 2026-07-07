@@ -233,6 +233,7 @@ export const DailyTasksScreen = ({
                 onChangeText={setNewTaskName}
                 placeholder="ADD NEW SYSTEM OBJECTIVE..."
                 placeholderTextColor={currentTheme.secondaryText + "80"}
+                selectionColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary + "40"}
                 onSubmitEditing={addDailyTask}
                 returnKeyType="done"
               />
