@@ -54,6 +54,7 @@ dist/
 *.log
 
 # Build artifacts
+build/
 android/app/build/
 ios/build/
 ios/Pods/
