@@ -3,7 +3,7 @@
 [![React Native](https://img.shields.io/badge/React_Native-0.79-61dafb?logo=react&logoColor=black)](https://reactnative.dev/)
 [![Expo](https://img.shields.io/badge/Expo-53-000000?logo=expo&logoColor=white)](https://expo.dev/)
 [![Local AI](https://img.shields.io/badge/Local_AI-llama.cpp-red?logo=artificial-intelligence)](https://github.com/ggerganov/llama.cpp)
-[![Downloads](https://img.shields.io/github/downloads/Omprakash-p06/KwestUpMobile/total.svg?color=blue)](https://github.com/Omprakash-p06/KwestUpMobile/releases)
+[![Downloads](https://img.shields.io/github/downloads/Omprakash-p06/KwestUpMobile/total.svg?label=Total%20Downloads&color=blue)](https://github.com/Omprakash-p06/KwestUpMobile/releases)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 
