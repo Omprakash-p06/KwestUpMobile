@@ -173,6 +173,7 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme, taskLists
               style={[styles.textInput, { borderColor: theme.border, color: theme.text }]}
               placeholderTextColor={theme.secondaryText}
               selectionColor={theme.primary === "#FFFFFF" || theme.primary === "#ffffff" ? "#8E7BEF" : theme.primary + "40"}
+                  cursorColor={theme.primary === "#FFFFFF" || theme.primary === "#ffffff" ? "#8E7BEF" : theme.primary}
             />
           </View>
 
@@ -186,6 +187,7 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme, taskLists
               placeholderTextColor={theme.secondaryText}
               multiline
               selectionColor={theme.primary === "#FFFFFF" || theme.primary === "#ffffff" ? "#8E7BEF" : theme.primary + "40"}
+                  cursorColor={theme.primary === "#FFFFFF" || theme.primary === "#ffffff" ? "#8E7BEF" : theme.primary}
             />
           </View>
 
@@ -264,6 +266,7 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme, taskLists
                 style={[styles.dateInput, { borderColor: theme.border, color: theme.text }]}
                 placeholderTextColor={theme.secondaryText}
                 selectionColor={theme.primary === "#FFFFFF" || theme.primary === "#ffffff" ? "#8E7BEF" : theme.primary + "40"}
+                  cursorColor={theme.primary === "#FFFFFF" || theme.primary === "#ffffff" ? "#8E7BEF" : theme.primary}
               />
             </View>
             <CustomDatePickerModal
@@ -326,6 +329,7 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme, taskLists
                   style={[styles.subtaskInput, { borderBottomColor: theme.border, color: theme.text }]}
                   placeholderTextColor={theme.secondaryText}
                   selectionColor={theme.primary === "#FFFFFF" || theme.primary === "#ffffff" ? "#8E7BEF" : theme.primary + "40"}
+                  cursorColor={theme.primary === "#FFFFFF" || theme.primary === "#ffffff" ? "#8E7BEF" : theme.primary}
                 />
                 <TouchableOpacity onPress={() => handleDeleteSubtask(idx)} style={styles.subtaskDelete}>
                   <MaterialCommunityIcons name="delete" size={18} color={theme.error || '#F44336'} />

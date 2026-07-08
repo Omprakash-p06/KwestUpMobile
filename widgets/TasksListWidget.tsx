@@ -94,6 +94,7 @@ export function TasksListWidget({
               fontSize: 9,
               fontFamily: 'monospace',
               color: '#888888',
+              marginLeft: 12,
             }}
           />
         </FlexWidget>

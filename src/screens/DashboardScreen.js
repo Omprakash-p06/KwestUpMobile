@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { ScrollView, View, Text, StyleSheet, TouchableOpacity, Animated } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
 import { LiquidGlassCard } from "../components/LiquidGlassCard";
 import { injectFontFamily } from "../theme/styles";
@@ -78,17 +78,37 @@ export const DashboardScreen = ({
 }) => {
   const navigation = useNavigation();
 
-  const priorityTasks = tasks.filter(t => !t.completed).slice(0, 5);
+  // Force a re-render each time the Dashboard screen is focused so
+  // unticking/ticking tasks from other screens always reflects here.
+  const [focusTick, setFocusTick] = useState(0);
+  useFocusEffect(
+    useCallback(() => {
+      setFocusTick((t) => t + 1);
+    }, [])
+  );
 
-  const enrichedBirthdays = [...birthdays]
-    .map(computeBirthdayDaysRemaining)
-    .sort((a, b) => a.daysRemaining - b.daysRemaining);
+  const priorityTasks = useMemo(
+    () => tasks.filter(t => !t.completed).slice(0, 5),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tasks, focusTick]
+  );
 
-  const upcomingBirthdays = enrichedBirthdays
-    .filter(b => b.daysRemaining <= 30)
-    .slice(0, 5);
+  const enrichedBirthdays = useMemo(
+    () => [...birthdays].map(computeBirthdayDaysRemaining).sort((a, b) => a.daysRemaining - b.daysRemaining),
+    [birthdays]
+  );
 
-  const { labels, counts, max, total, streak, completionRate } = getDailyCompletions(tasks);
+  const upcomingBirthdays = useMemo(
+    () => enrichedBirthdays.filter(b => b.daysRemaining <= 30).slice(0, 5),
+    [enrichedBirthdays]
+  );
+
+  // Recompute chart data on every tasks change OR when screen re-focuses
+  const { labels, counts, max, total, streak, completionRate } = useMemo(
+    () => getDailyCompletions(tasks),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tasks, focusTick]
+  );
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>

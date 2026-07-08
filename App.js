@@ -680,20 +680,15 @@ const App = () => {
         if (task.id === id) {
           const newCompletedStatus = !task.completed;
           console.log("📊 Toggling task:", task.title || task.name, "from", task.completed, "to", newCompletedStatus);
-          updatedTasks.push({
-            ...task,
-            completed: newCompletedStatus,
-            completedDate: newCompletedStatus ? new Date().toISOString().slice(0, 10) : null,
-            completedAt: newCompletedStatus ? new Date().toISOString() : null,
-          });
 
-          // If a recurring task is marked completed, automatically spawn the next recurrence instance
-          if (newCompletedStatus && task.recurrence && task.recurrence !== "none") {
+          const isRecurring = task.recurrence && task.recurrence !== "none";
+
+          if (newCompletedStatus && isRecurring) {
+            // For recurring tasks: skip pushing the completed parent (it "disappears"),
+            // and spawn the next occurrence instead. This keeps the list clean.
             const currentDueDate = task.dueDate || new Date().toISOString();
             const date = new Date(currentDueDate);
-            if (isNaN(date.getTime())) {
-              date.setTime(Date.now());
-            }
+            if (isNaN(date.getTime())) date.setTime(Date.now());
 
             if (task.recurrence === "daily") {
               date.setDate(date.getDate() + 1);
@@ -712,11 +707,20 @@ const App = () => {
               dueDate: date.toISOString(),
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
-              notificationId: null, // Clear notification since it is a new instance
+              notificationId: null,
             };
 
             updatedTasks.push(spawnedTask);
             console.log("🤖 Spawned next recurrence task:", spawnedTask.title, "for date:", spawnedTask.dueDate);
+            // Note: the completed parent is intentionally NOT pushed — it vanishes cleanly.
+          } else {
+            // Normal (non-recurring) task: just toggle completion status
+            updatedTasks.push({
+              ...task,
+              completed: newCompletedStatus,
+              completedDate: newCompletedStatus ? new Date().toISOString().slice(0, 10) : null,
+              completedAt: newCompletedStatus ? new Date().toISOString() : null,
+            });
           }
         } else {
           updatedTasks.push(task);
@@ -726,6 +730,7 @@ const App = () => {
     });
     console.log("✅ Task toggled:", id);
   };
+
 
   const deleteTask = (id) => {
     showConfirmation(

@@ -953,6 +953,7 @@ export const NotesScreen = ({
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                     selectionColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary + "40"}
+                    cursorColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary}
                   />
                 </View>
                 <TouchableOpacity
@@ -1146,6 +1147,7 @@ export const NotesScreen = ({
                       value={editTitle}
                       onChangeText={setEditTitle}
                       selectionColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary + "40"}
+                    cursorColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary}
                     />
 
                     <View style={styles.metaRow}>
@@ -1158,6 +1160,7 @@ export const NotesScreen = ({
                         placeholder="Folder Name"
                         placeholderTextColor={currentTheme.secondaryText}
                         selectionColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary + "40"}
+                    cursorColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary}
                       />
                     </View>
 
@@ -1171,6 +1174,7 @@ export const NotesScreen = ({
                         placeholder="work, idea, draft (comma separated)"
                         placeholderTextColor={currentTheme.secondaryText}
                         selectionColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary + "40"}
+                    cursorColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary}
                       />
                     </View>
                   </View>
@@ -1187,6 +1191,7 @@ export const NotesScreen = ({
                     onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
                     selection={selection}
                     selectionColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary + "40"}
+                    cursorColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary}
                   />
 
                   {/* Markdown keyboard accessory toolbar */}
@@ -1303,6 +1308,7 @@ export const NotesScreen = ({
             placeholderTextColor={currentTheme.secondaryText}
             autoFocus
             selectionColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary + "40"}
+                    cursorColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary}
           />
           <View style={styles.dialogActions}>
             <TouchableOpacity style={styles.cancelButton} onPress={() => setIsFolderModalVisible(false)}>
@@ -1337,6 +1343,7 @@ export const NotesScreen = ({
             placeholderTextColor={currentTheme.secondaryText}
             autoFocus
             selectionColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary + "40"}
+                    cursorColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary}
           />
           <View style={styles.dialogActions}>
             <TouchableOpacity
@@ -1381,6 +1388,7 @@ export const NotesScreen = ({
             placeholderTextColor={currentTheme.secondaryText}
             autoFocus
             selectionColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary + "40"}
+                    cursorColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary}
           />
           <View style={styles.dialogActions}>
             <TouchableOpacity

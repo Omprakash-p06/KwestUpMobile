@@ -270,14 +270,17 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
         {/* ── Section A: Summary Header ─────────────────────────────────── */}
         <LiquidGlassCard theme={currentTheme} style={s.card}>
           <View style={s.headerRow}>
-            <Text style={[s.screenTitle, { color: currentTheme.text }]}>BILLING</Text>
+            <View>
+              <Text style={[s.screenTitle, { color: currentTheme.text }]}>Billing</Text>
+              <Text style={[s.screenSubtitle, { color: currentTheme.secondaryText }]}>Track income, expenses & bills</Text>
+            </View>
             <View style={[s.monthBadge, { borderColor: currentTheme.primary + "60", backgroundColor: currentTheme.primary + "12" }]}>
               <Text style={[s.monthBadgeText, { color: currentTheme.primary }]}>{formatMonthLabel(viewMonth)}</Text>
             </View>
           </View>
 
           <View style={[s.netRow, { borderColor: currentTheme.border + "40" }]}>
-            <Text style={[s.netLabel, { color: currentTheme.secondaryText }]}>NET_BALANCE</Text>
+            <Text style={[s.netLabel, { color: currentTheme.secondaryText }]}>Net Balance</Text>
             <Text style={[s.netValue, { color: net >= 0 ? currentTheme.primary : "#ef4444" }]}>
               {net >= 0 ? "+" : ""}{currency}{Math.abs(net).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
             </Text>
@@ -317,7 +320,7 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
           <View style={s.sectionHeader}>
             <View style={s.sectionTitleRow}>
               <MaterialCommunityIcons name="wallet" size={16} color={currentTheme.primary} style={{ marginRight: 6 }} />
-              <Text style={[s.sectionTitle, { color: currentTheme.text }]}>BUDGET_ENVELOPES</Text>
+              <Text style={[s.sectionTitle, { color: currentTheme.text }]}>Spending Limits</Text>
             </View>
             <TouchableOpacity
               onPress={() => setShowAddBudget(true)}
@@ -326,9 +329,10 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
               <MaterialCommunityIcons name="plus" size={16} color={currentTheme.primary} />
             </TouchableOpacity>
           </View>
+          <Text style={[s.sectionHint, { color: currentTheme.secondaryText }]}>Set a monthly cap per category. You&apos;ll see how much is left.</Text>
 
           {budgets.length === 0 ? (
-            <Text style={[s.emptyText, { color: currentTheme.secondaryText }]}>NO_BUDGET_ENVELOPES_SET</Text>
+            <Text style={[s.emptyText, { color: currentTheme.secondaryText }]}>No spending limits set yet. Tap + to add one.</Text>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
               {budgets.map((b) => {
@@ -366,7 +370,7 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
           <View style={s.sectionHeader}>
             <View style={s.sectionTitleRow}>
               <MaterialCommunityIcons name="repeat" size={16} color={currentTheme.primary} style={{ marginRight: 6 }} />
-              <Text style={[s.sectionTitle, { color: currentTheme.text }]}>RECURRING_BILLS</Text>
+              <Text style={[s.sectionTitle, { color: currentTheme.text }]}>Bills & Subscriptions</Text>
             </View>
             <TouchableOpacity
               onPress={() => setShowAddBill(true)}
@@ -375,9 +379,10 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
               <MaterialCommunityIcons name="plus" size={16} color={currentTheme.primary} />
             </TouchableOpacity>
           </View>
+          <Text style={[s.sectionHint, { color: currentTheme.secondaryText }]}>Bills due every month. Mark as paid when you&apos;ve settled them.</Text>
 
           {recurringBills.length === 0 ? (
-            <Text style={[s.emptyText, { color: currentTheme.secondaryText }]}>NO_RECURRING_BILLS_TRACKED</Text>
+            <Text style={[s.emptyText, { color: currentTheme.secondaryText }]}>No recurring bills yet. Tap + to track rent, subscriptions, etc.</Text>
           ) : (
             recurringBills.map((bill) => {
               const overdue = isBillOverdue(bill);
@@ -427,7 +432,7 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
           <LiquidGlassCard theme={currentTheme} style={s.card}>
             <View style={s.sectionTitleRow}>
               <MaterialCommunityIcons name="chart-donut" size={16} color={currentTheme.primary} style={{ marginRight: 6 }} />
-              <Text style={[s.sectionTitle, { color: currentTheme.text }]}>SPENDING_BREAKDOWN</Text>
+              <Text style={[s.sectionTitle, { color: currentTheme.text }]}>Where My Money Went</Text>
             </View>
 
             {/* Segmented bar */}
@@ -468,7 +473,7 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
           <View style={s.sectionHeader}>
             <View style={s.sectionTitleRow}>
               <MaterialCommunityIcons name="list-box-outline" size={16} color={currentTheme.primary} style={{ marginRight: 6 }} />
-              <Text style={[s.sectionTitle, { color: currentTheme.text }]}>TRANSACTIONS</Text>
+              <Text style={[s.sectionTitle, { color: currentTheme.text }]}>Transaction History</Text>
             </View>
           </View>
 
@@ -484,7 +489,7 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
           />
 
           {filteredTx.length === 0 ? (
-            <Text style={[s.emptyText, { color: currentTheme.secondaryText, marginTop: 12 }]}>NO_TRANSACTIONS_LOGGED</Text>
+            <Text style={[s.emptyText, { color: currentTheme.secondaryText, marginTop: 12 }]}>No transactions found. Tap + to log income or expenses.</Text>
           ) : (
             filteredTx.map((tx) => (
               <TouchableOpacity
@@ -505,7 +510,7 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
                     <View style={[s.catChip, { backgroundColor: getCategoryColor(tx.category) + "20", borderColor: getCategoryColor(tx.category) + "60" }]}>
                       <Text style={[s.catChipText, { color: getCategoryColor(tx.category) }]}>{tx.category.toUpperCase()}</Text>
                     </View>
-                    <Text style={[s.txDate, { color: currentTheme.secondaryText }]}>{tx.date}</Text>
+                    <Text style={[s.txDate, { color: currentTheme.secondaryText }]}>{tx.date} · hold to delete</Text>
                   </View>
                 </View>
                 <Text style={[s.txAmount, { color: tx.type === "income" ? "#22c55e" : "#ef4444" }]}>
@@ -720,6 +725,8 @@ const rawStyles = {
   // Header
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
   screenTitle: { fontSize: 18, fontFamily: "JetBrainsMono-Bold", fontWeight: "900", letterSpacing: 1 },
+  screenSubtitle: { fontSize: 11, fontFamily: "JetBrainsMono-Regular", marginTop: 2, letterSpacing: 0.3 },
+  sectionHint: { fontSize: 11, fontFamily: "JetBrainsMono-Regular", letterSpacing: 0.2, marginBottom: 8, lineHeight: 16 },
   monthBadge: { borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4 },
   monthBadgeText: { fontSize: 10, fontFamily: "JetBrainsMono-Bold", letterSpacing: 1 },
 

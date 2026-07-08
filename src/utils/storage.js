@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export const APP_VERSION = "v3.4.0";
+export const APP_VERSION = "v3.5.0";
 export const STORAGE_VERSION = "v7.0";
 
 // Checks if a key contains active user data or settings that should never be deleted on update

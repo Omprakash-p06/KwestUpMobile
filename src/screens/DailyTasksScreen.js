@@ -234,6 +234,7 @@ export const DailyTasksScreen = ({
                 placeholder="ADD NEW SYSTEM OBJECTIVE..."
                 placeholderTextColor={currentTheme.secondaryText + "80"}
                 selectionColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary + "40"}
+                    cursorColor={currentTheme.primary === "#FFFFFF" || currentTheme.primary === "#ffffff" ? "#8E7BEF" : currentTheme.primary}
                 onSubmitEditing={addDailyTask}
                 returnKeyType="done"
               />
