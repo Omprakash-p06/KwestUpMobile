@@ -291,6 +291,7 @@ export const TaskEditModal = ({ visible, onClose, task, onSave, theme, taskLists
             <View style={styles.priorityRow}>
               {[
                 { key: 'none', label: 'NONE' },
+                { key: 'progressive', label: 'PROGRESSIVE' },
                 { key: 'daily', label: 'DAILY' },
                 { key: 'weekly', label: 'WEEKLY' },
                 { key: 'monthly', label: 'MONTHLY' },

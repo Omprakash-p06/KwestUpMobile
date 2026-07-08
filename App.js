@@ -690,17 +690,29 @@ const App = () => {
             const date = new Date(currentDueDate);
             if (isNaN(date.getTime())) date.setTime(Date.now());
 
+            let newTitle = task.title || task.name;
             if (task.recurrence === "daily") {
               date.setDate(date.getDate() + 1);
             } else if (task.recurrence === "weekly") {
               date.setDate(date.getDate() + 7);
             } else if (task.recurrence === "monthly") {
               date.setMonth(date.getMonth() + 1);
+            } else if (task.recurrence === "progressive") {
+              date.setDate(date.getDate() + 1);
+              // Increment the last number found in the title (e.g. "Day 1" -> "Day 2")
+              const match = newTitle.match(/\d+(?!.*\d)/);
+              if (match) {
+                const num = parseInt(match[0], 10);
+                newTitle = newTitle.substring(0, match.index) + (num + 1) + newTitle.substring(match.index + match[0].length);
+              } else {
+                newTitle += " - 2";
+              }
             }
 
             const spawnedTask = {
               ...task,
               id: Date.now().toString() + Math.random().toString(36).slice(2),
+              title: newTitle,
               completed: false,
               completedDate: null,
               completedAt: null,
