@@ -1,14 +1,15 @@
 'use no memo';
 
 import React from 'react';
-import { FlexWidget, TextWidget } from 'react-native-android-widget';
+import { FlexWidget, TextWidget, ListWidget } from 'react-native-android-widget';
 
 interface TaskItem {
   id: string;
   title: string;
   important: boolean;
   completed: boolean;
-  recurrence?: 'none' | 'daily' | 'weekly' | 'monthly';
+  isTicking?: boolean;
+  recurrence?: 'none' | 'daily' | 'weekly' | 'monthly' | 'progressive';
 }
 
 interface TasksListWidgetProps {
@@ -22,14 +23,8 @@ interface TasksListWidgetProps {
 export function TasksListWidget({
   tasks = [],
 }: TasksListWidgetProps) {
-  // Sort tasks: uncompleted first, then completed. Limit to 6 to fit resizable frame sizes.
-  const sortedTasks = [...tasks]
-    .sort((a, b) => {
-      if (a.completed && !b.completed) return 1;
-      if (!a.completed && b.completed) return -1;
-      return 0;
-    })
-    .slice(0, 6);
+  // Only show uncompleted tasks (or tasks currently running the tick animation)
+  const activeTasks = tasks.filter((t) => !t.completed || t.isTicking);
 
   const activeCount = tasks.filter(t => !t.completed).length;
 
@@ -46,7 +41,6 @@ export function TasksListWidget({
         borderRightColor: '#0a0a0a',
         padding: 2,
       }}
-      accessibilityLabel="Workspace active tasks queue widget"
     >
       <FlexWidget
         style={{
@@ -101,7 +95,7 @@ export function TasksListWidget({
 
         {/* Task Rows */}
         <FlexWidget style={{ flexDirection: 'column', flex: 1 }}>
-          {sortedTasks.length === 0 ? (
+          {activeTasks.length === 0 ? (
             <FlexWidget
               style={{
                 flex: 1,
@@ -120,81 +114,83 @@ export function TasksListWidget({
               />
             </FlexWidget>
           ) : (
-            <FlexWidget style={{ flexDirection: 'column' }}>
-              {sortedTasks.map((task, idx) => (
-                <FlexWidget
-                  key={`widget-task-${task.id || idx}`}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    backgroundColor: '#161616',
-                    borderWidth: 1,
-                    borderTopColor: '#202020',
-                    borderLeftColor: '#202020',
-                    borderBottomColor: '#0d0d0d',
-                    borderRightColor: '#0d0d0d',
-                    paddingHorizontal: 6,
-                    paddingVertical: 5,
-                    marginBottom: 4,
-                  }}
-                  clickAction="TOGGLE_TASK"
-                  clickActionData={{ taskId: task.id }}
-                >
-                  {/* Tactile Checkbox Button */}
+            <ListWidget style={{ height: 'match_parent', width: 'match_parent' }}>
+              {activeTasks.map((task, idx) => {
+                const isDoneOrTicking = task.completed || task.isTicking;
+                return (
                   <FlexWidget
+                    key={`widget-task-${task.id || idx}`}
                     style={{
-                      width: 14,
-                      height: 14,
-                      borderWidth: 1.5,
-                      borderTopColor: task.completed ? '#0a0a0a' : '#2b2b2b',
-                      borderLeftColor: task.completed ? '#0a0a0a' : '#2b2b2b',
-                      borderBottomColor: task.completed ? '#2b2b2b' : '#0a0a0a',
-                      borderRightColor: task.completed ? '#2b2b2b' : '#0a0a0a',
-                      backgroundColor: task.completed ? '#8E7BEF' : '#121212',
+                      flexDirection: 'row',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: 8,
+                      backgroundColor: isDoneOrTicking ? '#201a33' : '#161616',
+                      borderWidth: 1,
+                      borderTopColor: isDoneOrTicking ? '#30264d' : '#202020',
+                      borderLeftColor: isDoneOrTicking ? '#30264d' : '#202020',
+                      borderBottomColor: isDoneOrTicking ? '#151121' : '#0d0d0d',
+                      borderRightColor: isDoneOrTicking ? '#151121' : '#0d0d0d',
+                      paddingHorizontal: 6,
+                      paddingVertical: 5,
+                      marginBottom: 4,
                     }}
+                    clickAction={isDoneOrTicking ? undefined : "TOGGLE_TASK"}
+                    clickActionData={isDoneOrTicking ? undefined : { taskId: task.id }}
                   >
-                    {task.completed && (
+                    {/* Tactile Checkbox Button */}
+                    <FlexWidget
+                      style={{
+                        width: 14,
+                        height: 14,
+                        borderWidth: 1.5,
+                        borderTopColor: isDoneOrTicking ? '#0a0a0a' : '#2b2b2b',
+                        borderLeftColor: isDoneOrTicking ? '#0a0a0a' : '#2b2b2b',
+                        borderBottomColor: isDoneOrTicking ? '#2b2b2b' : '#0a0a0a',
+                        borderRightColor: isDoneOrTicking ? '#2b2b2b' : '#0a0a0a',
+                        backgroundColor: isDoneOrTicking ? '#8E7BEF' : '#121212',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 8,
+                      }}
+                    >
+                      {isDoneOrTicking && (
+                        <TextWidget
+                          text="✔"
+                          style={{
+                            fontSize: 9,
+                            color: '#ffffff',
+                            fontWeight: 'bold',
+                          }}
+                        />
+                      )}
+                    </FlexWidget>
+
+                    {/* Task Title */}
+                    <TextWidget
+                      text={task.important && !isDoneOrTicking ? `* ${task.title}` : task.title}
+                      style={{
+                        width: 'match_parent',
+                        fontSize: 10,
+                        fontFamily: 'monospace',
+                        color: isDoneOrTicking ? '#8E7BEF' : '#ffffff',
+                      }}
+                    />
+
+                    {/* Recurrence Repeat Marker */}
+                    {task.recurrence && task.recurrence !== 'none' && !isDoneOrTicking && (
                       <TextWidget
-                        text="✔"
+                        text="⟳"
                         style={{
-                          fontSize: 9,
-                          color: '#ffffff',
+                          fontSize: 12,
+                          color: '#8E7BEF',
                           fontWeight: 'bold',
+                          marginLeft: 4,
                         }}
                       />
                     )}
                   </FlexWidget>
-
-                  {/* Task Title */}
-                  <TextWidget
-                    text={task.important && !task.completed ? `* ${task.title}` : task.title}
-                    style={{
-                      flex: 1,
-                      fontSize: 10,
-                      fontFamily: 'monospace',
-                      color: task.completed ? '#666666' : '#ffffff',
-                      textDecorationLine: task.completed ? 'line-through' : 'none',
-                    }}
-                  />
-
-                  {/* Recurrence Repeat Marker */}
-                  {task.recurrence && task.recurrence !== 'none' && !task.completed && (
-                    <TextWidget
-                      text="⟳"
-                      style={{
-                        fontSize: 12,
-                        color: '#8E7BEF',
-                        fontWeight: 'bold',
-                        marginLeft: 4,
-                      }}
-                    />
-                  )}
-                </FlexWidget>
-              ))}
-            </FlexWidget>
+                );
+              })}
+            </ListWidget>
           )}
         </FlexWidget>
       </FlexWidget>
