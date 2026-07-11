@@ -238,6 +238,7 @@ export function TasksListWidget({
                         fontSize: 10,
                         fontFamily: 'monospace',
                         color: isDoneOrTicking ? '#8E7BEF' : '#ffffff',
+                        fontWeight: task.important && !isDoneOrTicking ? 'bold' : 'normal',
                       }}
                     />
 
