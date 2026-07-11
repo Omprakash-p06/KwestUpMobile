@@ -1,7 +1,7 @@
 'use no memo';
 
 import React from 'react';
-import { FlexWidget, TextWidget, ListWidget } from 'react-native-android-widget';
+import { FlexWidget, TextWidget } from 'react-native-android-widget';
 
 interface TaskItem {
   id: string;
@@ -14,6 +14,7 @@ interface TaskItem {
 
 interface TasksListWidgetProps {
   tasks?: TaskItem[];
+  activeTab?: 'all' | 'persistent';
 }
 
 /**
@@ -22,9 +23,15 @@ interface TasksListWidgetProps {
  */
 export function TasksListWidget({
   tasks = [],
+  activeTab = 'all',
 }: TasksListWidgetProps) {
-  // Only show uncompleted tasks (or tasks currently running the tick animation)
-  const activeTasks = tasks.filter((t) => !t.completed || t.isTicking);
+  // Filter uncompleted tasks based on activeTab
+  let activeTasks = tasks.filter((t) => !t.completed || t.isTicking);
+  if (activeTab === 'persistent') {
+    activeTasks = activeTasks.filter((t) => t.recurrence && t.recurrence !== 'none');
+  } else {
+    activeTasks = activeTasks.filter((t) => !t.recurrence || t.recurrence === 'none');
+  }
 
   const activeCount = tasks.filter(t => !t.completed).length;
 
@@ -93,6 +100,62 @@ export function TasksListWidget({
           />
         </FlexWidget>
 
+        {/* Tab Bar */}
+        <FlexWidget
+          style={{
+            flexDirection: 'row',
+            marginBottom: 8,
+          }}
+        >
+          <FlexWidget
+            clickAction="SWITCH_TAB"
+            clickActionData={{ tab: 'all' }}
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: activeTab === 'all' ? '#2c2c2c' : '#161616',
+              paddingVertical: 4,
+              borderWidth: 1,
+              borderColor: activeTab === 'all' ? '#444444' : '#222222',
+              borderRightWidth: 0,
+            }}
+          >
+            <TextWidget
+              text="ONE-TIME"
+              style={{
+                fontSize: 9,
+                fontFamily: 'monospace',
+                color: activeTab === 'all' ? '#8E7BEF' : '#666666',
+                fontWeight: activeTab === 'all' ? 'bold' : 'normal',
+              }}
+            />
+          </FlexWidget>
+          <FlexWidget
+            clickAction="SWITCH_TAB"
+            clickActionData={{ tab: 'persistent' }}
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: activeTab === 'persistent' ? '#2c2c2c' : '#161616',
+              paddingVertical: 4,
+              borderWidth: 1,
+              borderColor: activeTab === 'persistent' ? '#444444' : '#222222',
+            }}
+          >
+            <TextWidget
+              text="PERSISTENT"
+              style={{
+                fontSize: 9,
+                fontFamily: 'monospace',
+                color: activeTab === 'persistent' ? '#8E7BEF' : '#666666',
+                fontWeight: activeTab === 'persistent' ? 'bold' : 'normal',
+              }}
+            />
+          </FlexWidget>
+        </FlexWidget>
+
         {/* Task Rows */}
         <FlexWidget style={{ flexDirection: 'column', flex: 1 }}>
           {activeTasks.length === 0 ? (
@@ -114,8 +177,8 @@ export function TasksListWidget({
               />
             </FlexWidget>
           ) : (
-            <ListWidget style={{ height: 'match_parent', width: 'match_parent' }}>
-              {activeTasks.map((task, idx) => {
+            <FlexWidget style={{ flexDirection: 'column' }}>
+              {activeTasks.slice(0, 6).map((task, idx) => {
                 const isDoneOrTicking = task.completed || task.isTicking;
                 return (
                   <FlexWidget
@@ -168,7 +231,7 @@ export function TasksListWidget({
                     <TextWidget
                       text={task.important && !isDoneOrTicking ? `* ${task.title}` : task.title}
                       style={{
-                        width: 'match_parent',
+                        flex: 1,
                         fontSize: 10,
                         fontFamily: 'monospace',
                         color: isDoneOrTicking ? '#8E7BEF' : '#ffffff',
@@ -190,7 +253,7 @@ export function TasksListWidget({
                   </FlexWidget>
                 );
               })}
-            </ListWidget>
+            </FlexWidget>
           )}
         </FlexWidget>
       </FlexWidget>

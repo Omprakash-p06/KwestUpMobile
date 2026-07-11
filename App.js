@@ -600,6 +600,7 @@ const App = () => {
         renderWidget: () => (
           <TasksListWidget
             tasks={sortedTasks}
+            activeTab={widgetActiveTab === 'persistent' ? 'persistent' : 'all'}
           />
         ),
       });
@@ -608,7 +609,8 @@ const App = () => {
     return () => clearTimeout(tasksListTimer);
   }, [
     tasks,
-    isInitialized
+    isInitialized,
+    widgetActiveTab
   ]);
 
   const showConfirmation = (message, onConfirm, onCancel = null) => {

@@ -17,6 +17,22 @@ const nameToWidget = {
 
 type WidgetName = keyof typeof nameToWidget;
 
+interface TaskItemType {
+  id: string;
+  title: string;
+  name?: string;
+  important: boolean;
+  completed: boolean;
+  recurrence?: string;
+  dueDate?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  notificationId?: string | null;
+  completedAt?: string | null;
+  completedDate?: string | null;
+  isTicking?: boolean;
+}
+
 interface AppData {
   timerState?: {
     duration?: number;
@@ -25,7 +41,7 @@ interface AppData {
     startTime?: number;
   };
   dailyTasks?: Array<{ completed: boolean }>;
-  tasks?: Array<{ id: string; title: string; important: boolean; completed: boolean }>;
+  tasks?: Array<TaskItemType>;
 }
 
 interface TimerState {
@@ -40,7 +56,7 @@ interface WidgetData {
   isTimerRunning: boolean;
   dailyTaskCount: number;
   dailyTasksCompleted: number;
-  tasks: Array<{ id: string; title: string; important: boolean; completed: boolean }>;
+  tasks: Array<TaskItemType>;
 }
 
 export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<void> {
@@ -51,7 +67,7 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
   if (props.widgetAction === 'WIDGET_CLICK') {
     // 1. SWITCH_TAB action
     if (props.clickAction === 'SWITCH_TAB' && props.clickActionData?.tab) {
-      const targetTab = props.clickActionData.tab as 'tasks' | 'daily' | 'timer';
+      const targetTab = props.clickActionData.tab as 'tasks' | 'daily' | 'timer' | 'all' | 'persistent';
       try {
         const tabKey = `kwestup_widget_tab_${widgetId}`;
         await Promise.all([
@@ -69,58 +85,100 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
       const taskId = props.clickActionData.taskId as string;
       try {
         const storageKey = `kwestup_data_${STORAGE_VERSION}`;
-        const raw = await AsyncStorage.getItem(storageKey);
+        const tabKey = `kwestup_widget_tab_${widgetId}`;
+        const [raw, storedTab] = await Promise.all([
+          AsyncStorage.getItem(storageKey),
+          AsyncStorage.getItem(tabKey),
+        ]);
+
+        let activeTab: 'all' | 'persistent' = 'all';
+        if (storedTab === 'persistent' || storedTab === 'all') {
+          activeTab = storedTab as any;
+        } else {
+          const globalTab = await AsyncStorage.getItem('kwestup_widget_active_tab');
+          if (globalTab === 'persistent' || globalTab === 'all') {
+            activeTab = globalTab as any;
+          }
+        }
+
         if (raw) {
           const parsed: AppData = JSON.parse(raw);
           if (parsed.tasks) {
             const now = new Date().toISOString();
-            let isToggled = false;
-            const updatedTasks = [];
-            for (const task of parsed.tasks) {
-              if (task.id === taskId) {
-                isToggled = true;
-                const nextCompletedState = !task.completed;
-                updatedTasks.push({
-                  ...task,
-                  completed: nextCompletedState,
-                  completedDate: nextCompletedState ? now.slice(0, 10) : undefined,
-                  completedAt: nextCompletedState ? now : undefined,
+            const taskToToggle = parsed.tasks.find(t => t.id === taskId);
+            
+            if (taskToToggle) {
+              const nextCompletedState = !taskToToggle.completed;
+              
+              // --- TICKING ANIMATION ---
+              if (nextCompletedState) {
+                const tempTasks = parsed.tasks.map(t => t.id === taskId ? { ...t, isTicking: true } : t);
+                requestWidgetUpdate({
+                  widgetName: 'TasksList',
+                  renderWidget: () => <TasksListWidget tasks={tempTasks as any} activeTab={activeTab} />,
                 });
-
-                if (nextCompletedState && task.recurrence && task.recurrence !== "none") {
-                  const date = new Date(task.dueDate || now);
-                  if (isNaN(date.getTime())) {
-                    date.setTime(Date.now());
-                  }
-
-                  if (task.recurrence === "daily") {
-                    date.setDate(date.getDate() + 1);
-                  } else if (task.recurrence === "weekly") {
-                    date.setDate(date.getDate() + 7);
-                  } else if (task.recurrence === "monthly") {
-                    date.setMonth(date.getMonth() + 1);
-                  }
-
-                  const spawnedTask = {
-                    ...task,
-                    id: Date.now().toString() + Math.random().toString(36).slice(2),
-                    completed: false,
-                    completedDate: null,
-                    completedAt: null,
-                    dueDate: date.toISOString(),
-                    createdAt: now,
-                    updatedAt: now,
-                    notificationId: null,
-                  };
-                  updatedTasks.push(spawnedTask);
-                }
-              } else {
-                updatedTasks.push(task);
+                await new Promise(r => setTimeout(r, 600)); // wait for animation
               }
-            }
-            parsed.tasks = updatedTasks;
+              // -------------------------
 
-            if (isToggled) {
+              const updatedTasks = [];
+              for (const task of parsed.tasks) {
+                if (task.id === taskId) {
+                  updatedTasks.push({
+                    ...task,
+                    completed: nextCompletedState,
+                    completedDate: nextCompletedState ? now.slice(0, 10) : undefined,
+                    completedAt: nextCompletedState ? now : undefined,
+                  });
+
+                  if (nextCompletedState && task.recurrence && task.recurrence !== "none") {
+                    const date = new Date(task.dueDate || now);
+                    if (isNaN(date.getTime())) {
+                      date.setTime(Date.now());
+                    }
+
+                    let newTitle = task.title || (task as any).name;
+                    if (task.recurrence === "daily") {
+                      date.setDate(date.getDate() + 1);
+                    } else if (task.recurrence === "weekly") {
+                      date.setDate(date.getDate() + 7);
+                    } else if (task.recurrence === "monthly") {
+                      date.setMonth(date.getMonth() + 1);
+                    } else if (task.recurrence === "progressive") {
+                      date.setDate(date.getDate() + 1);
+                      const match = newTitle.match(/\d+(?!.*\d)/);
+                      if (match) {
+                        const num = parseInt(match[0], 10);
+                        newTitle = newTitle.substring(0, match.index) + (num + 1) + newTitle.substring(match.index + match[0].length);
+                      } else {
+                        newTitle += " - 2";
+                      }
+                    }
+
+                    const spawnedTask = {
+                      ...task,
+                      id: Date.now().toString() + Math.random().toString(36).slice(2),
+                      title: newTitle,
+                      completed: false,
+                      completedDate: null,
+                      completedAt: null,
+                      dueDate: date.toISOString(),
+                      createdAt: now,
+                      updatedAt: now,
+                      notificationId: null,
+                    };
+                    // Instead of pushing the completed parent and the spawned task,
+                    // we actually want the parent to be pushed (it will be filtered out by UI anyway, but we need it for history)
+                    // Wait, App.js removes it. For widget parity, let's also NOT push the parent if it's recurring.
+                    updatedTasks.pop(); // remove the completed parent we just pushed
+                    updatedTasks.push(spawnedTask);
+                  }
+                } else {
+                  updatedTasks.push(task);
+                }
+              }
+              parsed.tasks = updatedTasks;
+
               await AsyncStorage.setItem(storageKey, JSON.stringify(parsed));
               console.log('[WidgetTaskHandler] Task completion status toggled:', taskId);
 
@@ -149,36 +207,12 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
                 ),
               });
 
-              // Find current timer state for the update broadcast
-              const timerKey = `kwestup_timer_state_${STORAGE_VERSION}`;
-              const timerRaw = await AsyncStorage.getItem(timerKey);
-              let timerRemaining = 0;
-              let isTimerRunning = false;
-              if (timerRaw) {
-                const timerParsed: TimerState = JSON.parse(timerRaw);
-                if (timerParsed.isRunning && timerParsed.startTime) {
-                  const elapsed = Math.floor((Date.now() - timerParsed.startTime) / 1000);
-                  timerRemaining = Math.max(0, timerParsed.duration - elapsed);
-                  isTimerRunning = timerRemaining > 0;
-                } else {
-                  timerRemaining = timerParsed.remaining;
-                  isTimerRunning = false;
-                }
-              }
-
-              const sortedTasks = [...parsed.tasks].sort((a, b) => {
-                if (a.completed && !b.completed) return 1;
-                if (!a.completed && b.completed) return -1;
-                return 0;
-              }).slice(0, 8);
-
-              const globalTab = (await AsyncStorage.getItem('kwestup_widget_active_tab')) as 'tasks' | 'daily' | 'timer' || 'tasks';
-
               requestWidgetUpdate({
                 widgetName: 'TasksList',
                 renderWidget: () => (
                   <TasksListWidget
-                    tasks={sortedTasks}
+                    tasks={parsed.tasks as any}
+                    activeTab={activeTab}
                   />
                 ),
               });
@@ -205,7 +239,7 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
       tasks: [],
     };
 
-    let activeTab: 'tasks' | 'daily' | 'timer' = 'tasks';
+    let activeTab: 'tasks' | 'daily' | 'timer' | 'all' | 'persistent' = 'all';
 
     try {
       const storageKey = `kwestup_data_${STORAGE_VERSION}`;
@@ -218,12 +252,12 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
         AsyncStorage.getItem(tabKey),
       ]);
 
-      if (storedTab === 'tasks' || storedTab === 'daily' || storedTab === 'timer') {
-        activeTab = storedTab;
+      if (['tasks', 'daily', 'timer', 'all', 'persistent'].includes(storedTab || '')) {
+        activeTab = storedTab as any;
       } else {
         const globalTab = await AsyncStorage.getItem('kwestup_widget_active_tab');
-        if (globalTab === 'tasks' || globalTab === 'daily' || globalTab === 'timer') {
-          activeTab = globalTab;
+        if (['tasks', 'daily', 'timer', 'all', 'persistent'].includes(globalTab || '')) {
+          activeTab = globalTab as any;
         }
       }
 
@@ -255,18 +289,18 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
       console.warn('[WidgetTaskHandler] Failed to read AsyncStorage:', err);
     }
 
-    const Widget = nameToWidget[widgetName];
-    if (Widget) {
+    const WidgetComponent = nameToWidget[widgetName] as any;
+    if (WidgetComponent) {
       if (widgetName === 'FocusTimer') {
         props.renderWidget(
-          <Widget
+          <WidgetComponent
             remaining={widgetData.timerRemaining}
             isRunning={widgetData.isTimerRunning}
           />
         );
       } else if (widgetName === 'DailyTasks') {
         props.renderWidget(
-          <Widget
+          <WidgetComponent
             dailyTaskCount={widgetData.dailyTaskCount}
             dailyTasksCompleted={widgetData.dailyTasksCompleted}
           />
@@ -275,17 +309,12 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
         const importantUnfinished = widgetData.tasks
           .filter((t) => t.important && !t.completed)
           .slice(0, 5);
-        props.renderWidget(<Widget tasks={importantUnfinished} />);
+        props.renderWidget(<WidgetComponent tasks={importantUnfinished} />);
       } else if (widgetName === 'TasksList') {
-        const sortedTasks = [...widgetData.tasks].sort((a, b) => {
-          if (a.completed && !b.completed) return 1;
-          if (!a.completed && b.completed) return -1;
-          return 0;
-        }).slice(0, 8);
-        
         props.renderWidget(
-          <Widget
-            tasks={sortedTasks}
+          <WidgetComponent
+            tasks={widgetData.tasks as any}
+            activeTab={activeTab === 'persistent' ? 'persistent' : 'all'}
           />
         );
       }
