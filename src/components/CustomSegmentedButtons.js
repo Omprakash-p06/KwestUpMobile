@@ -17,7 +17,7 @@ export const CustomSegmentedButtons = ({ options, selectedValue, onValueChange, 
           ]}
           onPress={() => onValueChange(option.value)}
         >
-          <Text style={{ color: selectedValue === option.value ? '#FFFFFF' : theme.text, fontWeight: '600' }}>
+          <Text style={{ color: selectedValue === option.value ? theme.onPrimary : theme.text, fontWeight: '600' }}>
             {option.label}
           </Text>
         </TouchableOpacity>

@@ -1,7 +1,7 @@
 'use no memo';
 
 import React from 'react';
-import { FlexWidget, TextWidget } from 'react-native-android-widget';
+import { FlexWidget, TextWidget, ListWidget } from 'react-native-android-widget';
 
 interface TaskItem {
   id: string;
@@ -78,6 +78,7 @@ export function TasksListWidget({
             paddingHorizontal: 8,
             paddingVertical: 5,
             marginBottom: 8,
+            width: 'match_parent',
           }}
         >
           <TextWidget
@@ -105,6 +106,7 @@ export function TasksListWidget({
           style={{
             flexDirection: 'row',
             marginBottom: 8,
+            width: 'match_parent',
           }}
         >
           <FlexWidget
@@ -157,7 +159,7 @@ export function TasksListWidget({
         </FlexWidget>
 
         {/* Task Rows */}
-        <FlexWidget style={{ flexDirection: 'column', flex: 1 }}>
+        <FlexWidget style={{ flexDirection: 'column', flex: 1, width: 'match_parent' }}>
           {activeTasks.length === 0 ? (
             <FlexWidget
               style={{
@@ -177,8 +179,8 @@ export function TasksListWidget({
               />
             </FlexWidget>
           ) : (
-            <FlexWidget style={{ flexDirection: 'column' }}>
-              {activeTasks.slice(0, 6).map((task, idx) => {
+            <ListWidget style={{ flex: 1, width: 'match_parent' }}>
+              {activeTasks.slice(0, 12).map((task, idx) => {
                 const isDoneOrTicking = task.completed || task.isTicking;
                 return (
                   <FlexWidget
@@ -186,6 +188,8 @@ export function TasksListWidget({
                     style={{
                       flexDirection: 'row',
                       alignItems: 'center',
+                      height: 32,
+                      width: 'match_parent',
                       backgroundColor: isDoneOrTicking ? '#201a33' : '#161616',
                       borderWidth: 1,
                       borderTopColor: isDoneOrTicking ? '#30264d' : '#202020',
@@ -193,7 +197,6 @@ export function TasksListWidget({
                       borderBottomColor: isDoneOrTicking ? '#151121' : '#0d0d0d',
                       borderRightColor: isDoneOrTicking ? '#151121' : '#0d0d0d',
                       paddingHorizontal: 6,
-                      paddingVertical: 5,
                       marginBottom: 4,
                     }}
                     clickAction={isDoneOrTicking ? undefined : "TOGGLE_TASK"}
@@ -253,7 +256,7 @@ export function TasksListWidget({
                   </FlexWidget>
                 );
               })}
-            </FlexWidget>
+            </ListWidget>
           )}
         </FlexWidget>
       </FlexWidget>
