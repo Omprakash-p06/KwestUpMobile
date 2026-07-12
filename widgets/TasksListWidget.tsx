@@ -199,61 +199,70 @@ export function TasksListWidget({
                       paddingHorizontal: 6,
                       marginBottom: 4,
                     }}
-                    clickAction={isDoneOrTicking ? undefined : "TOGGLE_TASK"}
-                    clickActionData={isDoneOrTicking ? undefined : { taskId: task.id }}
                   >
-                    {/* Tactile Checkbox Button */}
                     <FlexWidget
                       style={{
-                        width: 14,
-                        height: 14,
-                        borderWidth: 1.5,
-                        borderTopColor: isDoneOrTicking ? '#0a0a0a' : '#2b2b2b',
-                        borderLeftColor: isDoneOrTicking ? '#0a0a0a' : '#2b2b2b',
-                        borderBottomColor: isDoneOrTicking ? '#2b2b2b' : '#0a0a0a',
-                        borderRightColor: isDoneOrTicking ? '#2b2b2b' : '#0a0a0a',
-                        backgroundColor: isDoneOrTicking ? '#8E7BEF' : '#121212',
+                        flexDirection: 'row',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        marginRight: 8,
+                        height: 'match_parent',
+                        width: 'match_parent',
                       }}
+                      clickAction={isDoneOrTicking ? undefined : "TOGGLE_TASK"}
+                      clickActionData={isDoneOrTicking ? undefined : { taskId: task.id }}
                     >
-                      {isDoneOrTicking && (
+                      {/* Tactile Checkbox Button */}
+                      <FlexWidget
+                        style={{
+                          width: 14,
+                          height: 14,
+                          borderWidth: 1.5,
+                          borderTopColor: isDoneOrTicking ? '#0a0a0a' : '#2b2b2b',
+                          borderLeftColor: isDoneOrTicking ? '#0a0a0a' : '#2b2b2b',
+                          borderBottomColor: isDoneOrTicking ? '#2b2b2b' : '#0a0a0a',
+                          borderRightColor: isDoneOrTicking ? '#2b2b2b' : '#0a0a0a',
+                          backgroundColor: isDoneOrTicking ? '#8E7BEF' : '#121212',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginRight: 8,
+                        }}
+                      >
+                        {isDoneOrTicking && (
+                          <TextWidget
+                            text="✔"
+                            style={{
+                              fontSize: 9,
+                              color: '#ffffff',
+                              fontWeight: 'bold',
+                            }}
+                          />
+                        )}
+                      </FlexWidget>
+
+                      {/* Task Title */}
+                      <TextWidget
+                        text={task.important && !isDoneOrTicking ? `* ${task.title}` : task.title}
+                        style={{
+                          flex: 1,
+                          fontSize: 10,
+                          fontFamily: 'monospace',
+                          color: isDoneOrTicking ? '#8E7BEF' : '#ffffff',
+                          fontWeight: task.important && !isDoneOrTicking ? 'bold' : 'normal',
+                        }}
+                      />
+
+                      {/* Recurrence Repeat Marker */}
+                      {task.recurrence && task.recurrence !== 'none' && !isDoneOrTicking && (
                         <TextWidget
-                          text="✔"
+                          text="⟳"
                           style={{
-                            fontSize: 9,
-                            color: '#ffffff',
+                            fontSize: 12,
+                            color: '#8E7BEF',
                             fontWeight: 'bold',
+                            marginLeft: 4,
                           }}
                         />
                       )}
                     </FlexWidget>
-
-                    {/* Task Title */}
-                    <TextWidget
-                      text={task.important && !isDoneOrTicking ? `* ${task.title}` : task.title}
-                      style={{
-                        flex: 1,
-                        fontSize: 10,
-                        fontFamily: 'monospace',
-                        color: isDoneOrTicking ? '#8E7BEF' : '#ffffff',
-                        fontWeight: task.important && !isDoneOrTicking ? 'bold' : 'normal',
-                      }}
-                    />
-
-                    {/* Recurrence Repeat Marker */}
-                    {task.recurrence && task.recurrence !== 'none' && !isDoneOrTicking && (
-                      <TextWidget
-                        text="⟳"
-                        style={{
-                          fontSize: 12,
-                          color: '#8E7BEF',
-                          fontWeight: 'bold',
-                          marginLeft: 4,
-                        }}
-                      />
-                    )}
                   </FlexWidget>
                 );
               })}
