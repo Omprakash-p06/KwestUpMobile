@@ -26,7 +26,6 @@ export function FocusTimerWidget({ remaining, isRunning }: FocusTimerWidgetProps
         borderRightColor: '#0a0a0a',
         padding: 2,
       }}
-      accessibilityLabel={`Focus timer: ${timeString}${isRunning ? ', active' : ', paused'}`}
     >
       <FlexWidget
         style={{

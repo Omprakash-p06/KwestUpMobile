@@ -58,8 +58,20 @@ export const TaskListScreen = ({
 
 
 
-  const activeList = taskLists[activeIndex] || taskLists[0] || { id: "default_inbox", name: "My Tasks" };
-  const listTasks = tasks.filter((t) => (t.listId || "default_inbox") === activeList.id);
+  // Inject 'Persistent' tab
+  const combinedLists = [...taskLists, { id: "persistent_tasks", name: "Persistent" }];
+  const activeList = combinedLists[activeIndex] || combinedLists[0] || { id: "default_inbox", name: "My Tasks" };
+  
+  const listTasks = tasks.filter((t) => {
+    const isPersistent = t.recurrence && t.recurrence !== "none";
+    if (activeList.id === "persistent_tasks") {
+      return isPersistent;
+    }
+    // Regular lists don't show persistent tasks to keep them cleanly separated
+    if (isPersistent) return false;
+    return (t.listId || "default_inbox") === activeList.id;
+  });
+  
   const activeTasks = listTasks.filter((t) => !t.completed);
   const completedTasks = listTasks.filter((t) => t.completed);
 
@@ -80,7 +92,8 @@ export const TaskListScreen = ({
       title: title.trim(),
       description: "",
       dueDate: null,
-      listId: activeList.id,
+      listId: activeList.id === "persistent_tasks" ? "default_inbox" : activeList.id,
+      recurrence: activeList.id === "persistent_tasks" ? "daily" : "none",
       completed: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -99,7 +112,7 @@ export const TaskListScreen = ({
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.tabBarScroll}
         >
-          {taskLists.map((list, index) => {
+          {combinedLists.map((list, index) => {
             const isActive = index === activeIndex;
             return (
               <TouchableOpacity

@@ -29,7 +29,6 @@ export function DailyTasksWidget({ dailyTaskCount, dailyTasksCompleted }: DailyT
         borderRightColor: '#0a0a0a',
         padding: 2,
       }}
-      accessibilityLabel={`Daily tasks: ${dailyTasksCompleted} of ${dailyTaskCount} completed`}
     >
       <FlexWidget
         style={{

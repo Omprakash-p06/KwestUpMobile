@@ -28,7 +28,6 @@ export function ImportantTasksWidget({ tasks }: ImportantTasksWidgetProps) {
         borderRightColor: '#0a0a0a',
         padding: 2,
       }}
-      accessibilityLabel={`${tasks.length} important tasks remaining`}
     >
       <FlexWidget
         style={{
@@ -148,7 +147,7 @@ export function ImportantTasksWidget({ tasks }: ImportantTasksWidgetProps) {
                 <TextWidget
                   text={task.title}
                   style={{
-                    flex: 1,
+                    width: 'match_parent',
                     fontSize: 10,
                     fontFamily: 'monospace',
                     color: '#ffffff',
