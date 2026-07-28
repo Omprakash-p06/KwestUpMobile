@@ -1,4 +1,5 @@
 import { Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { APP_VERSION } from "./storage";
 
 export const DEBUG_MODE = false;
@@ -105,8 +106,6 @@ export const runDeviceDiagnostics = () => {
     console.log("🤖 Android Platform Constants:", Platform.constants);
   }
 };
-
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export const sendTelemetryEvent = async (event, payload = {}) => {
   try {

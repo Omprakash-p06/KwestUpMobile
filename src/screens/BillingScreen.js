@@ -588,8 +588,8 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
             </TouchableOpacity>
 
             <View style={s.modalActions}>
-              <CustomButton label="CANCEL" onPress={() => { resetTxForm(); setShowAddTx(false); }} variant="secondary" theme={currentTheme} style={{ flex: 1, marginRight: 8 }} />
-              <CustomButton label="SAVE" onPress={handleSaveTx} theme={currentTheme} style={{ flex: 1 }} />
+              <CustomButton title="CANCEL" onPress={() => { resetTxForm(); setShowAddTx(false); }} outline color={currentTheme.primary} style={{ flex: 1, marginRight: 8 }} />
+              <CustomButton title="SAVE" onPress={handleSaveTx} color={currentTheme.primary} style={{ flex: 1 }} />
             </View>
           </View>
         </KeyboardAvoidingView>

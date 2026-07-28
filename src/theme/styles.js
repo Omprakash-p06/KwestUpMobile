@@ -827,7 +827,6 @@ export const injectFontFamily = (obj) => {
   const fontSemiBold = "HankenGrotesk-Bold";
   const fontBold = "HankenGrotesk-ExtraBold";
 
-  const monoRegular = "JetBrainsMono-Regular";
   const monoMedium = "JetBrainsMono-Medium";
   const monoBold = "JetBrainsMono-Bold";
 

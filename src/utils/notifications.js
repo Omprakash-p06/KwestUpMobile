@@ -14,13 +14,11 @@ Notifications.setNotificationHandler({
 export async function requestNotificationPermissions() {
   if (Platform.OS === "android") {
     await Notifications.requestPermissionsAsync({
-      ios: {
+      android: {
         allowAlert: true,
         allowBadge: true,
         allowSound: true,
-        allowAnnouncements: true,
       },
-      android: {},
     });
   } else {
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -115,50 +113,6 @@ export async function cancelDueDateNotification(notificationId) {
   }
 }
 
-// Helper to play birthday notification sound immediately
-export async function playBirthdaySound() {
-  try {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: '🎂 Birthday!',
-        body: "It's someone's birthday today! 🎉",
-        sound: 'default',
-      },
-      trigger: null,
-    });
-  } catch (e) {
-    console.error("Failed to play birthday sound:", e);
-  }
-}
-
-// Helper to schedule repeating birthday notification
-export async function scheduleBirthdayNotification(name, month, day) {
-  try {
-    const now = new Date();
-    let year = now.getFullYear();
-    const birthdayThisYear = new Date(`${year}-${month}-${day}T00:00:00`);
-    if (birthdayThisYear < now) {
-      year += 1;
-    }
-    const nextBirthday = new Date(`${year}-${month}-${day}T00:00:00`);
-    const notificationId = await Notifications.scheduleNotificationAsync({
-      content: {
-        title: `🎂 Birthday: ${name}`,
-        body: `Wish ${name} a happy birthday!`,
-        sound: 'default',
-      },
-      trigger: {
-        date: nextBirthday,
-        repeats: false,
-      },
-    });
-    return notificationId;
-  } catch (e) {
-    console.error("Failed to schedule birthday notification:", e);
-  }
-  return null;
-}
-
 // Upgraded custom birthday push reminders scheduler
 export async function scheduleCustomBirthdayReminders(birthday) {
   const { name, birthDate, remindAtTime, advanceReminder } = birthday;
@@ -175,54 +129,49 @@ export async function scheduleCustomBirthdayReminders(birthday) {
     const today = new Date();
     const currentYear = today.getFullYear();
     
-    // Set trigger date to upcoming birthday month/day
-    let year = currentYear;
-    
-    // Leap-safe date check
-    let bdayDate = new Date(year, month - 1, day, hours, minutes, 0);
-    if (bdayDate.getMonth() !== month - 1) {
-      bdayDate = new Date(year, month - 1, day + 1, hours, minutes, 0);
-    }
-    
-    if (bdayDate < today) {
-      year += 1;
-    }
-    
-    let targetBday = new Date(year, month - 1, day, hours, minutes, 0);
-    if (targetBday.getMonth() !== month - 1) {
-      targetBday = new Date(year, month - 1, day + 1, hours, minutes, 0);
-    }
+    // Schedule for this year AND next year (covers the yearly repeat gap)
+    // Without this, the notification fires once and never again
+    const yearsToSchedule = [currentYear, currentYear + 1];
 
-    // 1. Schedule Morning-Of Reminder
-    const bdayNotifyId = await Notifications.scheduleNotificationAsync({
-      content: {
-        title: `🎂 Birthday Alert!`,
-        body: `It's ${name}'s birthday today! Wish them the best! 🎉`,
-        sound: "default",
-      },
-      trigger: targetBday,
-    });
-    notificationIds.push(bdayNotifyId);
+    for (const year of yearsToSchedule) {
+      let targetBday = new Date(year, month - 1, day, hours, minutes, 0);
+      if (targetBday.getMonth() !== month - 1) {
+        targetBday = new Date(year, month - 1, day + 1, hours, minutes, 0);
+      }
+      
+      // Skip past dates (only schedule future notifications)
+      if (targetBday <= today) continue;
 
-    // 2. Schedule Optional Advance Reminder
-    if (advanceReminder && advanceReminder !== "none") {
-      let daysPrior = 1;
-      if (advanceReminder === "3_days") daysPrior = 3;
-      if (advanceReminder === "1_week") daysPrior = 7;
+      const bdayNotifyId = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: `🎂 Birthday Alert!`,
+          body: `It's ${name}'s birthday today! Wish them the best! 🎉`,
+          sound: "default",
+        },
+        trigger: targetBday,
+      });
+      notificationIds.push(bdayNotifyId);
 
-      const advanceTarget = new Date(targetBday);
-      advanceTarget.setDate(targetBday.getDate() - daysPrior);
+      // Schedule Optional Advance Reminder for this year
+      if (advanceReminder && advanceReminder !== "none") {
+        let daysPrior = 1;
+        if (advanceReminder === "3_days") daysPrior = 3;
+        if (advanceReminder === "1_week") daysPrior = 7;
 
-      if (advanceTarget > today) {
-        const advanceNotifyId = await Notifications.scheduleNotificationAsync({
-          content: {
-            title: `🎁 Birthday Coming Up!`,
-            body: `${name}'s birthday is in ${daysPrior} days (${birthDate}). Don't forget to prepare!`,
-            sound: "default",
-          },
-          trigger: advanceTarget,
-        });
-        notificationIds.push(advanceNotifyId);
+        const advanceTarget = new Date(targetBday);
+        advanceTarget.setDate(targetBday.getDate() - daysPrior);
+
+        if (advanceTarget > today) {
+          const advanceNotifyId = await Notifications.scheduleNotificationAsync({
+            content: {
+              title: `🎁 Birthday Coming Up!`,
+              body: `${name}'s birthday is in ${daysPrior} days (${birthDate}). Don't forget to prepare!`,
+              sound: "default",
+            },
+            trigger: advanceTarget,
+          });
+          notificationIds.push(advanceNotifyId);
+        }
       }
     }
   } catch (error) {

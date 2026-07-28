@@ -20,7 +20,7 @@ const getDailyCompletions = (tasks) => {
   const counts = buckets.map((dayStr) => {
     return tasks.filter((t) => {
       if (!t.completed) return false;
-      const date = t.completedAt || t.updatedAt;
+      const date = t.completedDate || t.completedAt || t.updatedAt;
       if (!date) return false;
       return new Date(date).toDateString() === dayStr;
     }).length;

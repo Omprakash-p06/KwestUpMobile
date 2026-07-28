@@ -3,7 +3,7 @@ import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { isUserDataKey, APP_VERSION, STORAGE_VERSION } from "./storage";
-import { getVaults, getVaultPath, ensureVaultsDir, saveVaults } from "./vaultService";
+import { getVaults, getVaultPath, ensureVaultsDir } from "./vaultService";
 import { loadBillingData, saveBillingData } from "./billingStorage";
 import { scheduleRecurringBillReminder, cancelRecurringBillReminders } from "./billingNotifications";
 
@@ -272,8 +272,7 @@ export const importArchive = async (filePath, passphrase, onProgress) => {
   // Step 4: Restore AsyncStorage from backup
   const storageEntries = Object.entries(payload.storage);
   if (storageEntries.length > 0) {
-    const pairs = storageEntries.map(([key, value]) => [key, value]);
-    await AsyncStorage.multiSet(pairs);
+    await AsyncStorage.multiSet(storageEntries);
     console.log("✅ Restored AsyncStorage:", storageEntries.length, "keys");
   }
 

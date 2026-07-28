@@ -13,11 +13,22 @@ const getNextDueDate = (dueDay) => {
   const year = today.getFullYear();
   const month = today.getMonth();
 
+  // Clamp dueDay to the last valid day of the given month
+  const clampDay = (y, m, d) => {
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    return Math.min(d, daysInMonth);
+  };
+
   // Try this month first
-  let candidate = new Date(year, month, dueDay, 9, 0, 0);
+  const clampedDueDay = clampDay(year, month, dueDay);
+  let candidate = new Date(year, month, clampedDueDay, 9, 0, 0);
   // If today is past or on the due day, schedule for next month
   if (candidate <= today) {
-    candidate = new Date(year, month + 1, dueDay, 9, 0, 0);
+    const nextMonth = month + 1;
+    const nextYear = nextMonth > 11 ? year + 1 : year;
+    const nextMonthIndex = nextMonth > 11 ? 0 : nextMonth;
+    const nextClamped = clampDay(nextYear, nextMonthIndex, dueDay);
+    candidate = new Date(nextYear, nextMonthIndex, nextClamped, 9, 0, 0);
   }
   return candidate;
 };

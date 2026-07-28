@@ -1,12 +1,10 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Animated, StyleSheet, TextInput } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Modal from "react-native-modal";
 import * as Haptics from "expo-haptics";
-import { useNavigation } from "@react-navigation/native";
 import { LiquidGlassCard } from "../components/LiquidGlassCard";
 import { CustomTextInput } from "../components/CustomTextInput";
-import { CustomButton } from "../components/CustomButton";
 import { injectFontFamily } from "../theme/styles";
 
 export const TaskListScreen = ({
@@ -16,8 +14,6 @@ export const TaskListScreen = ({
   handleCreateList,
   handleRenameList,
   handleDeleteList,
-  handleToggleSubtask,
-  handleCompleteTask,
   toggleTaskComplete,
   deleteTask,
   currentTheme,
@@ -25,7 +21,6 @@ export const TaskListScreen = ({
   setModalVisible,
   showConfirmation
 }) => {
-  const navigation = useNavigation();
   const [activeIndex, setActiveIndex] = useState(0);
 
   // List CRUD Modals state

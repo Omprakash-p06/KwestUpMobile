@@ -43,10 +43,10 @@ export const DailyTasksScreen = ({
 
       if (newDailyTask.time) {
         scheduleDailyTaskNotification(newDailyTask).then(notificationId => {
-          setDailyTasks([...dailyTasks, { ...newDailyTask, notificationId }]);
+          setDailyTasks(prev => [...prev, { ...newDailyTask, notificationId }]);
         });
       } else {
-        setDailyTasks([...dailyTasks, newDailyTask]);
+        setDailyTasks(prev => [...prev, newDailyTask]);
       }
       setNewTaskName("");
       setNewTaskTime("");

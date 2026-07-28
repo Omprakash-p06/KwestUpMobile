@@ -17,7 +17,7 @@ export const BirthdaysScreen = ({
 }) => {
   const [newBirthdayName, setNewBirthdayName] = useState("");
   const [newBirthdayDate, setNewBirthdayDate] = useState(null);
-  const [newBirthdayTime, setNewBirthdayTime] = useState(new Date(1970, 0, 1, 23, 59));
+  const [newBirthdayTime, setNewBirthdayTime] = useState(new Date(1970, 0, 1, 0, 0));
   const [advanceReminder, setAdvanceReminder] = useState("none");
   const [includeYear, setIncludeYear] = useState(true);
 
@@ -57,18 +57,28 @@ export const BirthdaysScreen = ({
         notificationIds: []
       };
 
-      const notificationIds = await scheduleCustomBirthdayReminders(tempBday);
-      const finalBday = { ...tempBday, notificationIds };
+      try {
+        const notificationIds = await scheduleCustomBirthdayReminders(tempBday);
+        const finalBday = { ...tempBday, notificationIds };
+        setBirthdays((prev) => [...prev, finalBday]);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-      setBirthdays((prev) => [...prev, finalBday]);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-      // Reset
-      setNewBirthdayName("");
-      setNewBirthdayDate(null);
-      setNewBirthdayTime(new Date(1970, 0, 1, 23, 59));
-      setAdvanceReminder("none");
-      setIncludeYear(true);
+        setNewBirthdayName("");
+        setNewBirthdayDate(null);
+        setNewBirthdayTime(new Date(1970, 0, 1, 23, 59));
+        setAdvanceReminder("none");
+        setIncludeYear(true);
+      } catch (err) {
+        console.error("Failed to schedule birthday notification:", err);
+        // Still add the birthday even if notification scheduling fails
+        setBirthdays((prev) => [...prev, tempBday]);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setNewBirthdayName("");
+        setNewBirthdayDate(null);
+        setNewBirthdayTime(new Date(1970, 0, 1, 23, 59));
+        setAdvanceReminder("none");
+        setIncludeYear(true);
+      }
     }
   };
 

@@ -133,6 +133,13 @@ const App = () => {
   // Throttling refs to prevent Binder flooding on sensitive devices (NothingOS)
   const lastSaveTimeRef = useRef(0);
   const lastWidgetUpdateTimeRef = useRef(0);
+  const birthdaysRef = useRef(birthdays);
+  const lastBirthdayRescheduleRef = useRef("");
+
+  // Keep birthdaysRef in sync
+  useEffect(() => {
+    birthdaysRef.current = birthdays;
+  }, [birthdays]);
 
   // AppState monitoring to prevent background Binder flooding and reload widget-changed data
   useEffect(() => {
@@ -362,6 +369,28 @@ const App = () => {
         setUserName(storedUserName || "");
       }
       setIsDataLoaded(true);
+
+      // Reschedule birthday notifications on app start so they cover
+      // both this year AND next year's dates (since absolute Date triggers fire once)
+      if (birthdays.length > 0) {
+        const todayKey = new Date().toISOString().slice(0, 10);
+        if (lastBirthdayRescheduleRef.current !== todayKey) {
+          lastBirthdayRescheduleRef.current = todayKey;
+          setTimeout(async () => {
+            try {
+              for (const bday of birthdays) {
+                if (bday.notificationIds && bday.notificationIds.length > 0) {
+                  await cancelCustomBirthdayReminders(bday.notificationIds);
+                }
+                const newIds = await scheduleCustomBirthdayReminders(bday);
+                setBirthdays(prev => prev.map(b => b.id === bday.id ? { ...b, notificationIds: newIds } : b));
+              }
+            } catch (e) {
+              console.warn("Birthday notification reschedule error:", e);
+            }
+          }, 500);
+        }
+      }
     } catch (error) {
       console.error("❌ Failed to load data:", error);
       setDailyTasks([]);
@@ -644,31 +673,26 @@ const App = () => {
     if (isTimerRunning && timerRemaining > 0) {
       timerIntervalRef.current = setInterval(() => {
         setTimerRemaining((prev) => {
-          if (prev <= 1) {
-            clearInterval(timerIntervalRef.current);
-            setIsTimerRunning(false);
-            setShowTimerLockout(false);
-            showConfirmation("Congratulations! You completed your focus session!", () => {
-              setConfettiVisible(true);
-            });
-            Notifications.scheduleNotificationAsync({
-              content: {
-                title: "KwestUp Focus Timer",
-                body: "Your focus session is complete! Great job!",
-                sound: "default",
-              },
-              trigger: null,
-            });
-            return 0;
-          }
           return prev - 1;
         });
       }, 1000);
-    } else if (!isTimerRunning && timerRemaining === 0) {
+    } else if (timerRemaining === 0) {
       clearInterval(timerIntervalRef.current);
-      setShowTimerLockout(false);
-    } else if (!isTimerRunning && timerRemaining > 0) {
-      clearInterval(timerIntervalRef.current);
+      if (isTimerRunning) {
+        setIsTimerRunning(false);
+        setShowTimerLockout(false);
+        showConfirmation("Congratulations! You completed your focus session!", () => {
+          setConfettiVisible(true);
+        });
+        Notifications.scheduleNotificationAsync({
+          content: {
+            title: "KwestUp Focus Timer",
+            body: "Your focus session is complete! Great job!",
+            sound: "default",
+          },
+          trigger: null,
+        });
+      }
     }
 
     return () => clearInterval(timerIntervalRef.current);
@@ -788,45 +812,36 @@ const App = () => {
     });
   };
 
-  const handleSaveTask = (savedTask) => {
+  const handleSaveTask = async (savedTask) => {
     // Ensure task listId is bound
     const taskToSave = {
       ...savedTask,
       listId: savedTask.listId || "default_inbox"
     };
 
-    setTasks(currentTasks => {
-      const existingTaskIndex = currentTasks.findIndex(t => t.id === taskToSave.id);
-      if (existingTaskIndex > -1) {
-        const oldTask = currentTasks[existingTaskIndex];
-        if (oldTask.notificationId && oldTask.dueDate !== taskToSave.dueDate) {
-          cancelDueDateNotification(oldTask.notificationId);
-        }
-        if (taskToSave.dueDate) {
-          scheduleDueDateNotification(taskToSave).then(notificationId => {
-            const newTasks = [...currentTasks];
-            newTasks[existingTaskIndex] = { ...taskToSave, notificationId };
-            setTasks(newTasks);
-          });
-          return currentTasks;
-        } else {
-          const newTasks = [...currentTasks];
-          newTasks[existingTaskIndex] = { ...taskToSave, notificationId: null };
-          return newTasks;
-        }
-      } else {
-        const newTaskId = Date.now().toString();
-        const finalTask = { ...taskToSave, id: newTaskId };
-        if (finalTask.dueDate) {
-          scheduleDueDateNotification(finalTask).then(notificationId => {
-            setTasks([...currentTasks, { ...finalTask, notificationId }]);
-          });
-          return currentTasks;
-        } else {
-          return [...currentTasks, { ...finalTask, notificationId: null }];
-        }
+    // Cancel old notification if dueDate changed
+    if (taskToSave.id) {
+      const existingTask = tasks.find(t => t.id === taskToSave.id);
+      if (existingTask && existingTask.notificationId && existingTask.dueDate !== taskToSave.dueDate) {
+        await cancelDueDateNotification(existingTask.notificationId);
       }
-    });
+    }
+
+    // Schedule notification if dueDate is set
+    let notificationId = null;
+    if (taskToSave.dueDate) {
+      const nid = await scheduleDueDateNotification(taskToSave);
+      if (nid) notificationId = nid;
+    }
+
+    // Apply updates in a single state transaction
+    if (taskToSave.id && tasks.find(t => t.id === taskToSave.id)) {
+      setTasks(prev => prev.map(t => t.id === taskToSave.id ? { ...taskToSave, notificationId } : t));
+    } else {
+      const newId = taskToSave.id || Date.now().toString();
+      const finalTask = { ...taskToSave, id: newId, notificationId };
+      setTasks(prev => [...prev, finalTask]);
+    }
   };
 
   const handleToggleSubtask = (taskId, subtaskIdx) => {
@@ -931,11 +946,11 @@ const App = () => {
         }
 
         // 4. Cancel all old scheduled birthday alarm system configurations
-        birthdays.forEach(bday => {
+        for (const bday of birthdays) {
           if (bday.notificationIds && bday.notificationIds.length > 0) {
-            cancelCustomBirthdayReminders(bday.notificationIds);
+            await cancelCustomBirthdayReminders(bday.notificationIds);
           }
-        });
+        }
 
         // 5. Reschedule upcoming reminders for newly synchronized birthdays list
         const rescheduledBirthdays = [];

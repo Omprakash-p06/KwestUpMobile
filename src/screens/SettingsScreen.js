@@ -622,7 +622,7 @@ export const SettingsScreen = ({
               <CustomButton
                 title="RESTORE BACKUP"
                 onPress={handleImportPress}
-                variant="outline"
+                outline
                 style={styles.archiveButton}
               />
             </View>
@@ -797,7 +797,7 @@ export const SettingsScreen = ({
               <CustomButton
                 title="CANCEL"
                 onPress={handleModalCancel}
-                variant="outline"
+                outline
                 style={styles.archiveModalBtn}
               />
               <CustomButton
