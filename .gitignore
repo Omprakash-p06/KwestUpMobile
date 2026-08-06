@@ -71,8 +71,7 @@ ios/Pods/
 # Old app icons (no longer referenced — replaced by UI Design plan/logo/)
 AppIcons(1)/
 
-# GSD internal planning & validation (not app source code)
-.planning/
+# GSD internal scripts (not app source code)
 scripts/
 
 # Generated native project files
