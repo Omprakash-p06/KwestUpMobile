@@ -20,9 +20,9 @@ Requirements for the hardening and production readiness milestone.
 
 ### Security & Storage
 
-- [ ] **SEC-01**: Modernize backup encryption with per-archive cryptographically random salt and IV, PBKDF2 with ≥100,000 iterations, and legacy archive fallback.
-- [ ] **SEC-02**: Secure LAN synchronization transport and token authentication over local Wi-Fi.
-- [ ] **STORE-01**: Fix storage migration version key drift and prevent version change cache clear from wiping telemetry and AI download state.
+- [x] **SEC-01**: Modernize backup encryption with per-archive cryptographically random salt and IV, PBKDF2 with ≥100,000 iterations, and legacy archive fallback.
+- [x] **SEC-02**: Secure LAN synchronization transport and token authentication over local Wi-Fi.
+- [x] **STORE-01**: Fix storage migration version key drift and prevent version change cache clear from wiping telemetry and AI download state.
 
 ### Architecture & State
 
@@ -57,9 +57,9 @@ Requirements for the hardening and production readiness milestone.
 | TEST-03 | Phase 14 | Complete |
 | DATE-01 | Phase 15 | Complete |
 | DATE-02 | Phase 15 | Complete |
-| SEC-01  | Phase 16 | Pending |
-| SEC-02  | Phase 16 | Pending |
-| STORE-01| Phase 16 | Pending |
+| SEC-01  | Phase 16 | Complete |
+| SEC-02  | Phase 16 | Complete |
+| STORE-01| Phase 16 | Complete |
 | ARCH-01 | Phase 17 | Pending |
 | ARCH-02 | Phase 17 | Pending |
 | AI-01   | Phase 18 | Pending |

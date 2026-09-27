@@ -1,17 +1,17 @@
 /**
  * KwestUp Mobile Client Synchronization Service
- * Manages local network pings and bidrectional REST sync handshakes.
+ * Manages local network pings, secure transport validation, and bidirectional REST sync handshakes.
  */
 
 // Helper to wrap fetches with timeouts
 const fetchWithTimeout = async (url, options, timeoutMs = 4000) => {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
-  
+
   try {
     const response = await fetch(url, {
       ...options,
-      signal: controller.signal
+      signal: controller.signal,
     });
     clearTimeout(id);
     return response;
@@ -22,24 +22,102 @@ const fetchWithTimeout = async (url, options, timeoutMs = 4000) => {
 };
 
 /**
+ * Validates the LAN sync configuration object.
+ * Rejects invalid IP addresses, path injections, out-of-bounds ports, and empty tokens.
+ *
+ * @param {Object} config - { ip, port, token }
+ * @returns {{ ip: string, port: number, token: string }}
+ * @throws {Error} If config is invalid
+ */
+export const validateSyncConfig = (config) => {
+  if (!config || typeof config !== "object") {
+    throw new Error("Invalid sync configuration: config must be an object.");
+  }
+
+  const { ip, port, token } = config;
+
+  if (!ip || typeof ip !== "string") {
+    throw new Error("Invalid sync configuration: missing or invalid IP address.");
+  }
+
+  const trimmedIp = ip.trim();
+  const ipv4Strict = /^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$/;
+  const isDottedNumeric = /^\d+(\.\d+){3}$/;
+  const hostnameRegex = /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+  const ipv6Regex = /^\[?[a-fA-F0-9:]+\]?$/;
+
+  let isValid = false;
+  if (isDottedNumeric.test(trimmedIp)) {
+    isValid = ipv4Strict.test(trimmedIp);
+  } else {
+    isValid = hostnameRegex.test(trimmedIp) || ipv6Regex.test(trimmedIp);
+  }
+
+  if (!isValid) {
+    throw new Error(`Invalid sync configuration: IP address or hostname "${ip}" is malformed.`);
+  }
+
+  const numericPort = Number(port);
+  if (!Number.isInteger(numericPort) || numericPort < 1 || numericPort > 65535) {
+    throw new Error(`Invalid sync configuration: port "${port}" is out of bounds (1-65535).`);
+  }
+
+  if (!token || typeof token !== "string" || token.trim().length < 6) {
+    throw new Error("Invalid sync configuration: missing or insufficiently long security token.");
+  }
+
+  return { ip: trimmedIp, port: numericPort, token: token.trim() };
+};
+
+/**
+ * Validates the structure of the incoming synchronization payload from the server.
+ * Ensures notes, tasks, and birthdays arrays exist to prevent accidental note wipes.
+ *
+ * @param {Object} data - Synced result payload from server
+ * @returns {Object} Validated payload
+ * @throws {Error} If payload is malformed
+ */
+export const validateSyncPayload = (data) => {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw new Error("Sync API error: Malformed server response. Expected JSON object.");
+  }
+
+  if (!Array.isArray(data.notes)) {
+    throw new Error("Sync API error: Server response missing required 'notes' array.");
+  }
+  if (!Array.isArray(data.tasks)) {
+    throw new Error("Sync API error: Server response missing required 'tasks' array.");
+  }
+  if (!Array.isArray(data.birthdays)) {
+    throw new Error("Sync API error: Server response missing required 'birthdays' array.");
+  }
+
+  if (!Array.isArray(data.taskLists)) {
+    data.taskLists = [];
+  }
+
+  return data;
+};
+
+/**
  * Pings the desktop sync server to verify connectivity.
  */
 export const pingSyncServer = async (config) => {
-  const { ip, port } = config;
-  const baseUrl = `http://${ip}:${port}`;
-  
   try {
+    const validConfig = validateSyncConfig({ ...config, token: config?.token || "ping-token-check" });
+    const baseUrl = `http://${validConfig.ip}:${validConfig.port}`;
+
     const response = await fetchWithTimeout(`${baseUrl}/ping`, {
       method: "GET",
       headers: {
-        "Accept": "application/json"
-      }
+        "Accept": "application/json",
+      },
     }, 3000);
-    
+
     if (!response.ok) {
       throw new Error(`Ping failed with status code: ${response.status}`);
     }
-    
+
     const data = await response.json();
     return data && data.status === "online";
   } catch (error) {
@@ -53,13 +131,13 @@ export const pingSyncServer = async (config) => {
  * Exchanges notes, tasks, task lists, and birthdays with host PC.
  */
 export const performSync = async (config, localData) => {
-  const { ip, port, token } = config;
-  const baseUrl = `http://${ip}:${port}`;
+  const validConfig = validateSyncConfig(config);
+  const baseUrl = `http://${validConfig.ip}:${validConfig.port}`;
 
   console.log(`🌐 INITIALIZING LOCAL NETWORK SYNC -> ${baseUrl}`);
 
   // 1. Verify connection first
-  const isOnline = await pingSyncServer(config);
+  const isOnline = await pingSyncServer(validConfig);
   if (!isOnline) {
     throw new Error(
       "Unable to connect to the PC Sync Server.\n\n" +
@@ -70,13 +148,13 @@ export const performSync = async (config, localData) => {
 
   // 2. Prepare client JSON payload
   const payload = {
-    notes: localData.notes || [],
-    tasks: localData.tasks || [],
-    taskLists: localData.taskLists || [],
-    birthdays: localData.birthdays || [],
-    themeMode: localData.themeMode || "light",
-    selectedThemeName: localData.selectedThemeName || "dribbble",
-    userName: localData.userName || "",
+    notes: localData?.notes || [],
+    tasks: localData?.tasks || [],
+    taskLists: localData?.taskLists || [],
+    birthdays: localData?.birthdays || [],
+    themeMode: localData?.themeMode || "light",
+    selectedThemeName: localData?.selectedThemeName || "dribbble",
+    userName: localData?.userName || "",
   };
 
   try {
@@ -86,9 +164,9 @@ export const performSync = async (config, localData) => {
       headers: {
         "Content-Type": "application/json",
         "Accept": "application/json",
-        "Authorization": `Bearer ${token}`
+        "Authorization": `Bearer ${validConfig.token}`,
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     }, 10000); // 10-second timeout for large vaults
 
     // 4. Handle authorization blocks
@@ -100,10 +178,11 @@ export const performSync = async (config, localData) => {
       throw new Error(`Sync API failed with response status code: ${response.status}`);
     }
 
-    // 5. Return synced result
-    const result = await response.json();
+    // 5. Validate and return synced result
+    const rawResult = await response.json();
+    const validatedResult = validateSyncPayload(rawResult);
     console.log("✅ SYNC DATA EXCHANGED SUCCESSFULLY");
-    return result;
+    return validatedResult;
   } catch (error) {
     console.error("❌ Sync Service Request Failed:", error);
     if (error.name === "AbortError") {

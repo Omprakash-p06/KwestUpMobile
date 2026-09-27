@@ -10,17 +10,35 @@ import { scheduleRecurringBillReminder, cancelRecurringBillReminders } from "./b
 // ─── Encryption Helpers ───────────────────────────────────────────────────────
 
 /**
- * Encrypts a payload object using AES-256 with a user passphrase.
+ * Encrypts a payload object using AES-256 with per-archive random salt and IV
+ * and PBKDF2-HMAC-SHA256 with 100,000 iterations (v2 envelope format).
+ *
  * @param {Object} payloadObj - Data to encrypt
  * @param {string} passphrase - User-defined passphrase
- * @returns {string} Encrypted ciphertext string
+ * @returns {string} Encrypted JSON envelope string
  */
 export const encryptBackup = (payloadObj, passphrase) => {
   try {
     const rawText = JSON.stringify(payloadObj);
-    const salt = CryptoJS.enc.Hex.parse("4b77657374557053616c745f7632"); // Hex string for "KwestUpSalt_v2"
-    const key = CryptoJS.PBKDF2(passphrase, salt, { keySize: 256/32, iterations: 1000 });
-    return CryptoJS.AES.encrypt(rawText, key, { iv: salt }).toString();
+    const salt = CryptoJS.lib.WordArray.random(16);
+    const iv = CryptoJS.lib.WordArray.random(16);
+    const iterations = 100000;
+    const key = CryptoJS.PBKDF2(passphrase, salt, {
+      keySize: 256 / 32,
+      iterations,
+      hasher: CryptoJS.algo.SHA256,
+    });
+    const encrypted = CryptoJS.AES.encrypt(rawText, key, { iv });
+    const envelope = {
+      v: 2,
+      kdf: "PBKDF2",
+      hasher: "SHA256",
+      iterations,
+      salt: CryptoJS.enc.Hex.stringify(salt),
+      iv: CryptoJS.enc.Hex.stringify(iv),
+      ciphertext: encrypted.toString(),
+    };
+    return JSON.stringify(envelope);
   } catch (error) {
     console.error("❌ Encryption failed:", error);
     throw new Error("Failed to encrypt data.");
@@ -29,14 +47,42 @@ export const encryptBackup = (payloadObj, passphrase) => {
 
 /**
  * Decrypts an AES-256 encrypted backup string.
- * @param {string} encryptedText - Ciphertext from encryptBackup
+ * Auto-detects modern v2 envelope format and transparently falls back to
+ * legacy v1 decryption (static salt, 1,000 iterations) for older archives.
+ *
+ * @param {string} encryptedText - Ciphertext envelope or raw v1 string
  * @param {string} passphrase - User-defined passphrase
  * @returns {Object} Decrypted and parsed payload
  */
 export const decryptBackup = (encryptedText, passphrase) => {
   try {
+    let envelope = null;
+    try {
+      envelope = JSON.parse(encryptedText);
+    } catch {
+      envelope = null;
+    }
+
+    if (envelope && envelope.v === 2 && envelope.ciphertext && envelope.salt && envelope.iv) {
+      const salt = CryptoJS.enc.Hex.parse(envelope.salt);
+      const iv = CryptoJS.enc.Hex.parse(envelope.iv);
+      const iterations = envelope.iterations || 100000;
+      const key = CryptoJS.PBKDF2(passphrase, salt, {
+        keySize: 256 / 32,
+        iterations,
+        hasher: CryptoJS.algo.SHA256,
+      });
+      const bytes = CryptoJS.AES.decrypt(envelope.ciphertext, key, { iv });
+      const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
+      if (!decryptedText) {
+        throw new Error("Invalid password or corrupted file.");
+      }
+      return JSON.parse(decryptedText);
+    }
+
+    // Fallback to legacy v1 format
     const salt = CryptoJS.enc.Hex.parse("4b77657374557053616c745f7632");
-    const key = CryptoJS.PBKDF2(passphrase, salt, { keySize: 256/32, iterations: 1000 });
+    const key = CryptoJS.PBKDF2(passphrase, salt, { keySize: 256 / 32, iterations: 1000 });
     const bytes = CryptoJS.AES.decrypt(encryptedText, key, { iv: salt });
     const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
     if (!decryptedText) {
@@ -247,7 +293,7 @@ export const importArchive = async (filePath, passphrase, onProgress) => {
   let payload;
   try {
     payload = decryptBackup(encryptedText, passphrase);
-  } catch (err) {
+  } catch {
     // Re-throw with standardized import error message for UI
     throw new Error("INVALID PASSPHRASE OR CORRUPTED ARCHIVE");
   }

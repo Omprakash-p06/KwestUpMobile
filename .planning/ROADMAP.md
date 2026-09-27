@@ -25,7 +25,7 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 ### Milestone 2: Hardened Offline-First & Production Readiness
 - [x] **Phase 14: Automated Testing Framework & CI/CD Pipeline** - Jest test runner, native module mocks, unit test suites, and GitHub Actions CI workflow. ✅ COMPLETE
 - [x] **Phase 15: Centralized Local Date Engine & Timezone Bug Fixes** - Device-local calendar date utility replacing UTC slicing across app, screens, and widgets. ✅ COMPLETE
-- [ ] **Phase 16: Security & Storage Migration Hardening** - Per-archive random salt/IV with PBKDF2 100k+, LAN sync transport security, and storage migration key hardening.
+- [x] **Phase 16: Security & Storage Migration Hardening** - Per-archive random salt/IV with PBKDF2 100k+, LAN sync transport security, and storage migration key hardening. ✅ COMPLETE
 - [ ] **Phase 17: State Architecture & Unified Mutation Layer** - Decouple App.js into domain contexts/stores and unify task recurrence/completion between app and widgets.
 - [ ] **Phase 18: On-Device AI Pipeline Hardening** - SHA-256 checksum model verification, pinned releases, fallback handling, and memory lifecycle cleanup.
 - [ ] **Phase 19: Production Observability & Logging Cleanup** - Strip debug emoji console logging from release bundles and establish structured crash boundaries.
@@ -232,8 +232,8 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
   2. LAN sync verifies session tokens securely and rejects unauthorized or malformed requests.
   3. Storage migration targets active `currentStorageVersion` rather than hardcoded legacy keys, and cache cleaning preserves telemetry opt-in and AI download state.
 **Plans**:
-- [ ] 16-01-PLAN.md — Upgrade backup encryption in `exportService.js` and `importService.js` with legacy migration tests.
-- [ ] 16-02-PLAN.md — Secure LAN sync handshake and fix storage migration keys and cache clearing.
+- [x] 16-01-PLAN.md — Upgrade backup encryption in `exportService.js` and `importService.js` with legacy migration tests. ✅
+- [x] 16-02-PLAN.md — Secure LAN sync handshake and fix storage migration keys and cache clearing. ✅
 
 ---
 

@@ -14,7 +14,9 @@ export const isUserDataKey = (key) => {
     key.startsWith("kwestup_activeVault_") ||
     key.startsWith("kwestup_vaults_") ||
     key.startsWith("kwestup_billing_") ||
-    key.startsWith("kwestup_widget_")
+    key.startsWith("kwestup_widget_") ||
+    key.startsWith("kwestup_telemetry_") ||
+    key.startsWith("kwestup_ai_model_")
   );
 };
 
@@ -134,23 +136,44 @@ export const migrateUserDataIfNeeded = async (currentStorageVersion) => {
     ]);
 
     // Also migrate active vault and vault list if they exist in older versions
-    const activeVaultKeys = allKeys.filter((k) => k.startsWith("kwestup_activeVault_v"));
+    const activeVaultKeys = allKeys.filter(
+      (k) => k.startsWith("kwestup_activeVault_v") && k !== `kwestup_activeVault_${currentStorageVersion}`
+    );
     if (activeVaultKeys.length > 0) {
       activeVaultKeys.sort();
       const highestActiveKey = activeVaultKeys[activeVaultKeys.length - 1];
       const activeVaultData = await AsyncStorage.getItem(highestActiveKey);
       if (activeVaultData) {
-        await AsyncStorage.setItem("kwestup_activeVault_v5.0", activeVaultData);
+        await AsyncStorage.setItem(`kwestup_activeVault_${currentStorageVersion}`, activeVaultData);
       }
     }
 
-    const vaultsKeys = allKeys.filter((k) => k.startsWith("kwestup_vaults_v"));
+    const vaultsKeys = allKeys.filter(
+      (k) => k.startsWith("kwestup_vaults_v") && k !== `kwestup_vaults_${currentStorageVersion}`
+    );
     if (vaultsKeys.length > 0) {
       vaultsKeys.sort();
       const highestVaultsKey = vaultsKeys[vaultsKeys.length - 1];
       const vaultsData = await AsyncStorage.getItem(highestVaultsKey);
       if (vaultsData) {
-        await AsyncStorage.setItem("kwestup_vaults_v5.0", vaultsData);
+        await AsyncStorage.setItem(`kwestup_vaults_${currentStorageVersion}`, vaultsData);
+      }
+    }
+
+    // Also migrate billing data if current version lacks billing data
+    const currentBillingKey = `kwestup_billing_${currentStorageVersion}`;
+    const currentBillingData = await AsyncStorage.getItem(currentBillingKey);
+    if (!currentBillingData) {
+      const billingKeys = allKeys.filter(
+        (k) => k.startsWith("kwestup_billing_v") && k !== currentBillingKey
+      );
+      if (billingKeys.length > 0) {
+        billingKeys.sort();
+        const highestBillingKey = billingKeys[billingKeys.length - 1];
+        const billingData = await AsyncStorage.getItem(highestBillingKey);
+        if (billingData) {
+          await AsyncStorage.setItem(currentBillingKey, billingData);
+        }
       }
     }
 

@@ -59,6 +59,57 @@ describe('exportService & importService Unit Tests', () => {
       expect(decrypted.vaults[0].notes[0].title).toBe('Meeting Notes');
     });
 
+    it('produces v2 envelope format with 128-bit hex salt, iv, and 100,000 PBKDF2 iterations', () => {
+      const ciphertext = encryptBackup(samplePayload, samplePassphrase);
+      const envelope = JSON.parse(ciphertext);
+      expect(envelope.v).toBe(2);
+      expect(envelope.kdf).toBe('PBKDF2');
+      expect(envelope.hasher).toBe('SHA256');
+      expect(envelope.iterations).toBe(100000);
+      expect(typeof envelope.salt).toBe('string');
+      expect(envelope.salt.length).toBe(32); // 16 bytes = 32 hex chars
+      expect(typeof envelope.iv).toBe('string');
+      expect(envelope.iv.length).toBe(32);   // 16 bytes = 32 hex chars
+      expect(typeof envelope.ciphertext).toBe('string');
+      expect(envelope.ciphertext.length).toBeGreaterThan(0);
+    });
+
+    it('generates distinct ciphertexts when encrypting identical payload and passphrase (random salt & IV)', () => {
+      const ciphertext1 = encryptBackup(samplePayload, samplePassphrase);
+      const ciphertext2 = encryptBackup(samplePayload, samplePassphrase);
+      expect(ciphertext1).not.toBe(ciphertext2);
+
+      const env1 = JSON.parse(ciphertext1);
+      const env2 = JSON.parse(ciphertext2);
+      expect(env1.salt).not.toBe(env2.salt);
+      expect(env1.iv).not.toBe(env2.iv);
+      expect(env1.ciphertext).not.toBe(env2.ciphertext);
+
+      expect(decryptBackup(ciphertext1, samplePassphrase)).toEqual(samplePayload);
+      expect(decryptBackup(ciphertext2, samplePassphrase)).toEqual(samplePayload);
+    });
+
+    it('transparently decrypts legacy v1 archives generated with static salt and 1k iterations', () => {
+      // Recreate legacy v1 encryption
+      const CryptoJS = require('crypto-js');
+      const legacySalt = CryptoJS.enc.Hex.parse('4b77657374557053616c745f7632');
+      const legacyKey = CryptoJS.PBKDF2(samplePassphrase, legacySalt, { keySize: 256 / 32, iterations: 1000 });
+      const legacyCiphertext = CryptoJS.AES.encrypt(JSON.stringify(samplePayload), legacyKey, { iv: legacySalt }).toString();
+
+      const decrypted = decryptBackup(legacyCiphertext, samplePassphrase);
+      expect(decrypted).toEqual(samplePayload);
+      expect(decrypted.metadata.appVersion).toBe('3.5.0');
+    });
+
+    it('throws error when envelope fields are tampered with', () => {
+      const ciphertext = encryptBackup(samplePayload, samplePassphrase);
+      const envelope = JSON.parse(ciphertext);
+      envelope.salt = '00000000000000000000000000000000'; // corrupt salt
+      expect(() => {
+        decryptBackup(JSON.stringify(envelope), samplePassphrase);
+      }).toThrow('Unable to decrypt archive. Please verify the passphrase.');
+    });
+
     it('throws error when decrypting with an incorrect passphrase', () => {
       const ciphertext = encryptBackup(samplePayload, samplePassphrase);
       expect(() => {

@@ -1,9 +1,12 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system";
+import { STORAGE_VERSION } from "./storage";
 
 // ─── AsyncStorage Keys ───────────────────────────────────────────────────────
-const VAULTS_KEY = "kwestup_vaults_v5.0";
-const ACTIVE_KEY = "kwestup_activeVault_v5.0";
+export const LEGACY_VAULTS_KEY = "kwestup_vaults_v5.0";
+export const LEGACY_ACTIVE_KEY = "kwestup_activeVault_v5.0";
+export const VAULTS_KEY = `kwestup_vaults_${STORAGE_VERSION}`;
+export const ACTIVE_KEY = `kwestup_activeVault_${STORAGE_VERSION}`;
 
 // ─── Path Helpers ────────────────────────────────────────────────────────────
 
@@ -35,7 +38,14 @@ export const ensureVaultsDir = async () => {
  */
 export const getVaults = async () => {
   try {
-    const raw = await AsyncStorage.getItem(VAULTS_KEY);
+    let raw = await AsyncStorage.getItem(VAULTS_KEY);
+    if (!raw && VAULTS_KEY !== LEGACY_VAULTS_KEY) {
+      const legacyRaw = await AsyncStorage.getItem(LEGACY_VAULTS_KEY);
+      if (legacyRaw) {
+        await AsyncStorage.setItem(VAULTS_KEY, legacyRaw);
+        raw = legacyRaw;
+      }
+    }
     if (!raw) return [];
     return JSON.parse(raw);
   } catch (error) {
@@ -132,7 +142,15 @@ export const renameVault = async (vaultId, newName) => {
  */
 export const getActiveVaultId = async () => {
   try {
-    return await AsyncStorage.getItem(ACTIVE_KEY);
+    let activeId = await AsyncStorage.getItem(ACTIVE_KEY);
+    if (!activeId && ACTIVE_KEY !== LEGACY_ACTIVE_KEY) {
+      const legacyActive = await AsyncStorage.getItem(LEGACY_ACTIVE_KEY);
+      if (legacyActive) {
+        await AsyncStorage.setItem(ACTIVE_KEY, legacyActive);
+        activeId = legacyActive;
+      }
+    }
+    return activeId;
   } catch (error) {
     console.error("❌ Failed to read active vault ID:", error);
     return null;
