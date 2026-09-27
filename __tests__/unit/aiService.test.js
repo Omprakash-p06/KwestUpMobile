@@ -9,6 +9,9 @@ import {
   MODEL_DOWNLOAD_URL,
   MODEL_PATH,
   computeSha256,
+  hashFileSha256,
+  defaultFileHashValidator,
+  MODEL_HASH_CHUNK_BYTES,
   verifyModelIntegrity,
   isModelDownloaded,
   loadModel,
@@ -16,6 +19,8 @@ import {
   getModelContextStatus,
   resetIdleTimer,
   IDLE_UNLOAD_TIMEOUT_MS,
+  subscribeAppState,
+  unsubscribeAppState,
   extractTasksFromNoteHeuristic,
   summarizeNoteHeuristic,
   extractTasksFromNote,
@@ -77,13 +82,28 @@ describe('aiService - Plan 18-01 & 18-02: Pipeline Hardening & Memory Lifecycle'
       expect(FileSystem.deleteAsync).not.toHaveBeenCalled();
     });
 
-    it('returns true when model file exists and exact size matches MODEL_EXPECTED_SIZE', async () => {
+    it('default path fail-closes when size matches but content hash cannot be verified', async () => {
+      // Size match alone no longer passes: the default validator streams the
+      // file through SHA-256, and the mock FS holds no such file (read throws).
       FileSystem.getInfoAsync.mockResolvedValueOnce({
         exists: true,
         size: MODEL_EXPECTED_SIZE,
       });
 
       const isValid = await verifyModelIntegrity(MODEL_PATH);
+      expect(isValid).toBe(false);
+      expect(FileSystem.deleteAsync).toHaveBeenCalledWith(MODEL_PATH, {
+        idempotent: true,
+      });
+    });
+
+    it('explicit null validator keeps the size-only fast path (no hashing)', async () => {
+      FileSystem.getInfoAsync.mockResolvedValueOnce({
+        exists: true,
+        size: MODEL_EXPECTED_SIZE,
+      });
+
+      const isValid = await verifyModelIntegrity(MODEL_PATH, null);
       expect(isValid).toBe(true);
       expect(FileSystem.deleteAsync).not.toHaveBeenCalled();
     });
@@ -456,6 +476,184 @@ Release v3.5 is targeted for this week.
         expect(res.dueDate).toBeDefined();
         expect(new Date(res.dueDate).toISOString()).toBe(res.dueDate);
       });
+
+      it('returns a safe task instead of throwing on null/undefined/non-string input (W-3)', async () => {
+        for (const bad of [null, undefined, 42]) {
+          const res = await parseGlobalCommand(bad);
+          expect(res).toEqual({
+            type: 'task',
+            title: 'New Task',
+            description: expect.any(String),
+            dueDate: null,
+          });
+        }
+      });
+    });
+  });
+
+  // =========================================================================
+  // Review fixes: C-1 default SHA-256 file verification path
+  // =========================================================================
+  describe('SHA-256 File Verification Default Path (C-1)', () => {
+    const toB64 = (s) => Buffer.from(s, 'utf8').toString('base64');
+    let originalReadImpl;
+
+    beforeEach(() => {
+      originalReadImpl = FileSystem.readAsStringAsync.getMockImplementation();
+    });
+
+    afterEach(() => {
+      FileSystem.readAsStringAsync.mockImplementation(originalReadImpl);
+    });
+
+    it('hashFileSha256 streams base64 chunks incrementally without loading the whole file', async () => {
+      FileSystem.readAsStringAsync.mockImplementation(async (uri, opts) =>
+        (opts?.position ?? 0) === 0 ? toB64('hello world') : ''
+      );
+
+      await expect(hashFileSha256('file:///mock-docs/models/x.gguf', 4)).resolves.toBe(
+        'b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9'
+      );
+      expect(FileSystem.readAsStringAsync).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ encoding: 'base64', position: 0, length: 4 })
+      );
+    });
+
+    it('verifyModelIntegrity default path rejects a same-size file with wrong hash and deletes it', async () => {
+      FileSystem.getInfoAsync.mockResolvedValueOnce({
+        exists: true,
+        size: MODEL_EXPECTED_SIZE,
+      });
+      FileSystem.readAsStringAsync.mockImplementation(async (uri, opts) =>
+        (opts?.position ?? 0) === 0 ? toB64('tampered content, same size lie') : ''
+      );
+
+      const isValid = await verifyModelIntegrity(MODEL_PATH);
+      expect(isValid).toBe(false);
+      expect(FileSystem.deleteAsync).toHaveBeenCalledWith(MODEL_PATH, {
+        idempotent: true,
+      });
+    });
+
+    it('verifyModelIntegrity treats a throwing validator as a mismatch (fail-closed)', async () => {
+      FileSystem.getInfoAsync.mockResolvedValueOnce({
+        exists: true,
+        size: MODEL_EXPECTED_SIZE,
+      });
+
+      await expect(
+        verifyModelIntegrity(MODEL_PATH, async () => {
+          throw new Error('HSM offline');
+        })
+      ).resolves.toBe(false);
+      expect(FileSystem.deleteAsync).toHaveBeenCalledWith(MODEL_PATH, {
+        idempotent: true,
+      });
+    });
+
+    it('verifyModelIntegrity(null) keeps the explicit size-only fast path without hashing', async () => {
+      FileSystem.getInfoAsync.mockResolvedValueOnce({
+        exists: true,
+        size: MODEL_EXPECTED_SIZE,
+      });
+
+      await expect(verifyModelIntegrity(MODEL_PATH, null)).resolves.toBe(true);
+      expect(FileSystem.readAsStringAsync).not.toHaveBeenCalled();
+      expect(FileSystem.deleteAsync).not.toHaveBeenCalled();
+    });
+
+    it('defaultFileHashValidator compares against the pinned SHA-256 constant', async () => {
+      FileSystem.readAsStringAsync.mockImplementation(async () => '');
+      // Empty stream hashes to e3b0... which is NOT the pinned model hash.
+      await expect(defaultFileHashValidator(MODEL_PATH)).resolves.toBe(false);
+      expect(MODEL_HASH_CHUNK_BYTES).toBe(8 * 1024 * 1024);
+    });
+  });
+
+  // =========================================================================
+  // Review fixes: W-1 unload-while-inflight race
+  // =========================================================================
+  describe('Unload-While-Inflight Race (W-1)', () => {
+    it('releases the late-resolving context instead of resurrecting it', async () => {
+      FileSystem.getInfoAsync.mockResolvedValue({
+        exists: true,
+        size: MODEL_EXPECTED_SIZE,
+      });
+
+      let resolveInit;
+      initLlama.mockImplementationOnce(
+        () => new Promise((res) => { resolveInit = res; })
+      );
+
+      const loadPromise = loadModel();
+      expect(getModelContextStatus().isLoading).toBe(true);
+
+      // Unload synchronously mid-flight: the generation bump is captured before
+      // initLlama is even invoked, so the late result must be released.
+      await unloadModel();
+      // Flush the microtask queue so the in-flight init reaches initLlama.
+      await new Promise((r) => setImmediate(r));
+      await new Promise((r) => setImmediate(r));
+      expect(initLlama).toHaveBeenCalledTimes(1);
+      resolveInit({ completion: jest.fn(), release: jest.fn() });
+
+      await expect(loadPromise).rejects.toThrow('cancelled');
+      expect(getModelContextStatus()).toEqual({
+        isLoaded: false,
+        isLoading: false,
+      });
+      expect(releaseAllLlama).toHaveBeenCalled();
+    });
+  });
+
+  // =========================================================================
+  // Review fixes: W-2 inference errors release native memory
+  // =========================================================================
+  describe('Inference Error Native Release (W-2)', () => {
+    it('failed inference releases native memory via unloadModel (no leaked handle)', async () => {
+      FileSystem.getInfoAsync.mockResolvedValue({
+        exists: true,
+        size: MODEL_EXPECTED_SIZE,
+      });
+      initLlama.mockResolvedValueOnce({
+        completion: jest.fn().mockRejectedValueOnce(new Error('native GGML failure')),
+        release: jest.fn(),
+      });
+
+      const summary = await summarizeNote('# Launch Notes\nRelease v3.5 ships this week.');
+      expect(releaseAllLlama).toHaveBeenCalled();
+      expect(getModelContextStatus().isLoaded).toBe(false);
+      expect(summary).toContain('• Launch Notes');
+    });
+  });
+
+  // =========================================================================
+  // Review fixes: W-6 numbered-list heuristic precision
+  // =========================================================================
+  describe('Numbered-List Heuristic Precision (W-6)', () => {
+    it('requires an action verb for numbered items (no short-item fallback)', () => {
+      const note = `1. Introduction\n2. Prerequisites\n3. References\n1. Buy milk tomorrow`;
+      const tasks = extractTasksFromNoteHeuristic(note);
+      expect(tasks).not.toContain('Introduction');
+      expect(tasks).not.toContain('Prerequisites');
+      expect(tasks).not.toContain('References');
+      expect(tasks).toContain('Buy milk tomorrow');
+    });
+  });
+
+  // =========================================================================
+  // Review fixes: W-5 AppState subscription lifecycle
+  // =========================================================================
+  describe('AppState Subscription Lifecycle (W-5)', () => {
+    it('subscribe/unsubscribe manage the lifecycle idempotently without throwing', () => {
+      expect(() => {
+        const first = subscribeAppState();
+        const second = subscribeAppState();
+        expect(second).toBe(first);
+        unsubscribeAppState();
+        unsubscribeAppState(); // safe when already unsubscribed
+      }).not.toThrow();
     });
   });
 });

@@ -10,7 +10,7 @@ KwestUpMobile/
 ├── index.js                # Expo entry: registerRootComponent + widget task handler (11 lines)
 ├── app.json                # Expo config: name/slug/version, Android package, plugins, 4 widgets, EAS id
 ├── package.json            # Deps (Expo 53, RN 0.79.5, llama.rn, android-widget) + jest/eslint scripts
-├── babel.config.js         # Babel preset (expo)
+├── babel.config.js         # Babel preset (expo) + reanimated plugin
 ├── metro.config.js         # Metro bundler config
 ├── tsconfig.json           # TypeScript config (widgets are .tsx)
 ├── jest.config.js          # jest-expo/android preset, setup file, transform allowlist
@@ -24,7 +24,7 @@ KwestUpMobile/
 ├── assets/                 # App icon, splash, fonts bundle refs, widget previews
 ├── build/                  # Local build output (generated, not source)
 ├── coverage/               # Jest coverage output (generated)
-├── __tests__/              # Jest suites (unit/ + widget logic + setup/)
+├── __tests__/              # Jest suites (unit/ + widget logic + setup/) — 10 suites, 138 tests
 ├── .planning/              # GSD planning: PROJECT/ROADMAP/STATE, phases/, codebase/, debug/
 ├── .github/workflows/      # CI gate (ESLint + Jest + coverage)
 ├── GEMINI.md / README.md   # Repo docs
@@ -36,12 +36,12 @@ KwestUpMobile/
 | `App.js` | file | State owner + provider seeder + persistence/widget effects + global modals |
 | `index.js` | file | Dual registration: UI root + widget handler |
 | `src/` | dir | Screens, components, context providers, navigation, theme, service utils |
-| `src/context/` | dir | NEW in Phase 17: 4 providers (Task, Vault, Billing, Birthday) |
+| `src/context/` | dir | 4 domain context providers (Task, Vault, Billing, Birthday) |
 | `widgets/` | dir | 4 Android widgets + `widget-task-handler.tsx` |
 | `android/` | dir | Native Android project (package `com.omprakashp06.kwestupmobile`) |
 | `assets/` | dir | Icons, splash, `widget-preview/` images |
-| `__tests__/` | dir | 7 unit suites + widget-logic suite + setup (incl. new taskMutations/taskContext tests) |
-| `.planning/` | dir | Project memory: `STATE.md` (Phase 17 complete, ready for Phase 18), phase summaries, roadmap, codebase maps |
+| `__tests__/` | dir | 8 unit suites + widget-logic suite + setup smoke test (10 total suites) |
+| `.planning/` | dir | Project memory: `STATE.md`, phase summaries, roadmap, codebase maps |
 | `coverage/` | dir | Generated coverage report |
 | `build/` | dir | Generated build artifacts |
 | `app.json`, `package.json`, `eas.json` | files | Expo / npm / EAS build configuration |
@@ -53,81 +53,73 @@ KwestUpMobile/
 ```
 src/
 ├── components/   # 14 reusable UI pieces (primitives + domain + AI + glass)
-├── context/      # 4 state providers (Task, Vault, Billing, Birthday) — Phase 17
+├── context/      # 4 state providers (Task, Vault, Billing, Birthday)
 ├── navigation/   # Drawer navigator + custom drawer content (2 files)
 ├── screens/      # 9 route screens (Dashboard … Search)
 ├── theme/        # colors.js (palette) + styles.js (shared StyleSheet)
 └── utils/        # 13 domain services (storage, sync, AI, notifications… + taskMutations)
 ```
 
-**`src/components/` — reusable UI (14 files):**
-- Purpose: themed primitives and domain sheets shared across screens.
-- Contains: `CustomButton.js`, `CustomTextInput.js`, `CustomCard.js`, `CustomBadge.js`, `CustomSwitch.js`, `CustomSegmentedButtons.js`, `CustomDateTimePicker.js` (primitives); `TaskCard.js`, `TaskEditModal.js`, `TimerLockoutOverlay.js` (domain); `AIAssistant.js` (floating NL overlay), `QRScannerModal.js` (sync-config scan); `LiquidGlassBackground.js`, `LiquidGlassCard.js` (glass surfaces).
-- Key files: `TaskEditModal.js` (task create/edit form used globally from `App.js`); `AIAssistant.js` (wired in `AppNavigator.js` with `onTaskCreated/onBirthdayCreated/onTransactionCreated/onTasksExtracted`).
+### `src/components/`
+- `CustomButton.js`, `CustomTextInput.js`, `CustomCard.js`, `CustomBadge.js`, `CustomSwitch.js`, `CustomSegmentedButtons.js`, `CustomDateTimePicker.js` — reusable UI primitives.
+- `TaskCard.js`, `TaskEditModal.js` — task list items, checkbox interactions, edit modal.
+- `TimerLockoutOverlay.js` — focus timer strict lockout overlay.
+- `LiquidGlassBackground.js`, `LiquidGlassCard.js` — glassmorphic theme styling.
+- `AIAssistant.js` — floating action button & bottom sheet modal for on-device AI operations with unmount memory cleanup.
+- `QRScannerModal.js` — camera modal for scanning LAN sync connection tokens.
 
-**`src/context/` — state providers (4 files, NEW Phase 17):**
-- Purpose: the new mutation/state authority; each provider owns one domain slice and exposes actions.
-- Contains: `TaskContext.js` (271 lines: `tasks/taskLists/dailyTasks`, 8 actions over `taskMutations.js`, `refreshTasksFromStorage`), `VaultContext.js` (99 lines: `vaults/activeVaultId/notes/activeNote`, vault switching), `BillingContext.js` (133 lines: `billingData` with auto-persisting actions), `BirthdayContext.js` (97 lines: `birthdays` with alarm-coupled save/delete).
-- Wiring: mounted in `App.js:1054-1070` seeded by `initial*` props; consumed context-first in `src/navigation/AppNavigator.js:81-114` (`taskCtx?.x ?? props` pattern). New state goes here, not in `App.js`.
+### `src/context/`
+- `TaskContext.js` — tasks, task lists, daily tasks state; delegates mutations to pure `taskMutations.js`.
+- `VaultContext.js` — vault list, active vault selection, note file scanning.
+- `BillingContext.js` — transactions, budgets, recurring bills state.
+- `BirthdayContext.js` — birthdays state with notification synchronization.
 
-**`src/navigation/` — navigation shell (2 files):**
-- Purpose: drawer router + drawer chrome; the only place screens are composed.
-- Contains: `AppNavigator.js` (Drawer.Navigator, 9 `Drawer.Screen` render-prop bindings, context-first/prop-fallback resolution, AI overlay mount, `onTaskCreated/onBirthdayCreated/onTransactionCreated` creators), `CustomDrawerContent.js` (9-item themed menu, avatar header, light→dark→amoled cycler).
-- Key files: `src/navigation/AppNavigator.js` — add a new route here (new `Drawer.Screen` + drawer item in `CustomDrawerContent.js`).
+### `src/navigation/`
+- `AppNavigator.js` — drawer navigation shell with context-first and prop fallback resolution.
+- `CustomDrawerContent.js` — sidebar header, theme switcher, navigation links.
 
-**`src/screens/` — route screens (9 files):**
-- Purpose: one file per drawer route; presentational, props-in/callbacks-out, no direct persistence.
-- Contains: `DashboardScreen.js` (overview), `DailyTasksScreen.js` (habits/streaks), `BirthdaysScreen.js`, `BillingScreen.js` (transactions/budgets/bills), `TaskListScreen.js` (lists/subtasks/recurrence), `NotesScreen.js` (vault browser + editor), `FocusTimerScreen.js`, `SettingsScreen.js` (theme/backup/sync/telemetry/reset), `SearchScreen.js` (cross-domain search).
-- Key files: `SettingsScreen.js` (entry to `exportArchive`/`importArchive`/`performSync`), `NotesScreen.js` (vault switching via `handleSetActiveVault`).
+### `src/screens/`
+- `DashboardScreen.js` — daily overview, quick stats, active vaults.
+- `DailyTasksScreen.js` — daily recurring tasks and habit tracking with streak counters.
+- `TaskListScreen.js` — task management, lists, filters, subtask hierarchy.
+- `NotesScreen.js` — markdown note editor with syntax highlighting and vault scoping.
+- `BillingScreen.js` — expense and budget tracking with offline analytics.
+- `BirthdaysScreen.js` — birthday reminders and calendar countdowns.
+- `FocusTimerScreen.js` — Pomodoro and strict lockout timer.
+- `SearchScreen.js` — global search across tasks, notes, and birthdays.
+- `SettingsScreen.js` — backup/export, LAN sync setup, diagnostics, theme preferences.
 
-**`src/theme/` — theming (2 files):**
-- Purpose: single source of palette + shared styles.
-- Contains: `colors.js` (`themes[5 names][light|dark|amoled]`), `styles.js` (container, dialogs, inputs).
-- Key files: `src/theme/colors.js` — add a theme name here and register it in `App.js` `VALID_THEME_NAMES`.
+### `src/utils/`
+- `taskMutations.js` — pure, framework-agnostic task mutation engine with recurrence calculation.
+- `dateUtils.js` — centralized local-timezone calendar date calculation engine.
+- `aiService.js` — on-device GGUF LLM service with pinned release, integrity verification, memory lifecycle, and heuristic fallback.
+- `storage.js` — storage versioning, user data key allowlisting, and legacy migration.
+- `fileStorage.js` — markdown filesystem operations under vault directories.
+- `vaultService.js` — vault folder creation and directory indexing.
+- `syncService.js` — LAN peer-to-peer sync client with strict validation.
+- `exportService.js` — encrypted `.kwestup` backup packaging and restoration (v2 PBKDF2).
+- `notifications.js` — local notification scheduling and cancellation.
+- `billingStorage.js` — billing transactions and budget calculations.
+- `billingNotifications.js` — bill reminder alarms.
+- `diagnostics.js` — system diagnostics, network checks, update check.
+- `vaultImport.js` — external markdown file batch importer.
 
-**`src/utils/` — domain services (13 files):**
-- Purpose: all I/O and logic: storage, files, vaults, backup crypto, sync, billing, notifications, dates, AI, diagnostics, import, plus the new pure mutation engine.
-- Contains: `storage.js` (versions, key allowlist, cache clear, migration), `fileStorage.js` (vault `.md` CRUD/scan/wipe), `vaultService.js` (vault registry + migration), `exportService.js` (backup pipelines), `vaultImport.js` (`.md` picker import), `syncService.js` (LAN client), `billingStorage.js` + `billingNotifications.js` (finance store + alarms), `notifications.js` (task/birthday alarms), `dateUtils.js` (local-date authority, 174 lines / 7 exports), `aiService.js` (on-device LLM), `diagnostics.js` (device/network/update/telemetry), `taskMutations.js` (NEW Phase 17: 293 lines, 9 pure exports — `calculateNextRecurrence`, `toggleTask`, `completeTask`, `saveTask`, `deleteTask`, `toggleSubtask`, `createTaskList`, `renameTaskList`, `deleteTaskList`).
-- Key files: `storage.js` (`STORAGE_VERSION = "v7.0"` — bump + extend `migrateUserDataIfNeeded` when changing persisted shape); `taskMutations.js` (add new task transforms here so app + widgets share them); `syncService.js` (validators + `performSync`); `exportService.js` (v2 envelope).
+## `__tests__/` Breakdown
 
-## Entry Points
-
-| Entry | Path | Triggers | Responsibility |
-|---|---|---|---|
-| JS root | `index.js` | Expo launch | Registers `App` + widget handler; nothing else |
-| App root | `App.js` | Mount after font/init gate | Init (`initializeApp`), load (`loadData`), save effects, widget push, 4 providers, global modals |
-| State providers | `src/context/TaskContext.js`, `VaultContext.js`, `BillingContext.js`, `BirthdayContext.js` | Mounted by `App` | Domain state + mutation actions; seeded from `App` `initial*` props |
-| Pure mutations | `src/utils/taskMutations.js` | Imported by `TaskContext` + widget handler | Framework-agnostic task transforms (no React/storage imports) |
-| Navigation root | `src/navigation/AppNavigator.js` | Rendered by `App` inside `NavigationContainer` | Route table (initial `Dashboard`), context-first prop resolution, AI overlay |
-| Widget headless | `widgets/widget-task-handler.tsx` | `WIDGET_ADDED/UPDATE/RESIZED/CLICK` from launcher | Tab switch + shared-`toggleTask` AsyncStorage toggle + widget re-render |
-| Native launch | `android/app/src/` | OS process start | Android activity/application wiring for the Expo run build |
-
-Startup order: `index.js` → `App` mount → font load + `initializeApp` (AsyncStorage parallel read, `initNotesFolder`, background vault-migration/cache-clear/diagnostics) → loading gate (`isLoading || !fontsLoaded`) → `loadData` (blob + filesystem + billing + alarms) → providers seed from `initial*` props → `NavigationContainer/AppNavigator` render.
-
-## Platform-specific (android/, widgets/)
-
-**`android/` — bare native shell:**
-- Purpose: Expo `run:android` / EAS native project; package `com.omprakashp06.kwestupmobile` (`app.json`), `versionCode 7`.
-- Contains: `app/` (`build.gradle`, `proguard-rules.pro`, `debug.keystore`, `src/` with MainActivity/Application + manifest), `gradle/`, `gradlew[.bat]`, `settings.gradle`, `build.gradle`, `gradle.properties`.
-- Notes: `patch-llama-gradle.js` (`package.json` `postinstall`) patches the `llama.rn` Gradle module so the on-device LLM builds; `expo-build-properties` plugin sets iOS `useFrameworks: static` (relevant if iOS target is re-added).
-- Committed: yes (ejected shell is part of the repo); `android/app/build`-type outputs are generated.
-
-**`widgets/` — Android home-screen widgets (5 `.tsx` files):**
-- Purpose: launcher widgets driven by `react-native-android-widget` (declared in `app.json`: FocusTimer, DailyTasks, ImportantTasks, TasksList; each `updatePeriodMillis: 1800000`, with preview PNGs in `assets/widget-preview/`).
-- Contains: `FocusTimerWidget.tsx` (remaining/running projection), `DailyTasksWidget.tsx` (count/completed ring), `ImportantTasksWidget.tsx` (top-5 important unfinished), `TasksListWidget.tsx` (interactive sorted top-8, tab filter, ticking animation), `widget-task-handler.tsx` (273 lines: action dispatch + AsyncStorage read/write + re-render; task toggles now go through shared `toggleTask` from `src/utils/taskMutations.js`).
-- Data contract: widgets never call React state — they read `kwestup_data_<STORAGE_VERSION>` / `kwestup_timer_state_*` / `kwestup_widget_*` keys directly; `App.js` pushes, foreground reload (`App.js` + `TaskContext`) absorbs reverse writes. iOS has no widget target (Android-only).
-
-## Tests & Planning (.planning/, __tests__/, coverage/)
-
-**`__tests__/` — Jest suites (`jest-expo/android` preset):**
-- Layout: `unit/` (7 files) + `phase12-widget-logic.test.js` + `setup/jest.setup.js` (native-module mocks for Node execution).
-- Files: `__tests__/unit/dateUtils.test.js`, `exportImportService.test.js`, `storageMigration.test.js`, `syncService.test.js`, `vaultAndFileStorage.test.js`, `taskMutations.test.js` (NEW Phase 17: pure-engine unit tests), `taskContext.test.js` (NEW Phase 17: provider action tests); `__tests__/phase12-widget-logic.test.js` (widget toggle/recurrence parity).
-- Commands: `npm test` (all), `npm run test:watch`, `npm run test:coverage` → `coverage/`. Per `.planning/STATE.md`: 100% pass across 9 suites (109 tests) after Phases 14–17.
-- Where to add: colocate by domain — storage/versioning → `unit/storageMigration.test.js`; sync validators → `unit/syncService.test.js`; vault/FS ops → `unit/vaultAndFileStorage.test.js`; backup crypto → `unit/exportImportService.test.js`; task transforms → `unit/taskMutations.test.js`; provider actions → `unit/taskContext.test.js`; new widget behavior → extend `phase12-widget-logic.test.js` (auto-matched by `testMatch: **/__tests__/**/*.test.[jt]s?(x)`).
-
-**`.planning/` — project memory (GSD):**
-- Files: `PROJECT.md` (vision/constraints), `ROADMAP.md` (19 phases), `STATE.md` (Phase 17 of 19 complete — plans 17-01/17-02 executed, ready for Phase 18; 89% progress), `phases/` (per-phase `PLAN.md` + `*-SUMMARY.md`), `codebase/` (these maps), `debug/` (forensics sessions).
-- Relevance: Phase 18 planning must account for the half-migrated state — `App.js` legacy handlers still live alongside the new providers. Do not regress the shared-mutation contract (`taskMutations.js` ↔ `widget-task-handler.tsx` ↔ `TaskContext.js`) or the dual-writer widget path without updating the corresponding tests.
-
-**`coverage/` — generated Jest coverage:**
-- Purpose: HTML/lcov output of `npm run test:coverage`; not source, safe to regenerate/delete.
+```
+__tests__/
+├── phase12-widget-logic.test.js    # 10 tests: widget logic & array slicing
+├── setup/
+│   ├── jest.setup.js               # Global test harness and native module mocks
+│   └── jest.setup.test.js          # 5 tests: mock integrity verification
+└── unit/
+    ├── aiService.test.js           # 29 tests: model pinning, integrity, memory lifecycle, fallbacks
+    ├── dateUtils.test.js           # 28 tests: timezone-safe local date operations
+    ├── exportImportService.test.js # 10 tests: v2 encryption envelope and backup import/export
+    ├── storageMigration.test.js    # 9 tests: version keys, migration, and cache clearing
+    ├── syncService.test.js         # 16 tests: LAN handshake and payload schema validation
+    ├── taskContext.test.js         # 5 tests: TaskContext provider and foreground sync
+    ├── taskMutations.test.js       # 15 tests: pure task mutation engine and recurrence
+    └── vaultAndFileStorage.test.js # 11 tests: filesystem note operations and vault CRUD
+```
+**Total:** 10 suites, 138 tests passing.

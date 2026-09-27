@@ -965,7 +965,7 @@ const rawStyles = {
     flexDirection: "row",
     alignItems: "flex-start",
     paddingVertical: 8,
-    borderBottomWidth: RNStyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   taskLabel: { fontSize: 14, flex: 1, lineHeight: 20 },
   actionGrid: {

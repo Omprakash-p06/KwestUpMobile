@@ -1,6 +1,6 @@
 # Technology Stack
 
-**Analysis Date:** 2026-09-27
+**Analysis Date:** 2026-09-28
 
 ## Languages & Runtimes
 
@@ -39,13 +39,23 @@
 **Encryption:**
 - `crypto-js@^4.2.0` — AES-256 backup envelopes in `src/utils/exportService.js`: v2 = per-archive 128-bit random salt + IV, PBKDF2-HMAC-SHA256 100,000 iterations; v1 fallback = static salt `4b77657374557053616c745f7632`, 1,000 iterations, salt-as-IV. `decryptBackup()` auto-detects v2 envelope, falls back to v1
 
+## On-Device AI & LLM Runtime
+
+**Native LLM Engine (`llama.rn@^0.12.4`):**
+- Native bindings executing quantized GGUF models on device CPU.
+- Model: `qwen2.5-0.5b-instruct-q4_k_m.gguf` pinned to Hugging Face commit `9217f5db79a29953eb74d5343926648285ec7e67`, exact size `491400032` bytes, SHA-256 `74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db`.
+- Pre-load integrity verification (`verifyModelIntegrity`) with automatic deletion of corrupted/partial downloads.
+- Coalescing Promise lock mutex (`_initPromise`) preventing concurrent initialization races.
+- Active memory lifecycle: `handleAppStateChange` auto-unloads context on `background`/`inactive`; 5-minute idle timeout with timer unref support for Node/Jest; component unmount cleanup in `src/components/AIAssistant.js`.
+- Rule-based heuristic fallback engine: `extractTasksFromNoteHeuristic` (markdown checkboxes, `TODO:`, action verbs), `summarizeNoteHeuristic` (headings, bold points, paragraph leads), and keyword-based regex command parser.
+
 ## Testing
 
 **Framework:**
 - Jest 29 (`jest@^29.7.0`) with `jest-expo/android` preset (`preset: 'jest-expo/android'` in `jest.config.js`)
 - `babel-jest@^29.7.0` + `babel-preset-expo` transform (`babel.config.js`); `transformIgnorePatterns` whitelists RN/Expo/llama/widget libs for Node execution
 - Setup harness `__tests__/setup/jest.setup.js` — in-memory mocks for `AsyncStorage`, `expo-file-system` (virtual FS map), `llama.rn`, `react-native-android-widget`, `expo-notifications`, `expo-haptics`, `expo-sharing`, `expo-document-picker`, `expo-camera`, `react-native-reanimated`
-- Test match `**/__tests__/**/*.test.[jt]s?(x)`; 9 suites covering `dateUtils`, `taskMutations`, `TaskContext`, `syncService`, storage migration, export/import, vault/file storage, widget logic (`__tests__/unit/`, `__tests__/phase12-widget-logic.test.js`)
+- Test match `**/__tests__/**/*.test.[jt]s?(x)`; 10 suites covering `dateUtils`, `taskMutations`, `TaskContext`, `aiService`, `syncService`, storage migration, export/import, vault/file storage, widget logic (`__tests__/unit/`, `__tests__/phase12-widget-logic.test.js`). 138 total unit/integration tests passing.
 
 **Commands (`package.json` scripts):**
 ```bash
@@ -58,44 +68,7 @@ npm run test:watch     # jest --watch
 
 **Lint/format:**
 - ESLint 9 flat config (`eslint.config.js`, `eslint@^9.39.4`) with `@babel/eslint-parser`, `eslint-plugin-react`, `eslint-plugin-react-native`, `eslint-plugin-react-hooks`; `no-console: warn`, `react/prop-types: off`. `npm run lint` / `npm run lint:report`
-- TypeScript `~5.8.3` via `expo/tsconfig.base` (`tsconfig.json` extends base with empty overrides) — strictness inherited, widgets typed incrementally
-- Metro via `expo/metro-config` (`metro.config.js` default); Babel via `babel-preset-expo` + Reanimated plugin
+- Legacy `.eslintrc.js` maintained in parallel for IDE compatibility
 
-**CI (` .github/workflows/ci.yml`):**
-- `CI Pipeline (Lint & Test)` on push/PR to `main` + `development`: `actions/checkout@v4` → Node 20 → `npm install` → `npm run lint` → `npm test -- --ci --maxWorkers=2 --coverage`. Companion `semgrep.yml` workflow present
-- EAS profiles (`eas.json`): `development` (dev client, internal APK), `preview` (internal), `production` (APK + `NODE_OPTIONS=--max-old-space-size=4096`); project ID `9b029b06-5b07-4a1d-9999-a543a3ef1614` (`app.json` `extra.eas`)
-- `postinstall: node patch-llama-gradle.js` — Gradle patch for `llama.rn` native build
-
-## Key Dependencies
-
-| Package | Version | Purpose |
-|---|---|---|
-| `expo` | ~53.0.20 | Managed workflow, config plugins, prebuild |
-| `react` | 19.0.0 | UI rendering, context state |
-| `react-native` | 0.79.5 | Android native runtime |
-| `llama.rn` | ^0.12.4 | On-device LLM inference (`initLlama`, `releaseAllLlama` in `src/utils/aiService.js`) |
-| `@react-native-async-storage/async-storage` | 2.1.2 | Structured on-device KV storage (`src/utils/storage.js`) |
-| `expo-file-system` | ~18.1.11 | Vault markdown files, model binary, backup temp files |
-| `crypto-js` | ^4.2.0 | AES-256 + PBKDF2 backup encryption (`src/utils/exportService.js`) |
-| `expo-notifications` | ~0.31.4 | Birthday / task-due / bill reminders (`src/utils/notifications.js`, `src/utils/billingNotifications.js`) |
-| `expo-camera` | ~16.1.11 | QR sync-code scanning (`src/components/QRScannerModal.js`) |
-| `expo-document-picker` | ~13.1.6 | `.kwestup` archive import file selection |
-| `expo-sharing` | ~13.1.5 | Backup export share sheet |
-| `expo-haptics` | ~14.1.4 | Tactile feedback (`src/context/TaskContext.js`) |
-| `expo-font` / `@expo-google-fonts/*` | ~13.3.2 / ^0.4.x | Hanken Grotesk, Inter, JetBrains Mono |
-| `react-native-android-widget` | ^0.16.1 | 4 home-screen widgets + headless handler (`widgets/`, `index.js`) |
-| `@react-navigation/native` / `drawer` | ^6.1.9 / ^6.6.6 | Drawer navigation |
-| `react-native-paper` | ^5.10.5 | Material component primitives |
-| `react-native-reanimated` | ~3.17.4 | Animations (Babel plugin) |
-| `react-native-gesture-handler` / `screens` / `safe-area-context` | ~2.24.0 / ~4.11.1 / 5.4.0 | Navigation supporting libs |
-| `@react-native-community/datetimepicker` | 8.4.1 | Date/time pickers (`src/components/CustomDateTimePicker.js`) |
-| `react-native-modal` / `confetti-cannon` / `linear-gradient` / `vector-icons` / `status-bar` | ^14.0.0-rc.1 / ^1.5.2 / ~14.1.5 / ^14.0.0 / ~2.2.3 | UI polish |
-| `expo-dev-client` / `expo-build-properties` | ~5.2.4 / ~0.14.8 | Dev builds; iOS `useFrameworks: static` for llama compatibility |
-| `use-latest-callback` | ^0.2.4 | Callback stability helper |
-| `jest` / `jest-expo` / `babel-jest` | ^29.7.0 / ~53.0.0 / ^29.7.0 | Test runner + Expo preset + transform |
-| `eslint` + react/RN/hooks plugins | ^9.39.4 | Lint gate |
-| `typescript` | ~5.8.3 | Widget typing via `expo/tsconfig.base` |
-
----
-
-*Stack analysis: 2026-09-27*
+**CI Pipeline:**
+- GitHub Actions (`.github/workflows/ci.yml`) on `push`/`pull_request` against `main` and `development`: runs `npm run lint` followed by `npm test -- --ci --maxWorkers=2 --coverage` on Node 20.

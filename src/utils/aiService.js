@@ -33,6 +33,10 @@ export const RESUMABLE_DOWNLOAD_KEY = "kwestup_ai_model_download_resumable";
 let _llamaContext = null;
 let _initPromise = null;
 let _idleTimer = null;
+// Load generation: bumped on every unloadModel() so a late-resolving initLlama
+// from a previous generation can be detected and released (see loadModel).
+let _loadGeneration = 0;
+let _appStateSubscription = null;
 export const IDLE_UNLOAD_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
@@ -67,15 +71,53 @@ export const handleAppStateChange = (nextAppState) => {
   }
 };
 
-// Automatically unload native context when app is backgrounded or inactive to free memory
-if (typeof AppState !== "undefined" && typeof AppState.addEventListener === "function") {
-  AppState.addEventListener("change", handleAppStateChange);
-}
+/**
+ * Subscribes to AppState changes to auto-unload the native context when the app
+ * is backgrounded or inactive. Idempotent — returns the existing subscription
+ * when already subscribed. Returns null when AppState is unavailable.
+ * Prefer calling this from the app root component's `useEffect` (see App.js);
+ * the module-load auto-register below is the fallback for other importers.
+ *
+ * @returns {{remove: function}|null} the AppState subscription (or null)
+ */
+export const subscribeAppState = () => {
+  if (_appStateSubscription) {
+    return _appStateSubscription;
+  }
+  if (typeof AppState !== "undefined" && typeof AppState.addEventListener === "function") {
+    _appStateSubscription = AppState.addEventListener("change", handleAppStateChange);
+  }
+  return _appStateSubscription;
+};
+
+/**
+ * Removes the AppState subscription created by {@link subscribeAppState}.
+ * Safe to call when not subscribed.
+ */
+export const unsubscribeAppState = () => {
+  if (_appStateSubscription) {
+    try {
+      if (typeof _appStateSubscription.remove === "function") {
+        _appStateSubscription.remove();
+      }
+    } catch (e) {
+      console.warn("Error removing AppState subscription:", e);
+    }
+    _appStateSubscription = null;
+  }
+};
+
+// Automatically unload native context when app is backgrounded or inactive to free memory.
+// Fallback auto-register for importers outside the app root; App.js also subscribes
+// explicitly (deduped by subscribeAppState).
+subscribeAppState();
 
 /**
  * Computes SHA-256 hash of a string or WordArray using crypto-js.
+ * String-hashing helper only — it cannot hash the on-device GGUF file.
+ * Use {@link hashFileSha256} for model-file integrity verification.
  * @param {string|CryptoJS.lib.WordArray} data
- * @returns {string} hex-encoded SHA-256 string
+ * @returns {string} hex-encoded SHA-256 string ("" for unsupported input)
  */
 export const computeSha256 = (data) => {
   if (typeof data !== "string" && !data?.sigBytes) {
@@ -85,14 +127,82 @@ export const computeSha256 = (data) => {
 };
 
 /**
- * Verifies model presence and integrity against expected size and optional hash.
- * Automatically deletes corrupted or partial model files from the device filesystem.
- * 
+ * Decoded bytes per read window when streaming the model file through the
+ * incremental SHA-256 hasher. 8 MB keeps each base64 window (~10.7 MB string)
+ * small enough to avoid JS-heap pressure on mid-range devices.
+ */
+export const MODEL_HASH_CHUNK_BYTES = 8 * 1024 * 1024;
+
+/**
+ * Streams a file from device storage through an incremental SHA-256 hasher
+ * without loading the whole file into memory.
+ *
+ * Uses `FileSystem.readAsStringAsync` with `{ encoding: Base64, position, length }`
+ * (supported by expo-file-system ~18.x) to read fixed-size base64 windows,
+ * decoding each window via `CryptoJS.enc.Base64.parse` and feeding the
+ * resulting WordArray into `CryptoJS.algo.SHA256.create()`.
+ *
+ * @param {string} filePath - Path to the file to hash
+ * @param {number} chunkBytes - Decoded bytes per read window
+ * @returns {Promise<string>} hex-encoded SHA-256 digest of the file content
+ * @throws if any chunk read fails
+ */
+export const hashFileSha256 = async (filePath, chunkBytes = MODEL_HASH_CHUNK_BYTES) => {
+  const encoding = FileSystem.EncodingType?.Base64 ?? "base64";
+  const hasher = CryptoJS.algo.SHA256.create();
+  let position = 0;
+
+  for (;;) {
+    const chunk = await FileSystem.readAsStringAsync(filePath, {
+      encoding,
+      position,
+      length: chunkBytes,
+    });
+    if (!chunk || chunk.length === 0) {
+      break;
+    }
+    const words = CryptoJS.enc.Base64.parse(chunk);
+    if (words.sigBytes === 0) {
+      break;
+    }
+    const prevPosition = position;
+    position += words.sigBytes;
+    hasher.update(words);
+    // Short window (or no forward progress) means EOF — finalize.
+    if (words.sigBytes < chunkBytes || position <= prevPosition) {
+      break;
+    }
+  }
+
+  return hasher.finalize().toString(CryptoJS.enc.Hex);
+};
+
+/**
+ * Default model-file hash validator. Streams the GGUF through {@link hashFileSha256}
+ * and compares the digest against the pinned `MODEL_EXPECTED_SHA256`.
+ * Fail-closed: any read error propagates so the caller treats the file as untrusted.
+ *
  * @param {string} filePath - Path to the GGUF file
- * @param {function|null} customValidator - Optional custom validator callback for hash validation
+ * @returns {Promise<boolean>} true only when the digest matches the pinned constant
+ */
+export const defaultFileHashValidator = async (filePath = MODEL_PATH) => {
+  const actual = await hashFileSha256(filePath);
+  return actual.toLowerCase() === MODEL_EXPECTED_SHA256.toLowerCase();
+};
+
+/**
+ * Verifies model presence and integrity against expected size and SHA-256 hash.
+ * Automatically deletes corrupted or partial model files from the device filesystem.
+ *
+ * @param {string} filePath - Path to the GGUF file
+ * @param {function|null|undefined} customValidator - Hash validator callback.
+ *   Defaults to {@link defaultFileHashValidator} (chunked SHA-256 compared against
+ *   `MODEL_EXPECTED_SHA256`). Pass an explicit `null` for the fast size-only path —
+ *   used by `isModelDownloaded` to avoid re-streaming ~468 MB through the hasher on
+ *   every inference entry; full hash verification runs at download time in `downloadModel`.
  * @returns {Promise<boolean>}
  */
-export const verifyModelIntegrity = async (filePath = MODEL_PATH, customValidator = null) => {
+export const verifyModelIntegrity = async (filePath = MODEL_PATH, customValidator = undefined) => {
   try {
     const fileInfo = await FileSystem.getInfoAsync(filePath);
     if (!fileInfo.exists) {
@@ -108,9 +218,24 @@ export const verifyModelIntegrity = async (filePath = MODEL_PATH, customValidato
       return false;
     }
 
-    // 2. Optional cryptographic checksum validator
-    if (typeof customValidator === "function") {
-      const isValidHash = await customValidator(filePath);
+    // 2. Cryptographic checksum validation (default: chunked SHA-256 vs pinned constant).
+    // Pass explicit `null` to opt into the fast size-only path.
+    const validator =
+      customValidator === null
+        ? null
+        : typeof customValidator === "function"
+          ? customValidator
+          : defaultFileHashValidator;
+    if (validator) {
+      let isValidHash = false;
+      try {
+        isValidHash = await validator(filePath);
+      } catch (hashErr) {
+        // Fail-closed: a validator that throws (HSM offline, I/O error) is
+        // treated as a mismatch, never as a pass.
+        console.warn("Model hash verification errored; treating as mismatch:", hashErr?.message);
+        isValidHash = false;
+      }
       if (!isValidHash) {
         console.warn(`Model checksum mismatch against ${MODEL_EXPECTED_SHA256}. Deleting corrupted model.`);
         await FileSystem.deleteAsync(filePath, { idempotent: true });
@@ -127,9 +252,12 @@ export const verifyModelIntegrity = async (filePath = MODEL_PATH, customValidato
 
 /**
  * Returns true if the GGUF model file is cached on device and passes integrity verification.
+ * Fast path (exact size + pinned-URL provenance): full SHA-256 verification runs at
+ * download time in `downloadModel` — re-streaming ~468 MB through the hasher on every
+ * inference entry would stall the UI for tens of seconds.
  */
 export const isModelDownloaded = async () => {
-  return await verifyModelIntegrity(MODEL_PATH);
+  return await verifyModelIntegrity(MODEL_PATH, null);
 };
 
 /**
@@ -165,14 +293,26 @@ export const downloadModel = async (onProgress) => {
     if (savedState) {
       try {
         const parsedState = JSON.parse(savedState);
-        downloadResumable = new FileSystem.DownloadResumable(
-          parsedState.url,
-          parsedState.fileUri,
-          parsedState.options,
-          progressCallback,
-          parsedState.resumeData
-        );
-        console.log("🔄 Resuming AI model download...");
+        // Resume only state that targets the currently pinned model. A stale
+        // URL/fileUri persisted by an older (or downgraded) app version must
+        // never be resumed and trusted — discard it and start fresh.
+        const isPinnedResume =
+          parsedState.url === MODEL_DOWNLOAD_URL && parsedState.fileUri === MODEL_PATH;
+        if (!isPinnedResume) {
+          console.warn(
+            "Discarding stale download resume state (URL/file mismatch — expected pinned model). Starting fresh."
+          );
+          await AsyncStorage.removeItem(RESUMABLE_DOWNLOAD_KEY);
+        } else {
+          downloadResumable = new FileSystem.DownloadResumable(
+            parsedState.url,
+            parsedState.fileUri,
+            parsedState.options,
+            progressCallback,
+            parsedState.resumeData
+          );
+          console.log("🔄 Resuming AI model download...");
+        }
       } catch (e) {
         console.warn("Failed to parse saved download state, starting fresh:", e);
       }
@@ -191,6 +331,14 @@ export const downloadModel = async (onProgress) => {
       const result = await downloadResumable.downloadAsync();
       if (!result || !result.uri) {
         throw new Error("Model download failed — no URI returned.");
+      }
+      // Post-download integrity gate (default chunked SHA-256 + exact size).
+      // A truncated or substituted file is deleted here, never trusted.
+      const integrityOk = await verifyModelIntegrity(MODEL_PATH);
+      if (!integrityOk) {
+        throw new Error(
+          "Downloaded model failed integrity verification (size/SHA-256 mismatch). Corrupt file deleted; retry to re-download."
+        );
       }
       // Success! Clear resume state
       await AsyncStorage.removeItem(RESUMABLE_DOWNLOAD_KEY);
@@ -257,13 +405,16 @@ export const loadModel = async () => {
   }
 
   _initPromise = (async () => {
+    // Capture the generation: if unloadModel() runs while initLlama is in
+    // flight, the generation bumps and the late result must be released.
+    const loadGeneration = _loadGeneration;
     try {
       const isValid = await isModelDownloaded();
       if (!isValid) {
         throw new Error("Model not downloaded or corrupted. Please download the AI model first.");
       }
 
-      _llamaContext = await initLlama({
+      const freshContext = await initLlama({
         model: MODEL_PATH,
         use_mlock: false,
         n_ctx: 2048,          // stable 2048 prevents OOM native crashes on standard hardware
@@ -271,6 +422,21 @@ export const loadModel = async () => {
         n_gpu_layers: 0,      // CPU-only
         no_gpu_devices: true, // skip GPU device probing to avoid Unknown error on Android
       });
+
+      // Unload-while-inflight race: the lifecycle manager freed the slot while
+      // we were initializing — release the just-created native context instead
+      // of silently resurrecting it, and reject so callers fall back cleanly.
+      if (loadGeneration !== _loadGeneration) {
+        try {
+          await releaseAllLlama();
+        } catch (releaseErr) {
+          console.warn("Error releasing superseded llama context:", releaseErr);
+        }
+        _llamaContext = null;
+        throw new Error("Model load was cancelled (unload requested during initialization).");
+      }
+
+      _llamaContext = freshContext;
       return _llamaContext;
     } catch (err) {
       _llamaContext = null;
@@ -291,8 +457,11 @@ export const loadModel = async () => {
 
 /**
  * Releases the loaded model context to free device memory.
+ * Bumps the load generation so any in-flight `initLlama` result is released
+ * on arrival instead of resurrecting the context (unload-while-inflight race).
  */
 export const unloadModel = async () => {
+  _loadGeneration++;
   if (_idleTimer) {
     clearTimeout(_idleTimer);
     _idleTimer = null;
@@ -360,11 +529,13 @@ export const extractTasksFromNoteHeuristic = (noteContent) => {
       }
     }
 
-    // 4. Numbered list items: 1. Buy milk, 2. Call doctor
+    // 4. Numbered list items with action verbs: 1. Buy milk, 2. Call doctor.
+    // The verb match is required — plain short items like "1. Introduction"
+    // are headings, not tasks (same precision rule as the bullet branch).
     const numberedMatch = line.match(/^\d+[.)]\s+(.+)$/);
     if (numberedMatch && numberedMatch[1]) {
       const itemText = numberedMatch[1].trim();
-      if (actionVerbRegex.test(itemText) || itemText.length < 80) {
+      if (actionVerbRegex.test(itemText)) {
         addUnique(itemText);
         continue;
       }
@@ -485,7 +656,8 @@ ${clampedContent}
       return fullText.trim();
     }
   } catch (err) {
-    _llamaContext = null;
+    // Release native memory via the lifecycle manager (never just null the JS handle).
+    await unloadModel();
     console.warn("LLM summarization failed or model unavailable, falling back to heuristics:", err?.message);
   }
 
@@ -555,7 +727,8 @@ ${clampedContent}
       if (extracted.length > 0) return extracted;
     }
   } catch (err) {
-    _llamaContext = null;
+    // Release native memory via the lifecycle manager (never just null the JS handle).
+    await unloadModel();
     console.warn("LLM task extraction failed or model unavailable, falling back to heuristics:", err?.message);
   }
 
@@ -570,6 +743,16 @@ ${clampedContent}
  * @param {string} command - the user's natural language request
  */
 export const parseGlobalCommand = async (command) => {
+  // Input guard (mirrors sibling-heuristic style): null/non-string input must
+  // never reach the String.prototype calls in the keyword fallback below.
+  if (!command || typeof command !== "string") {
+    return {
+      type: "task",
+      title: "New Task",
+      description: `Created via KwestUp AI Assistant from prompt: "${String(command)}"`,
+      dueDate: null,
+    };
+  }
   resetIdleTimer();
 
   const todayStr = getLocalDateString();
@@ -609,7 +792,8 @@ Parse this command: "${command}"
       }
     );
   } catch (err) {
-    _llamaContext = null;
+    // Release native memory via the lifecycle manager (never just null the JS handle).
+    await unloadModel();
     // Fall through to keyword-based fallback below
     console.warn("LLM parsing failed or model unavailable, falling back to keyword extraction:", err?.message);
   }
@@ -690,14 +874,24 @@ Parse this command: "${command}"
     if (lower.includes("tomorrow")) {
       const tomorrowStr = getTomorrowLocalDateString();
       const tomorrow = parseLocalDate(tomorrowStr);
-      tomorrow.setHours(9, 0, 0, 0); // default to 9 AM tomorrow
-      dueDate = tomorrow.toISOString();
+      // parseLocalDate is strict and yields Invalid Date on bad input —
+      // never let toISOString() throw RangeError outside the LLM try/catch.
+      if (isNaN(tomorrow.getTime())) {
+        dueDate = null;
+      } else {
+        tomorrow.setHours(9, 0, 0, 0); // default to 9 AM tomorrow
+        dueDate = tomorrow.toISOString();
+      }
       title = title.replace(/tomorrow/gi, "").trim();
     } else if (lower.includes("today")) {
       const todayStr = getLocalDateString();
       const todayDate = parseLocalDate(todayStr);
-      todayDate.setHours(17, 0, 0, 0); // default to 5 PM today
-      dueDate = todayDate.toISOString();
+      if (isNaN(todayDate.getTime())) {
+        dueDate = null;
+      } else {
+        todayDate.setHours(17, 0, 0, 0); // default to 5 PM today
+        dueDate = todayDate.toISOString();
+      }
       title = title.replace(/today/gi, "").trim();
     }
 
@@ -783,8 +977,8 @@ ${clampedContent}
       }
     );
   } catch (err) {
-    // Reset stale context so next call re-initialises cleanly
-    _llamaContext = null;
+    // Release native memory via the lifecycle manager so next call re-initialises cleanly
+    await unloadModel();
     const msg = err?.message || "Native inference error";
     // Provide a user-readable error instead of raw "Unknown error"
     if (msg === "Unknown error" || msg.includes("GGML") || msg.includes("llama")) {
@@ -856,8 +1050,8 @@ ${clampedContent}
       }
     );
   } catch (err) {
-    // Reset stale context so next call re-initialises cleanly
-    _llamaContext = null;
+    // Release native memory via the lifecycle manager so next call re-initialises cleanly
+    await unloadModel();
     const msg = err?.message || "Native inference error";
     if (msg === "Unknown error" || msg.includes("GGML") || msg.includes("llama")) {
       throw new Error("The AI model encountered an error. Please close and reopen the AI assistant, then try again.");

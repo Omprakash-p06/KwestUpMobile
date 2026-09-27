@@ -63,6 +63,7 @@ import { DailyTasksWidget } from './widgets/DailyTasksWidget';
 import { ImportantTasksWidget } from './widgets/ImportantTasksWidget';
 import { TasksListWidget } from './widgets/TasksListWidget';
 import { getLocalDateString, getYesterdayLocalDateString } from './src/utils/dateUtils';
+import { subscribeAppState, unsubscribeAppState } from "./src/utils/aiService";
 
 // Configuration
 const FORCE_CLEAR_ALL_STORAGE = false;
@@ -149,7 +150,13 @@ const App = () => {
       }
       appState.current = nextAppState;
     });
-    return () => subscription.remove();
+    // Managed AI lifecycle subscription (deduped inside aiService; auto-register
+    // at module load remains the fallback for non-root importers).
+    subscribeAppState();
+    return () => {
+      subscription.remove();
+      unsubscribeAppState();
+    };
   }, [loadData]);
 
   // Define currentTheme with fallback to prevent undefined errors
