@@ -46,6 +46,7 @@ jest.mock('expo-file-system', () => ({
       exists: true,
       isDirectory: entry.isDirectory,
       size: entry.content ? entry.content.length : 0,
+      modificationTime: entry.modificationTime || Math.floor(Date.now() / 1000),
       uri,
     };
   }),
