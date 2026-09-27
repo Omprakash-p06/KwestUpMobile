@@ -23,7 +23,7 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 - [x] **Phase 13: Billing & Money Management** - Budgets, expenses, recurring bills, and spending analytics. ✅ COMPLETE
 
 ### Milestone 2: Hardened Offline-First & Production Readiness
-- [ ] **Phase 14: Automated Testing Framework & CI/CD Pipeline** - Jest test runner, native module mocks, unit test suites, and GitHub Actions CI workflow.
+- [x] **Phase 14: Automated Testing Framework & CI/CD Pipeline** - Jest test runner, native module mocks, unit test suites, and GitHub Actions CI workflow. ✅ COMPLETE
 - [ ] **Phase 15: Centralized Local Date Engine & Timezone Bug Fixes** - Device-local calendar date utility replacing UTC slicing across app, screens, and widgets.
 - [ ] **Phase 16: Security & Storage Migration Hardening** - Per-archive random salt/IV with PBKDF2 100k+, LAN sync transport security, and storage migration key hardening.
 - [ ] **Phase 17: State Architecture & Unified Mutation Layer** - Decouple App.js into domain contexts/stores and unify task recurrence/completion between app and widgets.
@@ -182,7 +182,7 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 | 11. Encrypted Export | 2/2 | ✅ Complete | 2026-06-18 |
 | 12. Interactable Widget v2 | 2/2 | ✅ Complete | 2026-06-28 |
 | 13. Billing & Money Management | 2/2 | ✅ Complete | 2026-07-07 |
-| 14. Testing & CI/CD | 0/3 | ⏳ Pending | - |
+| 14. Testing & CI/CD | 3/3 | ✅ Complete | 2026-09-27 |
 | 15. Local Date Engine | 0/2 | ⏳ Pending | - |
 | 16. Security & Storage Hardening | 0/2 | ⏳ Pending | - |
 | 17. State & Mutation Architecture | 0/2 | ⏳ Pending | - |
@@ -203,9 +203,9 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
   3. Real unit tests import production code for core utilities and state logic and pass.
   4. GitHub Actions workflow runs linter and tests on pull requests and pushes to `main` and `development`.
 **Plans**:
-- [ ] 14-01-PLAN.md — Jest test environment setup, Babel transform, native mocks, and npm test script.
-- [ ] 14-02-PLAN.md — Unit test suites for core business logic and utilities (`dateUtils`, `fileStorage`, `vaultService`, `exportService`).
-- [ ] 14-03-PLAN.md — GitHub Actions CI pipeline synchronization with branch protection and test verification.
+- [x] 14-01-PLAN.md — Jest test environment setup, Babel transform, native mocks, and npm test script. ✅
+- [x] 14-02-PLAN.md — Unit test suites for core business logic and utilities (`exportService`, `importService`, `fileStorage`, `vaultService`, `syncService`). ✅
+- [x] 14-03-PLAN.md — GitHub Actions CI pipeline synchronization with branch protection and test verification. ✅
 
 ---
 

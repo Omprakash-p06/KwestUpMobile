@@ -9,9 +9,9 @@ Requirements for the hardening and production readiness milestone.
 
 ### Testing & CI/CD
 
-- [ ] **TEST-01**: Configure Jest test runner, Babel environment, and mock native modules (`llama.rn`, `react-native-android-widget`, `AsyncStorage`, `expo-file-system`).
-- [ ] **TEST-02**: Establish true unit and integration test suites importing production code for core utilities and state mutations.
-- [ ] **TEST-03**: Establish automated GitHub Actions CI pipeline running lint and test validation on push/PR.
+- [x] **TEST-01**: Configure Jest test runner, Babel environment, and mock native modules (`llama.rn`, `react-native-android-widget`, `AsyncStorage`, `expo-file-system`).
+- [x] **TEST-02**: Establish true unit and integration test suites importing production code for core utilities and state mutations.
+- [x] **TEST-03**: Establish automated GitHub Actions CI pipeline running lint and test validation on push/PR.
 
 ### Date & Timezone Integrity
 
@@ -52,9 +52,9 @@ Requirements for the hardening and production readiness milestone.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TEST-01 | Phase 14 | Pending |
-| TEST-02 | Phase 14 | Pending |
-| TEST-03 | Phase 14 | Pending |
+| TEST-01 | Phase 14 | Complete |
+| TEST-02 | Phase 14 | Complete |
+| TEST-03 | Phase 14 | Complete |
 | DATE-01 | Phase 15 | Pending |
 | DATE-02 | Phase 15 | Pending |
 | SEC-01  | Phase 16 | Pending |

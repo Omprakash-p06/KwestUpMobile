@@ -2,9 +2,9 @@ name: Semgrep OSS Code Security
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, development ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, development ]
 
 jobs:
   semgrep:

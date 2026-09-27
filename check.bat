@@ -36,4 +36,27 @@ if %ERRORLEVEL% neq 0 (
   expo --version
 )
 
-echo All dependencies are installed. 
+echo.
+echo All core development dependencies are installed.
+echo.
+
+REM Run Linter Check
+echo Checking code quality (ESLint)...
+call npm run lint
+if %ERRORLEVEL% neq 0 (
+  echo Linter check failed. Please resolve lint issues before committing.
+  exit /b 1
+)
+echo Linter passed cleanly.
+echo.
+
+REM Run Automated Test Suite
+echo Running automated test suite (Jest)...
+call npm test
+if %ERRORLEVEL% neq 0 (
+  echo Automated tests failed. Please resolve failing tests before committing.
+  exit /b 1
+)
+echo All automated tests passed green.
+echo.
+echo Environment and code quality checks completed successfully!

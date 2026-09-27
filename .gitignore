@@ -54,6 +54,7 @@ dist/
 *.log
 
 # Build artifacts
+coverage/
 build/
 android/app/build/
 ios/build/
