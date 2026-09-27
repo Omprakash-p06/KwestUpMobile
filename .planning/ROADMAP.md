@@ -20,6 +20,15 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 - [x] **Phase 10: Tactile Industrial UI Redesign** - Rebuild visual themes to replicate the high-contrast skeuomorphic industrial console specify in '/UI Design plan'. ✅ COMPLETE
 - [x] **Phase 11: Encrypted Data Export & Import** - Support AES-256 encrypted backups of vaults and settings. ✅ COMPLETE
 - [x] **Phase 12: Interactable Android Home-Screen Widget v2** - Upgrade widgets to support task toggling and tab switching. ✅ COMPLETE
+- [x] **Phase 13: Billing & Money Management** - Budgets, expenses, recurring bills, and spending analytics. ✅ COMPLETE
+
+### Milestone 2: Hardened Offline-First & Production Readiness
+- [ ] **Phase 14: Automated Testing Framework & CI/CD Pipeline** - Jest test runner, native module mocks, unit test suites, and GitHub Actions CI workflow.
+- [ ] **Phase 15: Centralized Local Date Engine & Timezone Bug Fixes** - Device-local calendar date utility replacing UTC slicing across app, screens, and widgets.
+- [ ] **Phase 16: Security & Storage Migration Hardening** - Per-archive random salt/IV with PBKDF2 100k+, LAN sync transport security, and storage migration key hardening.
+- [ ] **Phase 17: State Architecture & Unified Mutation Layer** - Decouple App.js into domain contexts/stores and unify task recurrence/completion between app and widgets.
+- [ ] **Phase 18: On-Device AI Pipeline Hardening** - SHA-256 checksum model verification, pinned releases, fallback handling, and memory lifecycle cleanup.
+- [ ] **Phase 19: Production Observability & Logging Cleanup** - Strip debug emoji console logging from release bundles and establish structured crash boundaries.
 
 ---
 
@@ -173,48 +182,96 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 | 11. Encrypted Export | 2/2 | ✅ Complete | 2026-06-18 |
 | 12. Interactable Widget v2 | 2/2 | ✅ Complete | 2026-06-28 |
 | 13. Billing & Money Management | 2/2 | ✅ Complete | 2026-07-07 |
+| 14. Testing & CI/CD | 0/3 | ⏳ Pending | - |
+| 15. Local Date Engine | 0/2 | ⏳ Pending | - |
+| 16. Security & Storage Hardening | 0/2 | ⏳ Pending | - |
+| 17. State & Mutation Architecture | 0/2 | ⏳ Pending | - |
+| 18. Local AI Hardening | 0/2 | ⏳ Pending | - |
+| 19. Observability & Logging | 0/1 | ⏳ Pending | - |
 
 ---
 
-## Upcoming Phases
+## Phase Details
 
-### Phase 11: Encrypted Data Export & Import
-**Goal**: Allow users to export all their data (notes, tasks, task state) as an encrypted custom file format (`.kwestup`) and import it back on another device.
-**Depends on**: Phase 10.
-**Requirements**: [EXPORT-01]
+### Phase 14: Automated Testing Framework & CI/CD Pipeline
+**Goal**: Establish automated unit and integration testing harness with Jest, React Native Testing Library, native mocks, and a GitHub Actions CI pipeline.
+**Depends on**: Phase 13.
+**Requirements**: [TEST-01, TEST-02, TEST-03]
 **Success Criteria**:
-  1. Users can export a `.kwestup` archive containing all notes, tasks, daily tasks, and birthdays.
-  2. The archive is encrypted with AES-256 using a user-defined passphrase.
-  3. Users can import a `.kwestup` file on a new device to fully restore their workspace.
+  1. Jest is configured and runs successfully with `npm test`.
+  2. Native modules (`llama.rn`, `react-native-android-widget`, `AsyncStorage`, `expo-file-system`) are cleanly mocked for Node test environments.
+  3. Real unit tests import production code for core utilities and state logic and pass.
+  4. GitHub Actions workflow runs linter and tests on pull requests and pushes to `main` and `development`.
 **Plans**:
-- [x] 11-01-PLAN.md — Implement `exportService.js` (AES encryption, archive bundling), export UI in Settings. ✅
-- [x] 11-02-PLAN.md — Implement `importService.js` (decryption, validation, state restoration), import flow UI. ✅
+- [ ] 14-01-PLAN.md — Jest test environment setup, Babel transform, native mocks, and npm test script.
+- [ ] 14-02-PLAN.md — Unit test suites for core business logic and utilities (`dateUtils`, `fileStorage`, `vaultService`, `exportService`).
+- [ ] 14-03-PLAN.md — GitHub Actions CI pipeline synchronization with branch protection and test verification.
 
 ---
 
-### Phase 12: Interactable Android Home-Screen Widget v2
-**Goal**: Upgrade existing widgets to be fully interactive — users can mark tasks as done and switch tabs directly from the home screen widget.
-**Depends on**: Phase 9, Phase 11.
-**Requirements**: [WIDG-02]
+### Phase 15: Centralized Local Date Engine & Timezone Bug Fixes
+**Goal**: Replace all fragile UTC date slicing with a centralized device-local calendar date utility across tasks, birthdays, billing, search, and widgets.
+**Depends on**: Phase 14.
+**Requirements**: [DATE-01, DATE-02]
 **Success Criteria**:
-  1. Tasks widget supports tapping individual task rows to toggle completion state.
-  2. Widget supports tab switching (Tasks / Daily / Timer) from the home screen.
-  3. Widget state syncs in real-time with the app via `SharedPreferences` bridge.
+  1. `src/utils/dateUtils.js` provides consistent `getLocalDateString()`, `isSameLocalDay()`, and timezone-aware formatting.
+  2. All `new Date().toISOString().slice(0, 10)` callsites in `App.js`, `DailyTasksScreen`, `BillingScreen`, `SearchScreen`, and `widget-task-handler.tsx` are refactored to use local date utilities.
+  3. Comprehensive unit tests verify boundary conditions (midnight rollover, positive/negative UTC offsets, leap years).
 **Plans**:
-- [x] 12-01-PLAN.md — Add tap handlers to widget rows using `android-widget` intent receivers. ✅
-- [x] 12-02-PLAN.md — Implement tab-switch buttons and real-time widget↔app state bridge. ✅
+- [ ] 15-01-PLAN.md — Implement centralized `dateUtils.js` with comprehensive timezone boundary tests.
+- [ ] 15-02-PLAN.md — Refactor screens, handlers, and widgets to use `dateUtils.js`.
 
 ---
 
-### Phase 13: Billing & Money Management Module
-**Goal**: Add a personal finance tracking module — budgets, expenses, recurring bills, and spending analytics.
-**Depends on**: Phase 10.
-**Requirements**: [BILL-01]
+### Phase 16: Security & Storage Migration Hardening
+**Goal**: Modernize `.kwestup` backup encryption (per-archive random salt/IV, PBKDF2 100k+ iterations), secure LAN sync transport & token exchange, and fix storage migration version key drift.
+**Depends on**: Phase 15.
+**Requirements**: [SEC-01, SEC-02, STORE-01]
 **Success Criteria**:
-  1. Users can log income and expense transactions with categories.
-  2. Budget envelopes track remaining balance per category.
-  3. Recurring bills trigger notification reminders before due dates.
-  4. A spending overview dashboard displays monthly summaries and trend graphs.
+  1. Backups use per-export random salt & IV with ≥100,000 PBKDF2 iterations and maintain backward-compatible decryption for legacy backups.
+  2. LAN sync verifies session tokens securely and rejects unauthorized or malformed requests.
+  3. Storage migration targets active `currentStorageVersion` rather than hardcoded legacy keys, and cache cleaning preserves telemetry opt-in and AI download state.
 **Plans**:
-- [x] 13-01-PLAN.md — Build transaction CRUD, budget envelope system, and local persistence layer. ✅
-- [x] 13-02-PLAN.md — Implement recurring bills tracker, notification scheduler, and analytics dashboard UI. ✅
+- [ ] 16-01-PLAN.md — Upgrade backup encryption in `exportService.js` and `importService.js` with legacy migration tests.
+- [ ] 16-02-PLAN.md — Secure LAN sync handshake and fix storage migration keys and cache clearing.
+
+---
+
+### Phase 17: State Architecture & Unified Mutation Layer
+**Goal**: Decouple `App.js` monolith into dedicated domain stores/context and unify task recurrence and completion mutations between app and home-screen widgets.
+**Depends on**: Phase 16.
+**Requirements**: [ARCH-01, ARCH-02]
+**Success Criteria**:
+  1. Monolithic state in `App.js` is factored into modular domain providers/stores (Tasks, Vaults, Birthdays, Billing).
+  2. Shared task mutation module handles task toggling and recurrence spawning for both `App` and `widgets/widget-task-handler.tsx`.
+  3. App foreground reload automatically synchronizes in-memory state with widget-driven AsyncStorage mutations.
+**Plans**:
+- [ ] 17-01-PLAN.md — Create shared task mutation and recurrence module with unit test coverage.
+- [ ] 17-02-PLAN.md — Refactor `App.js` to consume domain contexts and subscribe to storage changes.
+
+---
+
+### Phase 18: On-Device AI Pipeline Hardening
+**Goal**: Pin AI model release, enforce SHA-256 checksum verification before loading, and implement robust error fallback and memory lifecycle management.
+**Depends on**: Phase 17.
+**Requirements**: [AI-01, AI-02]
+**Success Criteria**:
+  1. AI model download URL is pinned to an immutable release tag/commit with pre-load SHA-256 integrity verification.
+  2. Memory lifecycle is managed with automatic unloading (`releaseAllLlama`) when components unmount or memory is constrained.
+  3. Inference failures gracefully fallback to rule-based summarization and extraction without crashing.
+**Plans**:
+- [ ] 18-01-PLAN.md — Implement checksum verification and immutable model pinning in `aiService.js`.
+- [ ] 18-02-PLAN.md — Context memory lifecycle management and fallback extraction pipeline.
+
+---
+
+### Phase 19: Production Observability & Logging Cleanup
+**Goal**: Strip verbose emoji debug logs from release builds and establish structured crash boundaries and diagnostics.
+**Depends on**: Phase 18.
+**Requirements**: [OBS-01, OBS-02]
+**Success Criteria**:
+  1. Over 100 verbose `console.log` calls are stripped or routed through an environment-aware logger that silences debug logs in production.
+  2. Top-level React error boundary catches unexpected runtime crashes with user-friendly recovery UI.
+**Plans**:
+- [ ] 19-01-PLAN.md — Logger utility, Babel transform for production log stripping, and root error boundary.
+
