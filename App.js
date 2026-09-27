@@ -32,7 +32,6 @@ import {
 // Component imports
 import { CustomButton } from "./src/components/CustomButton";
 import { CustomTextInput } from "./src/components/CustomTextInput";
-import { TaskEditModal } from "./src/components/TaskEditModal";
 import { TimerLockoutOverlay } from "./src/components/TimerLockoutOverlay";
 import { LiquidGlassBackground } from "./src/components/LiquidGlassBackground";
 
@@ -52,15 +51,12 @@ import { APP_VERSION, STORAGE_VERSION, clearAllCaches, migrateUserDataIfNeeded }
 import {
   requestNotificationPermissions,
   scheduleDailyTaskNotification,
-  schedulePushNotification,
-  scheduleDueDateNotification,
-  cancelDueDateNotification,
   cancelCustomBirthdayReminders,
   scheduleCustomBirthdayReminders
 } from "./src/utils/notifications";
 import { performSync } from "./src/utils/syncService";
 import { runDeviceDiagnostics, runNetworkDiagnostics, checkForUpdates, sendTelemetryEvent, DEBUG_MODE } from "./src/utils/diagnostics";
-import { loadBillingData, saveBillingData } from "./src/utils/billingStorage";
+import { loadBillingData } from "./src/utils/billingStorage";
 import { requestWidgetUpdate } from 'react-native-android-widget';
 import { FocusTimerWidget } from './widgets/FocusTimerWidget';
 import { DailyTasksWidget } from './widgets/DailyTasksWidget';
@@ -101,8 +97,6 @@ const App = () => {
     { id: "default_inbox", name: "My Tasks", createdAt: new Date().toISOString() }
   ]);
   const [notes, setNotes] = useState([]);
-  const [selectedTask, setSelectedTask] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
   const [timerDuration, setTimerDuration] = useState(25 * 60);
   const [timerRemaining, setTimerRemaining] = useState(25 * 60);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
@@ -416,11 +410,12 @@ const App = () => {
 
     // DECOUPLE: Main data save no longer includes high-frequency timer state.
     // This prevents Binder transaction failures (-22) when saving large datasets.
+    // W-01: tasks/taskLists/dailyTasks are owned exclusively by TaskContext
+    // (eager write-through persistence). App merges its remaining domains onto
+    // the stored object so a periodic save can never clobber fresh task data
+    // with a stale App-local snapshot.
     const dataToSave = {
-      dailyTasks,
       birthdays,
-      tasks,
-      taskLists,
       notes,
       themeMode,
       selectedThemeName,
@@ -432,17 +427,16 @@ const App = () => {
 
     try {
       const storageKey = `kwestup_data_${STORAGE_VERSION}`;
-      await AsyncStorage.setItem(storageKey, JSON.stringify(dataToSave));
+      const storedRaw = await AsyncStorage.getItem(storageKey);
+      const stored = storedRaw ? JSON.parse(storedRaw) : {};
+      await AsyncStorage.setItem(storageKey, JSON.stringify({ ...stored, ...dataToSave }));
       console.log("💾 Main data saved successfully to:", storageKey);
       lastSaveTimeRef.current = Date.now();
     } catch (error) {
       console.error("❌ Failed to save main data:", error);
     }
   }, [
-    dailyTasks,
     birthdays,
-    tasks,
-    taskLists,
     notes,
     themeMode,
     selectedThemeName,
@@ -491,10 +485,7 @@ const App = () => {
       }
     }
   }, [
-    dailyTasks,
     birthdays,
-    tasks,
-    taskLists,
     notes,
     themeMode,
     selectedThemeName,
@@ -504,11 +495,9 @@ const App = () => {
     saveData,
   ]);
 
-  // Save billing data whenever it changes
-  useEffect(() => {
-    if (!isInitialized) return;
-    saveBillingData(billingData);
-  }, [billingData, isInitialized]);
+  // W-03: Billing persistence is owned exclusively by BillingContext
+  // (updateBillingDataState). The App-level duplicate writer was removed to
+  // eliminate the stale-write race between the two snapshots.
 
   // High-frequency timer state save (minimal payload)
   useEffect(() => {
@@ -701,219 +690,10 @@ const App = () => {
     return () => clearInterval(timerIntervalRef.current);
   }, [isTimerRunning, timerRemaining]);
 
-  const toggleTaskComplete = (id) => {
-    console.log("🔄 Task toggle button pressed for task ID:", id);
-    setTasks((currentTasks) => {
-      const updatedTasks = [];
-      for (const task of currentTasks) {
-        if (task.id === id) {
-          const newCompletedStatus = !task.completed;
-          console.log("📊 Toggling task:", task.title || task.name, "from", task.completed, "to", newCompletedStatus);
-
-          const isRecurring = task.recurrence && task.recurrence !== "none";
-
-          if (newCompletedStatus && isRecurring) {
-            // For recurring tasks: skip pushing the completed parent (it "disappears"),
-            // and spawn the next occurrence instead. This keeps the list clean.
-            const currentDueDate = task.dueDate || new Date().toISOString();
-            const date = new Date(currentDueDate);
-            if (isNaN(date.getTime())) date.setTime(Date.now());
-
-            let newTitle = task.title || task.name;
-            if (task.recurrence === "daily") {
-              date.setDate(date.getDate() + 1);
-            } else if (task.recurrence === "weekly") {
-              date.setDate(date.getDate() + 7);
-            } else if (task.recurrence === "monthly") {
-              date.setMonth(date.getMonth() + 1);
-            } else if (task.recurrence === "progressive") {
-              date.setDate(date.getDate() + 1);
-              // Increment the last number found in the title (e.g. "Day 1" -> "Day 2")
-              const match = newTitle.match(/\d+(?!.*\d)/);
-              if (match) {
-                const num = parseInt(match[0], 10);
-                newTitle = newTitle.substring(0, match.index) + (num + 1) + newTitle.substring(match.index + match[0].length);
-              } else {
-                newTitle += " - 2";
-              }
-            }
-
-            const spawnedTask = {
-              ...task,
-              id: Date.now().toString() + Math.random().toString(36).slice(2),
-              title: newTitle,
-              completed: false,
-              completedDate: null,
-              completedAt: null,
-              dueDate: date.toISOString(),
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              notificationId: null,
-            };
-
-            updatedTasks.push(spawnedTask);
-            console.log("🤖 Spawned next recurrence task:", spawnedTask.title, "for date:", spawnedTask.dueDate);
-            // Note: the completed parent is intentionally NOT pushed — it vanishes cleanly.
-          } else {
-            // Normal (non-recurring) task: just toggle completion status
-            updatedTasks.push({
-              ...task,
-              completed: newCompletedStatus,
-              completedDate: newCompletedStatus ? getLocalDateString() : null,
-              completedAt: newCompletedStatus ? new Date().toISOString() : null,
-            });
-          }
-        } else {
-          updatedTasks.push(task);
-        }
-      }
-      return updatedTasks;
-    });
-    console.log("✅ Task toggled:", id);
-  };
-
-
-  const deleteTask = (id) => {
-    showConfirmation(
-      "Are you sure you want to delete this task?",
-      () => {
-        setTasks(currentTasks => {
-          const taskToDelete = currentTasks.find(t => t.id === id);
-          if (taskToDelete && taskToDelete.notificationId) {
-            cancelDueDateNotification(taskToDelete.notificationId);
-          }
-          return currentTasks.filter((task) => task.id !== id);
-        });
-        console.log("🗑️ Task deleted:", id);
-      },
-      () => { },
-    );
-  };
-
-  const handleCompleteTask = (taskId) => {
-    const now = new Date().toISOString();
-    console.log("🎯 Task completion button pressed for task ID:", taskId);
-    setTasks(prevTasks => {
-      return prevTasks.map(task => {
-        if (task.id === taskId) {
-          console.log("✅ Marking task as complete:", task.title || task.name);
-          return {
-            ...task,
-            completed: true,
-            completedDate: getLocalDateString(),
-            completedAt: now
-          };
-        }
-        return task;
-      });
-    });
-
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    schedulePushNotification({
-      title: 'Task Completed! ✨',
-      body: "Great job! Another one bites the dust.",
-    });
-  };
-
-  const handleSaveTask = async (savedTask) => {
-    // Ensure task listId is bound
-    const taskToSave = {
-      ...savedTask,
-      listId: savedTask.listId || "default_inbox"
-    };
-
-    // Cancel old notification if dueDate changed
-    if (taskToSave.id) {
-      const existingTask = tasks.find(t => t.id === taskToSave.id);
-      if (existingTask && existingTask.notificationId && existingTask.dueDate !== taskToSave.dueDate) {
-        await cancelDueDateNotification(existingTask.notificationId);
-      }
-    }
-
-    // Schedule notification if dueDate is set
-    let notificationId = null;
-    if (taskToSave.dueDate) {
-      const nid = await scheduleDueDateNotification(taskToSave);
-      if (nid) notificationId = nid;
-    }
-
-    // Apply updates in a single state transaction
-    if (taskToSave.id && tasks.find(t => t.id === taskToSave.id)) {
-      setTasks(prev => prev.map(t => t.id === taskToSave.id ? { ...taskToSave, notificationId } : t));
-    } else {
-      const newId = taskToSave.id || Date.now().toString();
-      const finalTask = { ...taskToSave, id: newId, notificationId };
-      setTasks(prev => [...prev, finalTask]);
-    }
-  };
-
-  const handleToggleSubtask = (taskId, subtaskIdx) => {
-    console.log("🔄 Toggling subtask at index:", subtaskIdx, "for task ID:", taskId);
-    setTasks(prevTasks =>
-      prevTasks.map(task => {
-        if (task.id === taskId) {
-          const updatedSubtasks = (task.subtasks || []).map((st, i) => {
-            if (i === subtaskIdx) {
-              const newCompleted = !st.completed;
-              return {
-                ...st,
-                completed: newCompleted,
-                completedAt: newCompleted ? new Date().toISOString() : null
-              };
-            }
-            return st;
-          });
-          return {
-            ...task,
-            subtasks: updatedSubtasks
-          };
-        }
-        return task;
-      })
-    );
-  };
-
-  const handleCreateList = (name) => {
-    if (!name || !name.trim()) return;
-    const newList = {
-      id: Date.now().toString(),
-      name: name.trim(),
-      createdAt: new Date().toISOString()
-    };
-    setTaskLists(prev => [...prev, newList]);
-    console.log("➕ Custom list created:", newList.name);
-  };
-
-  const handleRenameList = (listId, name) => {
-    if (!name || !name.trim()) return;
-    setTaskLists(prev =>
-      prev.map(list => (list.id === listId ? { ...list, name: name.trim() } : list))
-    );
-    console.log("✏️ Custom list renamed to:", name.trim());
-  };
-
-  const handleDeleteList = (listId) => {
-    if (listId === "default_inbox") {
-      showConfirmation("You cannot delete the default task list.", () => {});
-      return;
-    }
-    showConfirmation(
-      "Are you sure you want to delete this list? All tasks inside will be permanently deleted.",
-      () => {
-        setTasks(currentTasks => {
-          currentTasks.forEach(task => {
-            if (task.listId === listId && task.notificationId) {
-              cancelDueDateNotification(task.notificationId);
-            }
-          });
-          return currentTasks.filter(task => task.listId !== listId);
-        });
-        setTaskLists(prev => prev.filter(list => list.id !== listId));
-        console.log("🗑️ Custom list deleted:", listId);
-      },
-      () => {}
-    );
-  };
+  // C-02: Task mutations live exclusively in TaskContext (src/context/TaskContext.js),
+  // which wraps the authoritative engine in src/utils/taskMutations.js.
+  // The duplicated hand-rolled copies that used to live here were removed so
+  // there is a single mutation path with notification scheduling preserved.
 
   /**
    * Handles active vault switching: persists to AsyncStorage, reloads notes from new vault.
@@ -1071,22 +851,8 @@ const App = () => {
                       <NavigationContainer theme={{ colors: { background: "transparent" } }}>
                         <AppNavigator
                           currentTheme={currentTheme}
-                          tasks={tasks}
-                          setTasks={setTasks}
-                          taskLists={taskLists}
-                          handleCreateList={handleCreateList}
-                          handleRenameList={handleRenameList}
-                          handleDeleteList={handleDeleteList}
-                          handleToggleSubtask={handleToggleSubtask}
                           notes={notes}
                           setNotes={setNotes}
-                          handleCompleteTask={handleCompleteTask}
-                          toggleTaskComplete={toggleTaskComplete}
-                          deleteTask={deleteTask}
-                          setSelectedTask={setSelectedTask}
-                          setModalVisible={setModalVisible}
-                          dailyTasks={dailyTasks}
-                          setDailyTasks={setDailyTasks}
                           birthdays={birthdays}
                           setBirthdays={setBirthdays}
                           showConfirmation={showConfirmation}
@@ -1243,15 +1009,8 @@ const App = () => {
               </View>
             </Modal>
 
-            {/* Task Edit Modal */}
-            <TaskEditModal
-              visible={modalVisible}
-              onClose={() => setModalVisible(false)}
-              task={selectedTask}
-              onSave={handleSaveTask}
-              theme={currentTheme}
-              taskLists={taskLists}
-            />
+            {/* C-01: TaskEditModal now lives in AppNavigator, bound to the same
+                TaskContext state the screens write. */}
 
             {/* Timer Lockout Overlay */}
             <TimerLockoutOverlay

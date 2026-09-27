@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { AppState } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
@@ -38,24 +38,91 @@ export const TaskProvider = ({
   const [selectedTask, setSelectedTask] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
 
-  // Synchronize when initial props change (e.g. boot loadData)
+  // Synchronize when initial props change (e.g. boot loadData, sync, reset).
+  // Sync is unconditional so legitimate empty states (e.g. reset-to-empty)
+  // propagate instead of leaving stale context data behind.
   useEffect(() => {
-    if (initialTasks && initialTasks.length > 0) {
+    if (Array.isArray(initialTasks)) {
       setTasks(initialTasks);
     }
   }, [initialTasks]);
 
   useEffect(() => {
-    if (initialTaskLists && initialTaskLists !== DEFAULT_TASK_LISTS && initialTaskLists.length > 0) {
+    if (Array.isArray(initialTaskLists) && initialTaskLists !== DEFAULT_TASK_LISTS) {
       setTaskLists(initialTaskLists);
     }
   }, [initialTaskLists]);
 
   useEffect(() => {
-    if (initialDailyTasks && initialDailyTasks.length > 0) {
+    if (Array.isArray(initialDailyTasks)) {
       setDailyTasks(initialDailyTasks);
     }
   }, [initialDailyTasks]);
+
+  // Eager write-through persistence (W-01/W-02 fix): TaskContext is the sole
+  // writer of the tasks/taskLists/dailyTasks keys. Every mutation persists to
+  // AsyncStorage via a short debounce (≤1s) using read-modify-write, so the
+  // sibling domains App.js still persists (birthdays/notes/theme) are never
+  // clobbered. Writes use the computed state snapshot — never inside a React
+  // updater — to avoid StrictMode double-invocation double-writes.
+  // Residual risk (documented for Phase 18): an in-app mutation made <500ms
+  // before a foreground refresh can still be overwritten by the storage read;
+  // a per-task updatedAt merge would be needed to close that micro-window.
+  const storageWriteTimerRef = useRef(null);
+  const lastPersistedJsonRef = useRef(null);
+  const tasksHydratedRef = useRef(false);
+
+  const writeTaskSnapshot = useCallback(async (snapshot) => {
+    try {
+      const storageKey = `kwestup_data_${STORAGE_VERSION}`;
+      const raw = await AsyncStorage.getItem(storageKey);
+      const stored = raw ? JSON.parse(raw) : {};
+      const merged = {
+        ...stored,
+        tasks: snapshot.tasks,
+        taskLists: snapshot.taskLists,
+        dailyTasks: snapshot.dailyTasks,
+      };
+      await AsyncStorage.setItem(storageKey, JSON.stringify(merged));
+      lastPersistedJsonRef.current = JSON.stringify(snapshot);
+    } catch (err) {
+      console.error("❌ Failed to persist tasks to storage:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    const snapshot = { tasks, taskLists, dailyTasks };
+    const snapshotJson = JSON.stringify(snapshot);
+    if (snapshotJson === lastPersistedJsonRef.current) return;
+    if (storageWriteTimerRef.current) clearTimeout(storageWriteTimerRef.current);
+    storageWriteTimerRef.current = setTimeout(async () => {
+      storageWriteTimerRef.current = null;
+      // Boot guard: while App.js hasn't loaded data yet, in-memory task state
+      // is still the boot empty — never let that wipe real storage content.
+      if (!tasksHydratedRef.current) {
+        try {
+          const storageKey = `kwestup_data_${STORAGE_VERSION}`;
+          const raw = await AsyncStorage.getItem(storageKey);
+          const stored = raw ? JSON.parse(raw) : {};
+          const inMemoryEmpty =
+            tasks.length === 0 &&
+            dailyTasks.length === 0 &&
+            (taskLists.length === 0 ||
+              (taskLists.length === 1 && taskLists[0].id === "default_inbox"));
+          if (inMemoryEmpty && Array.isArray(stored.tasks) && stored.tasks.length > 0) {
+            return;
+          }
+        } catch {
+          // If storage is unreadable, fall through and attempt the write.
+        }
+      }
+      tasksHydratedRef.current = true;
+      await writeTaskSnapshot(snapshot);
+    }, 500);
+    return () => {
+      if (storageWriteTimerRef.current) clearTimeout(storageWriteTimerRef.current);
+    };
+  }, [tasks, taskLists, dailyTasks, writeTaskSnapshot]);
 
   // Foreground storage re-synchronization (widget updates sync)
   const refreshTasksFromStorage = useCallback(async () => {
@@ -232,11 +299,38 @@ export const TaskProvider = ({
   }, []);
 
   const handleDeleteList = useCallback((listId) => {
-    setTaskLists((currentLists) => {
-      const { updatedTaskLists } = deleteTaskList(currentLists, listId);
-      return updatedTaskLists;
-    });
-  }, []);
+    if (listId === "default_inbox") {
+      if (showConfirmationDialog) {
+        showConfirmationDialog("You cannot delete the default task list.", () => {});
+      }
+      return;
+    }
+    const executeDelete = () => {
+      // Preserve App.js behavior: tasks inside the deleted list are removed
+      // and their scheduled notifications cancelled.
+      setTasks((currentTasks) => {
+        currentTasks.forEach((task) => {
+          if (task.listId === listId && task.notificationId) {
+            cancelDueDateNotification(task.notificationId);
+          }
+        });
+        return currentTasks.filter((task) => task.listId !== listId);
+      });
+      setTaskLists((currentLists) => {
+        const { updatedTaskLists } = deleteTaskList(currentLists, listId);
+        return updatedTaskLists;
+      });
+    };
+    if (showConfirmationDialog) {
+      showConfirmationDialog(
+        "Are you sure you want to delete this list? All tasks inside will be permanently deleted.",
+        executeDelete,
+        () => {}
+      );
+    } else {
+      executeDelete();
+    }
+  }, [showConfirmationDialog]);
 
   const value = {
     tasks,

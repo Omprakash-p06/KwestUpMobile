@@ -1,6 +1,7 @@
 import React from "react";
 import { useWindowDimensions, View } from "react-native";
 import { AIAssistant } from "../components/AIAssistant";
+import { TaskEditModal } from "../components/TaskEditModal";
 import { createDrawerNavigator } from "@react-navigation/drawer";
 import { CustomDrawerContent } from "./CustomDrawerContent";
 import { DashboardScreen } from "../screens/DashboardScreen";
@@ -13,7 +14,6 @@ import { SearchScreen } from "../screens/SearchScreen";
 import { NotesScreen } from "../screens/NotesScreen";
 import { BillingScreen } from "../screens/BillingScreen";
 import {
-  scheduleDueDateNotification,
   scheduleCustomBirthdayReminders,
 } from "../utils/notifications";
 import { useNavigationState } from "@react-navigation/native";
@@ -27,20 +27,6 @@ const Drawer = createDrawerNavigator();
 
 export const AppNavigator = ({
   currentTheme,
-  tasks,
-  setTasks,
-  taskLists,
-  handleCreateList,
-  handleRenameList,
-  handleDeleteList,
-  handleToggleSubtask,
-  handleCompleteTask,
-  toggleTaskComplete,
-  deleteTask,
-  setSelectedTask,
-  setModalVisible,
-  dailyTasks,
-  setDailyTasks,
   birthdays,
   setBirthdays,
   showConfirmation,
@@ -83,20 +69,22 @@ export const AppNavigator = ({
   const billingCtx = useBilling();
   const birthdayCtx = useBirthdays();
 
-  const effectiveTasks = taskCtx?.tasks ?? tasks ?? [];
-  const effectiveSetTasks = taskCtx?.setTasks ?? setTasks;
-  const effectiveTaskLists = taskCtx?.taskLists ?? taskLists ?? [];
-  const effectiveHandleCreateList = taskCtx?.handleCreateList ?? handleCreateList;
-  const effectiveHandleRenameList = taskCtx?.handleRenameList ?? handleRenameList;
-  const effectiveHandleDeleteList = taskCtx?.handleDeleteList ?? handleDeleteList;
-  const effectiveHandleToggleSubtask = taskCtx?.handleToggleSubtask ?? handleToggleSubtask;
-  const effectiveHandleCompleteTask = taskCtx?.handleCompleteTask ?? handleCompleteTask;
-  const effectiveToggleTaskComplete = taskCtx?.toggleTaskComplete ?? toggleTaskComplete;
-  const effectiveDeleteTask = taskCtx?.deleteTask ?? deleteTask;
-  const effectiveSetSelectedTask = taskCtx?.setSelectedTask ?? setSelectedTask;
-  const effectiveSetModalVisible = taskCtx?.setModalVisible ?? setModalVisible;
-  const effectiveDailyTasks = taskCtx?.dailyTasks ?? dailyTasks ?? [];
-  const effectiveSetDailyTasks = taskCtx?.setDailyTasks ?? setDailyTasks;
+  // C-02: TaskContext is the only task-mutation path. App.js no longer passes
+  // task handlers, so there are no prop fallbacks — context is required.
+  const effectiveTasks = taskCtx?.tasks ?? [];
+  const effectiveSetTasks = taskCtx?.setTasks;
+  const effectiveTaskLists = taskCtx?.taskLists ?? [];
+  const effectiveHandleCreateList = taskCtx?.handleCreateList;
+  const effectiveHandleRenameList = taskCtx?.handleRenameList;
+  const effectiveHandleDeleteList = taskCtx?.handleDeleteList;
+  const effectiveHandleToggleSubtask = taskCtx?.handleToggleSubtask;
+  const effectiveHandleCompleteTask = taskCtx?.handleCompleteTask;
+  const effectiveToggleTaskComplete = taskCtx?.toggleTaskComplete;
+  const effectiveDeleteTask = taskCtx?.deleteTask;
+  const effectiveSetSelectedTask = taskCtx?.setSelectedTask;
+  const effectiveSetModalVisible = taskCtx?.setModalVisible;
+  const effectiveDailyTasks = taskCtx?.dailyTasks ?? [];
+  const effectiveSetDailyTasks = taskCtx?.setDailyTasks;
 
   const effectiveBirthdays = birthdayCtx?.birthdays ?? birthdays ?? [];
   const effectiveSetBirthdays = birthdayCtx?.setBirthdays ?? setBirthdays;
@@ -127,28 +115,7 @@ export const AppNavigator = ({
       taskCtx.handleSaveTask(taskData);
       return;
     }
-    const newTask = {
-      id: Date.now().toString(),
-      title: taskData.title,
-      description: taskData.description || "",
-      dueDate: taskData.dueDate || null,
-      listId: "default_inbox",
-      completed: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    if (effectiveSetTasks) {
-      effectiveSetTasks((prev) => [...prev, newTask]);
-    }
-    if (newTask.dueDate) {
-      scheduleDueDateNotification(newTask).then((notificationId) => {
-        if (effectiveSetTasks) {
-          effectiveSetTasks((prev) =>
-            prev.map((t) => (t.id === newTask.id ? { ...t, notificationId } : t))
-          );
-        }
-      });
-    }
+    console.warn("onTaskCreated: TaskContext unavailable — task not saved.");
   };
 
   const onBirthdayCreated = async (birthdayData) => {
@@ -388,6 +355,17 @@ export const AppNavigator = ({
         </Drawer.Screen>
       </Drawer.Navigator>
 
+      {/* C-01: TaskEditModal lives here so it observes the same TaskContext
+          state the screens write via setSelectedTask/setModalVisible. */}
+      <TaskEditModal
+        visible={taskCtx?.modalVisible ?? false}
+        onClose={() => taskCtx?.setModalVisible(false)}
+        task={taskCtx?.selectedTask ?? null}
+        onSave={(taskData) => taskCtx?.handleSaveTask(taskData)}
+        theme={currentTheme}
+        taskLists={effectiveTaskLists}
+      />
+
       {!effectiveActiveNote && activeRouteName !== "Settings" && (
         <AIAssistant
           currentTheme={currentTheme}
@@ -398,16 +376,8 @@ export const AppNavigator = ({
               extractedTaskTitles.forEach((title) => {
                 taskCtx.handleSaveTask({ title, listId: "default_inbox", completed: false });
               });
-            } else if (effectiveSetTasks) {
-              const newTasks = extractedTaskTitles.map((title) => ({
-                id: Date.now().toString() + Math.random().toString(36).slice(2),
-                title,
-                listId: "default_inbox",
-                completed: false,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              }));
-              effectiveSetTasks((prev) => [...prev, ...newTasks]);
+            } else {
+              console.warn("onTasksExtracted: TaskContext unavailable — tasks not saved.");
             }
           }}
           onTaskCreated={onTaskCreated}
