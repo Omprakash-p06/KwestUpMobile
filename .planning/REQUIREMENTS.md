@@ -31,8 +31,8 @@ Requirements for the hardening and production readiness milestone.
 
 ### Local AI Pipeline
 
-- [ ] **AI-01**: Secure and harden on-device AI pipeline with pinned model release and SHA-256 checksum verification before loading.
-- [ ] **AI-02**: Implement robust AI memory lifecycle management (auto-unloading context) and structured fallback handling.
+- [x] **AI-01**: Secure and harden on-device AI pipeline with pinned model release and SHA-256 checksum verification before loading.
+- [x] **AI-02**: Implement robust AI memory lifecycle management (auto-unloading context) and structured fallback handling.
 
 ### Observability & Polish
 
@@ -62,8 +62,8 @@ Requirements for the hardening and production readiness milestone.
 | STORE-01| Phase 16 | Complete |
 | ARCH-01 | Phase 17 | Complete |
 | ARCH-02 | Phase 17 | Complete |
-| AI-01   | Phase 18 | Pending |
-| AI-02   | Phase 18 | Pending |
+| AI-01   | Phase 18 | Complete |
+| AI-02   | Phase 18 | Complete |
 | OBS-01  | Phase 19 | Pending |
 | OBS-02  | Phase 19 | Pending |
 

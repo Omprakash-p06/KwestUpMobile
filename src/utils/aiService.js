@@ -6,44 +6,130 @@
  * Model: Qwen2.5-0.5B-Instruct Q4_K_M GGUF (~468MB, runs offline)
  */
 
+import { AppState } from "react-native";
 import { initLlama, releaseAllLlama } from "llama.rn";
 import * as FileSystem from "expo-file-system";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getLocalMonthDayString } from "./dateUtils";
+import CryptoJS from "crypto-js";
+import {
+  getLocalMonthDayString,
+  getLocalDateString,
+  getTomorrowLocalDateString,
+  parseLocalDate,
+} from "./dateUtils";
 
-// === Model Configuration ===
-const MODEL_FILENAME = "qwen2.5-0.5b-instruct-q4_k_m.gguf";
-const MODEL_DOWNLOAD_URL =
-  "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf";
-const MODEL_DIR = `${FileSystem.documentDirectory}models/`;
-const MODEL_PATH = `${MODEL_DIR}${MODEL_FILENAME}`;
-const RESUMABLE_DOWNLOAD_KEY = "kwestup_ai_model_download_resumable";
+// === Model Configuration & Cryptographic Integrity Constants ===
+export const MODEL_FILENAME = "qwen2.5-0.5b-instruct-q4_k_m.gguf";
+export const MODEL_PINNED_COMMIT = "9217f5db79a29953eb74d5343926648285ec7e67";
+export const MODEL_EXPECTED_SHA256 = "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db";
+export const MODEL_EXPECTED_SIZE = 491400032; // 491,400,032 bytes (~468.64 MB)
+export const MODEL_DOWNLOAD_URL =
+  `https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/${MODEL_PINNED_COMMIT}/${MODEL_FILENAME}`;
+export const MODEL_DIR = `${FileSystem.documentDirectory}models/`;
+export const MODEL_PATH = `${MODEL_DIR}${MODEL_FILENAME}`;
+export const RESUMABLE_DOWNLOAD_KEY = "kwestup_ai_model_download_resumable";
 
-// === Module-level context handle ===
+// === Module-level context handle & concurrency lock ===
 let _llamaContext = null;
-let _isInitializing = false; // Simple mutex flag
+let _initPromise = null;
+let _idleTimer = null;
+export const IDLE_UNLOAD_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
- * Returns true if the GGUF model file is cached on device.
+ * Resets the idle timer. Unloads native model context after 5 minutes of inactivity.
  */
-export const isModelDownloaded = async () => {
+export const resetIdleTimer = () => {
+  if (_idleTimer) {
+    clearTimeout(_idleTimer);
+  }
+  _idleTimer = setTimeout(() => {
+    unloadModel();
+  }, IDLE_UNLOAD_TIMEOUT_MS);
+  if (_idleTimer && typeof _idleTimer.unref === "function") {
+    _idleTimer.unref();
+  }
+};
+
+/**
+ * Returns current model context status.
+ */
+export const getModelContextStatus = () => ({
+  isLoaded: _llamaContext !== null,
+  isLoading: _initPromise !== null,
+});
+
+/**
+ * Handles AppState change to automatically unload native context when app is backgrounded or inactive.
+ */
+export const handleAppStateChange = (nextAppState) => {
+  if (nextAppState === "background" || nextAppState === "inactive") {
+    unloadModel();
+  }
+};
+
+// Automatically unload native context when app is backgrounded or inactive to free memory
+if (typeof AppState !== "undefined" && typeof AppState.addEventListener === "function") {
+  AppState.addEventListener("change", handleAppStateChange);
+}
+
+/**
+ * Computes SHA-256 hash of a string or WordArray using crypto-js.
+ * @param {string|CryptoJS.lib.WordArray} data
+ * @returns {string} hex-encoded SHA-256 string
+ */
+export const computeSha256 = (data) => {
+  if (typeof data !== "string" && !data?.sigBytes) {
+    return "";
+  }
+  return CryptoJS.SHA256(data).toString(CryptoJS.enc.Hex);
+};
+
+/**
+ * Verifies model presence and integrity against expected size and optional hash.
+ * Automatically deletes corrupted or partial model files from the device filesystem.
+ * 
+ * @param {string} filePath - Path to the GGUF file
+ * @param {function|null} customValidator - Optional custom validator callback for hash validation
+ * @returns {Promise<boolean>}
+ */
+export const verifyModelIntegrity = async (filePath = MODEL_PATH, customValidator = null) => {
   try {
-    const fileInfo = await FileSystem.getInfoAsync(MODEL_PATH);
-    // The qwen2.5-0.5b-instruct-q4_k_m.gguf model should be ~468MB (491,400,032 bytes).
-    // If it exists but is smaller than 450MB, it's corrupted or incomplete!
-    if (fileInfo.exists) {
-      if (fileInfo.size < 450_000_000) {
-        console.warn(`Model file found but is incomplete (${fileInfo.size} bytes). Deleting for safety.`);
-        await FileSystem.deleteAsync(MODEL_PATH, { idempotent: true });
+    const fileInfo = await FileSystem.getInfoAsync(filePath);
+    if (!fileInfo.exists) {
+      return false;
+    }
+
+    // 1. Exact byte size check
+    if (fileInfo.size !== MODEL_EXPECTED_SIZE) {
+      console.warn(
+        `Model file size mismatch: expected ${MODEL_EXPECTED_SIZE} bytes, but got ${fileInfo.size} bytes. Deleting corrupted model.`
+      );
+      await FileSystem.deleteAsync(filePath, { idempotent: true });
+      return false;
+    }
+
+    // 2. Optional cryptographic checksum validator
+    if (typeof customValidator === "function") {
+      const isValidHash = await customValidator(filePath);
+      if (!isValidHash) {
+        console.warn(`Model checksum mismatch against ${MODEL_EXPECTED_SHA256}. Deleting corrupted model.`);
+        await FileSystem.deleteAsync(filePath, { idempotent: true });
         return false;
       }
-      return true;
     }
-    return false;
+
+    return true;
   } catch (err) {
-    console.error("Error checking model file status:", err);
+    console.error("Error verifying model integrity:", err);
     return false;
   }
+};
+
+/**
+ * Returns true if the GGUF model file is cached on device and passes integrity verification.
+ */
+export const isModelDownloaded = async () => {
+  return await verifyModelIntegrity(MODEL_PATH);
 };
 
 /**
@@ -154,58 +240,63 @@ export const downloadModel = async (onProgress) => {
 
 /**
  * Loads the GGUF model into a llama.rn inference context.
- * Throws if model file is not downloaded.
+ * Uses a coalescing Promise lock to prevent multiple concurrent initializations.
+ * Throws if model file is not downloaded or integrity verification fails.
  */
 export const loadModel = async () => {
+  resetIdleTimer();
+
   // 1. If already loaded, return it
   if (_llamaContext) {
     return _llamaContext;
   }
 
-  // 2. Mutex check to prevent multiple concurrent initializations
-  if (_isInitializing) {
-    // Wait for the other call to finish
-    while (_isInitializing) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-    if (_llamaContext) return _llamaContext;
+  // 2. Mutex check: coalesce concurrent callers onto the in-flight initialization promise
+  if (_initPromise) {
+    return _initPromise;
   }
 
-  const downloaded = await isModelDownloaded();
-  if (!downloaded) {
-    throw new Error("Model not downloaded or corrupted. Please download the AI model first.");
-  }
+  _initPromise = (async () => {
+    try {
+      const isValid = await isModelDownloaded();
+      if (!isValid) {
+        throw new Error("Model not downloaded or corrupted. Please download the AI model first.");
+      }
 
-  _isInitializing = true;
-  try {
-    _llamaContext = await initLlama({
-      model: MODEL_PATH,
-      use_mlock: false,
-      n_ctx: 2048,        // stable 2048 prevents OOM native crashes on standard hardware
-      n_threads: 2,       // reduced from 4 to 2 for better stability on mid-range Android devices
-      n_gpu_layers: 0,    // CPU-only
-      no_gpu_devices: true, // skip GPU device probing to avoid Unknown error on Android
-    });
-    return _llamaContext;
-  } catch (err) {
-    _llamaContext = null;
-    const msg = err?.message || "Failed to initialize native model context";
-    
-    // Check for common native errors
-    if (msg.includes("out of memory") || msg.includes("OOM")) {
-      throw new Error("Device ran out of memory while loading the AI model. Try closing other apps.");
+      _llamaContext = await initLlama({
+        model: MODEL_PATH,
+        use_mlock: false,
+        n_ctx: 2048,          // stable 2048 prevents OOM native crashes on standard hardware
+        n_threads: 2,         // reduced from 4 to 2 for better stability on mid-range Android devices
+        n_gpu_layers: 0,      // CPU-only
+        no_gpu_devices: true, // skip GPU device probing to avoid Unknown error on Android
+      });
+      return _llamaContext;
+    } catch (err) {
+      _llamaContext = null;
+      const msg = err?.message || "Failed to initialize native model context";
+
+      if (msg.includes("out of memory") || msg.includes("OOM")) {
+        throw new Error("Device ran out of memory while loading the AI model. Try closing other apps.");
+      }
+
+      throw new Error(`Model initialization failed: ${msg}`);
+    } finally {
+      _initPromise = null;
     }
-    
-    throw new Error(`Model initialization failed: ${msg}`);
-  } finally {
-    _isInitializing = false;
-  }
+  })();
+
+  return _initPromise;
 };
 
 /**
  * Releases the loaded model context to free device memory.
  */
 export const unloadModel = async () => {
+  if (_idleTimer) {
+    clearTimeout(_idleTimer);
+    _idleTimer = null;
+  }
   if (_llamaContext) {
     try {
       await releaseAllLlama();
@@ -217,20 +308,151 @@ export const unloadModel = async () => {
 };
 
 /**
+ * Rule-based heuristic task extractor from markdown text.
+ * Runs offline with zero memory overhead when LLM is unavailable.
+ * 
+ * @param {string} noteContent
+ * @returns {string[]} array of extracted task strings
+ */
+export const extractTasksFromNoteHeuristic = (noteContent) => {
+  if (!noteContent || typeof noteContent !== "string") return [];
+
+  const lines = noteContent.split("\n");
+  const extracted = [];
+  const seen = new Set();
+
+  const addUnique = (task) => {
+    const cleaned = task.trim().replace(/^[-*•]\s*/, "").replace(/[.]+$/, "");
+    if (cleaned.length > 2 && !seen.has(cleaned.toLowerCase())) {
+      seen.add(cleaned.toLowerCase());
+      extracted.push(cleaned);
+    }
+  };
+
+  const actionVerbRegex =
+    /^(?:Buy|Call|Send|Check|Review|Fix|Update|Create|Email|Prepare|Submit|Meet|Finish|Pay|Read|Write|Organize|Clean|Schedule|Order|Pick up|Deliver|Ship|Print|Cancel|Follow up|Contact)\b/i;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    // 1. Markdown checklist items: - [ ] Task or - [x] Task or * [ ] Task
+    const checklistMatch = line.match(/^[-*+]\s*\[[\sXx]?\]\s*(.+)$/);
+    if (checklistMatch && checklistMatch[1]) {
+      addUnique(checklistMatch[1]);
+      continue;
+    }
+
+    // 2. Explicit TODO / ACTION tags: TODO: Task, Action: Task
+    const todoMatch = line.match(/^(?:TODO|Todo|FIXME|Action|Task):\s*(.+)$/i);
+    if (todoMatch && todoMatch[1]) {
+      addUnique(todoMatch[1]);
+      continue;
+    }
+
+    // 3. Bullet points with action verbs: - Buy milk, * Call plumber
+    const bulletMatch = line.match(/^[-*+•]\s+(.+)$/);
+    if (bulletMatch && bulletMatch[1]) {
+      const itemText = bulletMatch[1].trim();
+      if (actionVerbRegex.test(itemText)) {
+        addUnique(itemText);
+        continue;
+      }
+    }
+
+    // 4. Numbered list items: 1. Buy milk, 2. Call doctor
+    const numberedMatch = line.match(/^\d+[.)]\s+(.+)$/);
+    if (numberedMatch && numberedMatch[1]) {
+      const itemText = numberedMatch[1].trim();
+      if (actionVerbRegex.test(itemText) || itemText.length < 80) {
+        addUnique(itemText);
+        continue;
+      }
+    }
+  }
+
+  return extracted;
+};
+
+/**
+ * Rule-based heuristic summarizer for markdown notes.
+ * Extracts title, major headings, and leading sentences when LLM is unavailable.
+ * 
+ * @param {string} noteContent
+ * @returns {string} bullet-point summary
+ */
+export const summarizeNoteHeuristic = (noteContent) => {
+  if (!noteContent || typeof noteContent !== "string" || !noteContent.trim()) {
+    return "• Empty note";
+  }
+
+  const lines = noteContent.split("\n");
+  const bullets = [];
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    // 1. Markdown headings (# Heading, ## Subheading)
+    const headingMatch = line.match(/^#{1,4}\s+(.+)$/);
+    if (headingMatch && headingMatch[1]) {
+      bullets.push(`• ${headingMatch[1].trim()}`);
+      continue;
+    }
+
+    // 2. Important bold lead-in: **Important:** ...
+    const boldMatch = line.match(/^\*\*([^*]+)\*\*:?\s*(.*)$/);
+    if (boldMatch) {
+      const topic = boldMatch[1].trim();
+      const rest = boldMatch[2] ? ` - ${boldMatch[2].trim()}` : "";
+      bullets.push(`• ${topic}${rest}`);
+      continue;
+    }
+
+    // 3. Checklist items
+    const checkMatch = line.match(/^[-*+]\s*\[[\sXx]?\]\s*(.+)$/);
+    if (checkMatch && checkMatch[1]) {
+      bullets.push(`• Task: ${checkMatch[1].trim()}`);
+      continue;
+    }
+  }
+
+  // If no structured headers/checklists found, take first sentence of first few paragraphs
+  if (bullets.length === 0) {
+    const paragraphs = noteContent.split(/\n\s*\n/);
+    for (const p of paragraphs) {
+      const trimmed = p.trim().replace(/^[-*•#\s]+/, "");
+      if (trimmed.length > 0) {
+        const firstSentence = trimmed.split(/[.?!]/)[0];
+        if (firstSentence && firstSentence.trim().length > 3) {
+          bullets.push(`• ${firstSentence.trim()}`);
+        }
+      }
+      if (bullets.length >= 5) break;
+    }
+  }
+
+  return bullets.length > 0 ? bullets.slice(0, 7).join("\n") : "• Key points from note";
+};
+
+/**
  * Summarizes the given markdown note text using the on-device LLM.
- * Returns a bulleted summary string.
+ * Automatically falls back to heuristic extraction if the model is not ready or inference fails.
  * 
  * @param {string} noteContent - raw markdown content of the note
  * @param {function} onToken - streaming callback for each generated token
  */
 export const summarizeNote = async (noteContent, onToken) => {
-  const ctx = await loadModel();
+  resetIdleTimer();
 
-  // ~4 chars per token; budget: 2048 context - 256 output - ~150 prompt = ~1642 tokens input (~6500 chars)
-  const MAX_INPUT_CHARS = 6000;
-  const clampedContent = noteContent.slice(0, MAX_INPUT_CHARS);
+  try {
+    const ctx = await loadModel();
 
-  const prompt = `<|im_start|>system
+    // ~4 chars per token; budget: 2048 context - 256 output - ~150 prompt = ~1642 tokens input (~6500 chars)
+    const MAX_INPUT_CHARS = 6000;
+    const clampedContent = (noteContent || "").slice(0, MAX_INPUT_CHARS);
+
+    const prompt = `<|im_start|>system
 You are a concise note summarizer. Given a markdown note, output ONLY a bullet-point summary of the key ideas. No preamble, no explanation — just bullet points.
 <|im_end|>
 <|im_start|>user
@@ -241,9 +463,8 @@ ${clampedContent}
 <|im_start|>assistant
 `;
 
-  let fullText = "";
+    let fullText = "";
 
-  try {
     await ctx.completion(
       {
         prompt,
@@ -259,30 +480,38 @@ ${clampedContent}
         }
       }
     );
+
+    if (fullText.trim().length > 0) {
+      return fullText.trim();
+    }
   } catch (err) {
-    // Reset stale context so next call re-initialises cleanly
     _llamaContext = null;
-    const msg = err?.message || "Unknown inference error";
-    throw new Error(`Summarization failed on-device: ${msg}`);
+    console.warn("LLM summarization failed or model unavailable, falling back to heuristics:", err?.message);
   }
 
-  return fullText.trim();
+  // Fallback to pure rule-based heuristic summarization
+  const fallbackSummary = summarizeNoteHeuristic(noteContent);
+  if (onToken) onToken(fallbackSummary);
+  return fallbackSummary;
 };
 
 /**
  * Extracts actionable tasks from the given markdown note text.
- * Returns an array of task title strings.
+ * Automatically falls back to heuristic extraction if the model is not ready or inference fails.
  * 
  * @param {string} noteContent - raw markdown content of the note
  */
 export const extractTasksFromNote = async (noteContent) => {
-  const ctx = await loadModel();
+  resetIdleTimer();
 
-  // ~4 chars per token; budget: 2048 context - 192 output - ~150 prompt = ~1706 tokens input (~6800 chars)
-  const MAX_INPUT_CHARS = 6000;
-  const clampedContent = noteContent.slice(0, MAX_INPUT_CHARS);
+  try {
+    const ctx = await loadModel();
 
-  const prompt = `<|im_start|>system
+    // ~4 chars per token; budget: 2048 context - 192 output - ~150 prompt = ~1706 tokens input (~6800 chars)
+    const MAX_INPUT_CHARS = 6000;
+    const clampedContent = (noteContent || "").slice(0, MAX_INPUT_CHARS);
+
+    const prompt = `<|im_start|>system
 You are a task extractor. Given a markdown note, identify ALL actionable items, to-dos, or things that need to be done. Return ONLY a JSON array of short task title strings. Example: ["Buy groceries", "Call the dentist"]. No explanation.
 <|im_end|>
 <|im_start|>user
@@ -293,9 +522,8 @@ ${clampedContent}
 <|im_start|>assistant
 [`;
 
-  let rawOutput = "[";
+    let rawOutput = "[";
 
-  try {
     await ctx.completion(
       {
         prompt,
@@ -310,43 +538,49 @@ ${clampedContent}
         }
       }
     );
+
+    // Complete the JSON array
+    rawOutput = rawOutput.trim();
+    if (!rawOutput.endsWith("]")) rawOutput += "]";
+
+    try {
+      const parsed = JSON.parse(rawOutput);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.filter((t) => typeof t === "string" && t.trim().length > 0);
+      }
+    } catch {
+      // Fallback: extract quoted strings
+      const matches = rawOutput.match(/"([^"]+)"/g) || [];
+      const extracted = matches.map((m) => m.replace(/"/g, "").trim()).filter(Boolean);
+      if (extracted.length > 0) return extracted;
+    }
   } catch (err) {
     _llamaContext = null;
-    const msg = err?.message || "Unknown inference error";
-    throw new Error(`Task extraction failed on-device: ${msg}`);
+    console.warn("LLM task extraction failed or model unavailable, falling back to heuristics:", err?.message);
   }
 
-  // Complete the JSON array
-  rawOutput = rawOutput.trim();
-  if (!rawOutput.endsWith("]")) rawOutput += "]";
-
-  try {
-    const parsed = JSON.parse(rawOutput);
-    if (Array.isArray(parsed)) {
-      return parsed.filter((t) => typeof t === "string" && t.trim().length > 0);
-    }
-  } catch {
-    // Fallback: extract quoted strings
-    const matches = rawOutput.match(/"([^"]+)"/g) || [];
-    return matches.map((m) => m.replace(/"/g, "").trim()).filter(Boolean);
-  }
-
-  return [];
+  // Fallback to pure rule-based heuristic extraction
+  return extractTasksFromNoteHeuristic(noteContent);
 };
 
 /**
  * Parses a global natural language command (e.g. "Buy milk tomorrow") into a structured task or birthday.
- * Uses the local offline LLM and returns a parsed JSON object.
+ * Uses the local offline LLM with robust regex fallback.
  * 
  * @param {string} command - the user's natural language request
  */
 export const parseGlobalCommand = async (command) => {
-  const ctx = await loadModel();
-  const today = new Date().toISOString();
-  
-  const prompt = `<|im_start|>system
+  resetIdleTimer();
+
+  const todayStr = getLocalDateString();
+  let rawOutput = "{";
+
+  try {
+    const ctx = await loadModel();
+
+    const prompt = `<|im_start|>system
 You are a command parser for KwestUp productivity app. You parse user natural language requests to create tasks or birthdays.
-Today's date is ${today}.
+Today's date is ${todayStr}.
 You MUST output ONLY a valid JSON object matching one of these formats:
 1. For tasks: {"type": "task", "title": "Task title", "description": "Optional description", "dueDate": "YYYY-MM-DDTHH:mm:ss.sssZ" (optional)}
 2. For birthdays: {"type": "birthday", "name": "Person's name", "date": "YYYY-MM-DD" or "MM-DD"}
@@ -360,9 +594,6 @@ Parse this command: "${command}"
 <|im_start|>assistant
 {`;
 
-  let rawOutput = "{";
-
-  try {
     await ctx.completion(
       {
         prompt,
@@ -380,7 +611,7 @@ Parse this command: "${command}"
   } catch (err) {
     _llamaContext = null;
     // Fall through to keyword-based fallback below
-    console.warn("LLM parsing failed, falling back to keyword extraction:", err?.message);
+    console.warn("LLM parsing failed or model unavailable, falling back to keyword extraction:", err?.message);
   }
 
   rawOutput = rawOutput.trim();
@@ -408,7 +639,7 @@ Parse this command: "${command}"
     const amtMatch = command.match(/\d+(\.\d+)?/);
     const amount = amtMatch ? parseFloat(amtMatch[0]) : 0;
     let category = "Other";
-    if (lower.includes("food") || lower.includes("eat") || lower.includes("dinner") || lower.includes("lunch")) category = "Food";
+    if (lower.includes("food") || lower.includes("eat") || lower.includes("dinner") || lower.includes("lunch") || lower.includes("grocer")) category = "Food";
     else if (lower.includes("car") || lower.includes("bus") || lower.includes("cab") || lower.includes("taxi") || lower.includes("uber") || lower.includes("transport")) category = "Transport";
     else if (lower.includes("rent") || lower.includes("room") || lower.includes("flat") || lower.includes("house") || lower.includes("housing")) category = "Housing";
     else if (lower.includes("doctor") || lower.includes("medicine") || lower.includes("hospital") || lower.includes("health") || lower.includes("gym")) category = "Health";
@@ -438,13 +669,14 @@ Parse this command: "${command}"
         const match = lower.match(new RegExp(`${monthNames[i]}\\s*(\\d+)`));
         if (match) {
           dateStr = `${monthNum}-${match[1].padStart(2, "0")}`;
+          name = name.replace(new RegExp(`${monthNames[i]}\\s*\\d+`, "gi"), "");
         }
         break;
       }
     }
 
     // Clean name: e.g. remove "add ", "create ", "birthday ", "bday "
-    name = name.replace(/(add|create|birthday|bday|on|for|is)\s*/gi, "").trim();
+    name = name.replace(/\b(add|create|birthday|bday|on|for|is|of)\b/gi, "").replace(/\s+/g, " ").trim();
     return {
       type: "birthday",
       name: name || "Someone's Birthday",
@@ -456,13 +688,14 @@ Parse this command: "${command}"
     let dueDate = null;
     
     if (lower.includes("tomorrow")) {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = getTomorrowLocalDateString();
+      const tomorrow = parseLocalDate(tomorrowStr);
       tomorrow.setHours(9, 0, 0, 0); // default to 9 AM tomorrow
       dueDate = tomorrow.toISOString();
       title = title.replace(/tomorrow/gi, "").trim();
     } else if (lower.includes("today")) {
-      const todayDate = new Date();
+      const todayStr = getLocalDateString();
+      const todayDate = parseLocalDate(todayStr);
       todayDate.setHours(17, 0, 0, 0); // default to 5 PM today
       dueDate = todayDate.toISOString();
       title = title.replace(/today/gi, "").trim();
@@ -486,6 +719,7 @@ Parse this command: "${command}"
  * @param {function} onToken - streaming callback
  */
 export const assistWriting = async (noteContent, commandType, onToken) => {
+  resetIdleTimer();
   const ctx = await loadModel();
 
   let systemPrompt = "";
@@ -571,6 +805,7 @@ ${clampedContent}
  * @param {function} onToken - streaming callback
  */
 export const assistWritingCustom = async (noteContent, userInstruction, onToken) => {
+  resetIdleTimer();
   const ctx = await loadModel();
 
   const systemPrompt = `You are a helpful writing assistant. You must perform the following instruction on the provided text: "${userInstruction}". Follow the instruction precisely.

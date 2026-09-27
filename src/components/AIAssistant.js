@@ -15,7 +15,6 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
-  StyleSheet as RNStyleSheet,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Modal from "react-native-modal";
@@ -95,6 +94,13 @@ export const AIAssistant = ({
     scan.start();
     return () => scan.stop();
   }, [scanAnim]);
+
+  // Cleanup context memory on unmount
+  useEffect(() => {
+    return () => {
+      unloadModel();
+    };
+  }, []);
 
   const laserY = scanAnim.interpolate({
     inputRange: [0, 1],

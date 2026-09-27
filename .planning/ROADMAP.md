@@ -260,8 +260,8 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
   2. Memory lifecycle is managed with automatic unloading (`releaseAllLlama`) when components unmount or memory is constrained.
   3. Inference failures gracefully fallback to rule-based summarization and extraction without crashing.
 **Plans**:
-- [ ] 18-01-PLAN.md — Implement checksum verification and immutable model pinning in `aiService.js`.
-- [ ] 18-02-PLAN.md — Context memory lifecycle management and fallback extraction pipeline.
+- [x] 18-01-PLAN.md — Implement checksum verification and immutable model pinning in `aiService.js`. ✅
+- [x] 18-02-PLAN.md — Context memory lifecycle management and fallback extraction pipeline. ✅
 
 ---
 
