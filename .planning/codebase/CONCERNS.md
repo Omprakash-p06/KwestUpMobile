@@ -1,127 +1,151 @@
 # Concerns
 
-**Analysis Date:** 2026-09-27
+**Analysis Date:** 2026-09-28
 
-> Milestone 2 (Hardened Offline-First & Production Readiness) is 84% complete — Phase 16 done, Phase 17 next (State Architecture & Unified Mutation Layer). This document was re-verified against code on the analysis date; resolved Phase 14/15/16 items are marked ✅ but retained for audit trail. Zero `TODO`/`FIXME`/`HACK`/`XXX` markers found in `src/`, `App.js`, `widgets/` (grep-verified).
+> Milestone 2 is 89% complete — Phase 17 done (plans 17-01, 17-02; commit `0786531`), Phase 18 next. Phase 15 review (`15-REVIEW.md`, APPROVED WITH NOTES) + fix commit `7a706b1` verified present — all 6 warnings downgraded below. Zero `TODO`/`FIXME`/`HACK`/`XXX` markers in source (grep-verified across repo). Suite status verified: **9 suites, 109 tests, all passing.**
 
 ## Tech Debt (ranked list with file refs)
 
-**1. `App.js` is a state monolith — directly blocks Phase 17.**
-- Files: `App.js` (1268 lines, 32 `useState` callsites, ~75 `useState`/`useEffect`/`AsyncStorage`/`setTimeout`/`setInterval` refs total)
-- Issue: All app state (tasks, lists, birthdays, billing, settings, `timerState`, telemetry opt-in), persistence load/save, notification scheduling, and navigation callbacks (`handleAddTask`, `handleToggleTask`, recurrence spawning, birthday rescheduling) live in one component with props drilled to every screen.
-- Impact: Every feature touches this file (merge-conflict magnet); widget-driven storage writes bypass in-memory state until next foreground reload (stale UI).
-- Fix approach (Phase 17 scope): introduce a reducer/context (or equivalent) data-layer module so screens consume actions instead of callbacks; subscribe the foreground app to storage changes from the widget path.
+**1. Dual-writer paths: legacy `App.js` handlers vs new context/mutation layer (NEW — top Phase 18 risk).**
+- Files: `App.js` (1293 lines; legacy `toggleTaskComplete` ~L704, `handleCompleteTask` ~L793, `handleSaveTask` ~L818, subtask/list handlers ~L850–975, still passed as props at L1075–1084, L1251) vs `src/context/TaskContext.js` (271 lines) + `src/utils/taskMutations.js` (293 lines); resolution in `src/navigation/AppNavigator.js` (`taskCtx?.toggleTaskComplete ?? toggleTaskComplete`, ~L94).
+- Issue: Two parallel write paths coexist by design as a transition step. `App.js` still owns ~15 root `useState` slices (L99+) and feeds providers via `initial*` props (`App.js:1054-1059`); contexts re-sync on prop change. `TaskContext` also exposes raw `setTasks`/`setTaskLists`/`setDailyTasks` escape hatches (L242–247), so any caller can bypass the mutation layer entirely.
+- Impact: Whichever path a screen/AI-assistant actually calls determines notification side-effects and recurrence behavior; `handleSaveTask` semantics differ (legacy `App.js` version vs `TaskContext.handleSaveTask` with `await cancel/schedule` at L183–211). Stale-prop overwrite risk if `App.js` reloads while context holds newer edits.
+- Fix approach: Phase 18 must delete the legacy `App.js` task handlers, have screens call `useTasks()` directly (remove `AppNavigator` prop fan-out/fallbacks), and remove or gate the raw setters. `17-02-PLAN.md:185` already names this exact removal step.
 
-**2. Screens are monolithic and oversized.**
-- Files: `src/screens/NotesScreen.js` (2012 lines), `src/screens/SettingsScreen.js` (1100 lines), `src/components/AIAssistant.js` (1089 lines), `src/screens/BillingScreen.js` (813 lines), `src/screens/TaskListScreen.js` (803 lines), `src/screens/DailyTasksScreen.js` (691 lines), `src/utils/aiService.js` (634 lines)
-- Impact: Untestable in isolation (all screens report 0% coverage — see Test Gaps); reviewers cannot meaningfully diff; high regression risk.
-- Fix approach: Extract repeated editor/panel/task subcomponents and pure helpers (note sanitization, recurrence logic) into tested modules. Do NOT attempt in Phase 17 wholesale — carve out only the state/mutation pieces Phase 17 needs.
+**2. `App.js` still a state monolith (reduced, no longer the sole blocker).**
+- Files: `App.js` (1293 lines, was 1268 — grew slightly from provider wiring).
+- Issue: Tasks/lists now have a context, but birthdays/billing/vault/timer/telemetry/persistence-load (`loadData` ~L300–410), sync, reset-data, and consent modal logic remain in `App.js`. `dailyTasks` streak-reset logic is still inline in `App.js:loadData` with no shared pure module.
+- Impact: Same merge-conflict magnet as before, smaller blast radius for tasks only.
+- Fix approach: Migrate `dailyTasks` streak logic into a tested pure module next (mirrors the `taskMutations.js` pilot); then birthday/billing/vault writes.
 
-**3. Recurrence / toggle logic duplicated across app and widget.**
-- Files: `App.js` (~`handleToggleTask` recurrence spawn) vs `widgets/widget-task-handler.tsx` (lines 141–179); widget writes directly to AsyncStorage while the running app keeps state in memory.
-- Impact: Behavior drift (progressive-recurrence and notification re-scheduling differ); open app shows stale task lists after widget interaction until `AppState` foreground reload.
-- Fix approach (Phase 17 scope): factor recurrence into a single shared module imported by both paths; add a foreground subscription to widget-driven storage changes. Note: `__tests__/phase12-widget-logic.test.js` re-implements toggle/sort helpers locally instead of importing the real handler, so drift is currently undetectable by tests.
+**3. Screens remain monolithic and oversized (unchanged).**
+- Files: `src/screens/NotesScreen.js` (2012 lines), `src/screens/SettingsScreen.js` (1100 lines), `src/components/AIAssistant.js` (1089 lines), `src/screens/TaskListScreen.js` (803 lines), `src/screens/DailyTasksScreen.js` (691 lines), `src/utils/aiService.js` (634 lines).
+- Impact: All screens 0% coverage (see Test Gaps); high regression risk for any Phase 18 screen rewiring to contexts.
+- Fix approach: Carve out only what Phase 18 needs; do not wholesale-split screens.
 
-**4. Release APK committed to git.**
-- Files: `build/kwestup-v3.0.1.apk` (confirmed via `git ls-files build/` — 1 tracked file); `.gitignore` only ignores `coverage/` and `build/kwestup-v3.0.1.apk` partially yet the file is already tracked.
-- Impact: Binary bloats every clone/fetch; stale artifact (v3.0.1 vs current v3.5.0) invites confusion about which build is canonical.
-- Fix approach: `git rm --cached build/kwestup-v3.0.1.apk`, broaden `.gitignore` to `build/`, publish APKs via GitHub Releases / EAS instead.
+**4. ✅ DOWNGRADED — recurrence deduplicated via shared module (was #3).**
+- Files: `src/utils/taskMutations.js` (`toggleTask`, `calculateNextRecurrence`); `widgets/widget-task-handler.tsx` (L11 imports `toggleTask`, L126–130 calls it — the 55-line manual loop is gone per `17-01-SUMMARY.md`).
+- Verified: widget and app now share one recurrence implementation; `completedDate: null` standardized in the shared module (old `undefined`-vs-`null` review note resolved at the source).
+- Residual: `dailyTasks` streak logic still duplicated/inline (`App.js` vs `DailyTasksScreen` vs `SearchScreen` — see item 6); notification re-scheduling differs (context schedules for spawned recurrence at `TaskContext.js:129-137`; widget does not schedule — acceptable headless limitation, but document it).
 
-**5. Two overlapping ESLint configs.**
-- Files: `.eslintrc.js` (legacy) + `eslint.config.js` (flat; ignores `node_modules/**`, `.expo/**`, `dist/**`, `web-build/**`, `android/**`, `ios/**`, `assets/**`, `KwestUpPC/**`)
-- Impact: Ambiguous which config is authoritative; `npm run lint` (`eslint .`) behavior depends on ESLint version resolution.
-- Fix approach: Delete `.eslintrc.js`, standardize on `eslint.config.js` (ESLint 9).
+**5. Release APK committed to git (unchanged).**
+- Files: `build/kwestup-v3.0.1.apk` (confirmed tracked via `git ls-files build/`); stale vs current v3.5.0.
+- Impact: Binary bloats every clone/fetch; canonical-build confusion.
+- Fix approach: `git rm --cached build/kwestup-v3.0.1.apk`, broaden `.gitignore` to `build/`, publish via GitHub Releases / EAS.
 
-**6. Native `node_modules` patches via postinstall regex.**
-- Files: `patch-llama-gradle.js` (invoked by `package.json` `postinstall`), targets `node_modules/llama.rn/android/build.gradle` and `node_modules/react-native-android-widget/.../RNWidgetUtil.java`
-- Impact: Any bump of `llama.rn` (^0.12.4) or `react-native-android-widget` (^0.16.1) can silently break the build if the regex no longer matches (script logs a warning and continues); patches only re-apply on `npm install`.
-- Fix approach: Fail loudly on pattern mismatch; add a CI step asserting post-patch content; long-term, fork or use patch-package with checksums.
+**6. Search-vs-Daily streak parity — ✅ FIXED for Search, still inline (downgraded).**
+- Files: `src/screens/SearchScreen.js` (`handleToggleDailyTask` now maintains `streak`/`totalCompleted` with yesterday-string continuity, verified in `7a706b1` diff); `src/screens/DailyTasksScreen.js` (L66–104 original logic); `App.js:loadData` streak-reset.
+- Verified: the exact review Warning 5 is addressed. No shared `toggleDailyTask` helper exists yet — three inline copies can still drift.
+- Fix approach: Extract one tested `toggleDailyTask` pure helper (same pilot pattern as `taskMutations.js`).
 
-**7. App version in multiple sources of truth.**
-- Files: `package.json` (`3.5.0`), `app.json` (`3.5.0`, `versionCode: 7`), `src/utils/storage.js` (`APP_VERSION = "v3.5.0"`), `android/app/build.gradle` (`versionCode 7`, `versionName "3.5.0"`)
-- Impact: Values can drift; update checks in `src/utils/diagnostics.js` compare against `storage.js` value which may disagree with the shipped binary.
-- Fix approach: Derive all version values from a single source at build time.
+**7. Two overlapping ESLint configs (unchanged).**
+- Files: `.eslintrc.js` (legacy) + `eslint.config.js` (flat; ignores `node_modules/**`, `.expo/**`, `dist/**`, `web-build/**`, `android/**`, `ios/**`, `assets/**`, `KwestUpPC/**`).
+- Fix approach: Delete `.eslintrc.js`, standardize on flat config (ESLint 9).
 
-**8. 140 `console.*` callsites retained in shipped code.**
-- Files (per-file counts): `App.js` (24), `src/utils/diagnostics.js` (20), `src/utils/vaultService.js` (15), `src/utils/exportService.js` (13), `src/utils/fileStorage.js` (13), `src/utils/storage.js` (13), `src/utils/aiService.js` (8), `src/utils/notifications.js` (6), `src/utils/vaultImport.js` (6), `widgets/widget-task-handler.tsx` (5), `src/utils/syncService.js` (4), `src/utils/billingStorage.js` (2), `src/utils/billingNotifications.js` (2)
-- Impact: Noise in production logs; potential leakage of diagnostic/file-path details on user devices; minor bundle/performance cost.
-- Fix approach: Gate behind `__DEV__` or strip in release builds via Babel plugin.
+**8. Native `node_modules` patches via postinstall regex (unchanged).**
+- Files: `patch-llama-gradle.js` (targets `node_modules/llama.rn/android/build.gradle`, `node_modules/react-native-android-widget/.../RNWidgetUtil.java`).
+- Impact: Any bump of `llama.rn` (^0.12.4) / `react-native-android-widget` (^0.16.1) can silently break the build (warn-and-continue); patches re-apply only on `npm install`.
+- Fix approach: Fail loudly on pattern mismatch; CI assertion on post-patch content; long-term `patch-package` with checksums.
 
-## Security Notes (encryption, validation, storage — v2 details verified)
+**9. App version in multiple sources of truth (unchanged).**
+- Files: `app.json` (`versionCode: 7`, version 3.5.0), `android/app/build.gradle` (`versionCode 7`, `versionName "3.5.0"`), `src/utils/storage.js` (`APP_VERSION = "v3.5.0"`, `STORAGE_VERSION = "v7.0"`); `package.json` version line not re-verified this pass.
+- Impact: `src/utils/diagnostics.js` update-check compares against `storage.js` value, which can disagree with the shipped binary.
+- Fix approach: Single build-time source of truth.
 
-**Backup encryption v2 — ✅ UPGRADED in Phase 16 (SEC-01), legacy risk remains by design.**
-- Files: `src/utils/exportService.js` (lines 13–94)
-- Verified v2 envelope: per-archive 128-bit random salt + 128-bit random IV (`CryptoJS.lib.WordArray.random(16)` ×2), PBKDF2-HMAC-SHA256 with 100,000 iterations, AES encrypt with explicit IV; envelope `{v: 2, kdf: "PBKDF2", hasher: "SHA256", iterations, salt(hex), iv(hex), ciphertext}`. Decrypt re-derives with stored salt/IV/iterations (defaults 100000).
-- Verified v1 fallback (lines 83–87): static salt `Hex("4b77657374557053616c745f7632")` used as BOTH PBKDF2 salt and AES IV, 1,000 iterations. Any archive still in v1 format (or an attacker-supplied v1 blob) inherits the old weak parameters. Transparent fallback is a compatibility necessity, but there is no prompt/nudge to re-export v1 archives to v2.
-- Good: wrong-passphrase path throws generic `"Unable to decrypt archive. Please verify the passphrase."` (line 94) — no oracle detail.
-- Recommendation: on successful v1 import, flag the archive as legacy in UI and offer one-tap re-export to v2.
+**10. ~150+ `console.*` callsites retained in shipped code (grew with 4 new contexts).**
+- Files: prior counts hold (`App.js`, `diagnostics.js`, `vaultService.js`, `exportService.js`, `fileStorage.js`, `storage.js`, `aiService.js`, `notifications.js`, `vaultImport.js`, `widget-task-handler.tsx`, `syncService.js`, `billingStorage.js`, `billingNotifications.js`) **plus** new: `src/context/TaskContext.js` (L74, L101), `src/context/VaultContext.js` (4), `src/context/BillingContext.js` (7).
+- Fix approach: Gate behind `__DEV__` or strip in release via Babel plugin.
 
-**LAN sync validation — ✅ HARDENED in Phase 16 (SEC-02), transport still plaintext HTTP.**
-- Files: `src/utils/syncService.js` (193 lines; `validateSyncConfig` lines 32–69, `validateSyncPayload` lines 80–95, `pingSyncServer` 105–, `performSync` 133–185)
-- Verified: strict IP-format rejection (plus path-injection rejection), port must be integer 1–65535, token must be string ≥6 chars trimmed; response payload must be object with `notes`/`tasks`/`birthdays`/`taskLists` arrays (`validateSyncPayload`, enforced at line 183).
-- Residual risk 1 — plaintext transport: `baseUrl = http://${ip}:${port}` (lines 108, 135). Bearer token travels over unencrypted HTTP. Acceptable only under the LAN-only threat model; any use outside a trusted LAN (public Wi-Fi, routed networks) exposes the token to sniffing. Document this constraint in UI copy; consider optional HTTPS/self-signed pinning as a follow-up.
-- Residual risk 2 — ping bypass: `pingSyncServer` substitutes `"ping-token-check"` when no token is supplied (line 107), so ping succeeds without the real credential. Low severity (ping returns no data) but worth noting in review.
-- Recommendation: add timeout/abort handling audit on `fetch` calls in `pingSyncServer`/`performSync` (verify AbortController coverage) during Phase 17 touch-ups.
+## Security Notes (encryption, validation, storage)
 
-**Storage keys / versioning — ✅ MIGRATED in Phase 16 (STORE-01), key surface is wide.**
-- Files: `src/utils/storage.js` (`STORAGE_VERSION = "v7.0"`, `APP_VERSION = "v3.5.0"`, `isUserDataKey` lines 7–19, migration lines 70–168), `src/utils/vaultService.js` (lines 6–9: `LEGACY_VAULTS_KEY = "kwestup_vaults_v5.0"`, `LEGACY_ACTIVE_KEY`, dynamic `VAULTS_KEY`/`ACTIVE_KEY`), `src/utils/billingStorage.js` (line 4: dynamic `BILLING_KEY`)
-- Verified: `isUserDataKey` shields `kwestup_data_`, `kwestup_userName_`, `kwestup_theme_mode_`, `kwestup_theme_name_`, `kwestup_timer_state_`, `kwestup_activeVault_`, `kwestup_vaults_`, `kwestup_billing_`, `kwestup_widget_`, `kwestup_telemetry_`, `kwestup_ai_model_` — so `clearAllCaches` preserves telemetry consent and AI-model download state. Migration auto-moves legacy `v5.0` vault keys to current version.
-- Residual: ~15 versioned key prefixes with coarse whole-version migration (no per-key schema versions); a future `v8.0` bump must migrate every prefix or strand data. `kwestup_last_version` / `kwestup_last_clear` bookkeeping keys (lines 56–57) are cache keys, not user data — confirm they survive/refresh correctly across upgrades.
-- No `.env`/secret files detected in scope; app is local-first with no cloud credentials — nothing to leak via committed config.
+**Backup encryption v2 — hardened in Phase 16, v1 fallback retained by design (re-verified).**
+- Files: `src/utils/exportService.js` (v2: PBKDF2-HMAC-SHA256 100000 iterations at L25; envelope L28/36; decrypt re-derives at L69–72; v1 static salt `4b77657374557053616c745f7632` + 1000 iterations at L84–85).
+- Residual: any v1 archive (or attacker-supplied v1 blob) inherits weak parameters; no UI nudge to re-export v1 → v2. Wrong-passphrase path stays generic (good).
+- Recommendation: flag successful v1 imports in UI with one-tap re-export to v2.
 
-**Telemetry consent — opt-in default verified.**
-- Files: `App.js` (line 125 `useState(false)` default; lines 177, 1164 consent read; lines 1189–1209 first-run consent modal), `src/screens/SettingsScreen.js` (lines 36, 453–456 toggle writes `kwestup_telemetry_optin`)
-- Verified: default is `false` (opt-in), persisted as `"true"`/`"false"` string, shielded from cache wipes. No concern beyond keeping the default `false` in any Phase 17 state refactor.
+**LAN sync validation — hardened in Phase 16, plaintext transport remains (re-verified).**
+- Files: `src/utils/syncService.js` (`validateSyncConfig` L32, `validateSyncPayload` L80, `pingSyncServer` L107 with `"ping-token-check"` substitution, `performSync` L134, `baseUrl = http://…` at L108/L135; `AbortController` at L8 — timeout/abort path exists, still unaudited end-to-end).
+- Residual risk 1 — plaintext HTTP bearer on LAN: acceptable only under trusted-LAN threat model; document in UI copy; consider optional HTTPS/pinning follow-up.
+- Residual risk 2 — ping succeeds without the real token (low severity, no data returned).
+- Recommendation: audit `AbortController`/timeout wiring in `performSync`/`pingSyncServer` while Phase 18 touches nearby code.
 
-**AI model download — integrity gap (unchanged, still open).**
-- Files: `src/utils/aiService.js` (line 17 mutable `resolve/main` URL `https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf`; line 35 `size < 450_000_000` validity check)
-- Risk: mutable branch pointer means the bytes can change without the app noticing; size-only validation cannot detect truncated-but-large-enough or substituted files.
-- Recommendation: pin to an immutable commit/tag URL and verify SHA-256 post-download before `initLlama`; store the checksum alongside `kwestup_ai_model_` keys.
+**Storage keys / versioning — current `v7.0`, wide key surface (re-verified).**
+- Files: `src/utils/storage.js` (`STORAGE_VERSION = "v7.0"`, `APP_VERSION = "v3.5.0"`); new contexts read versioned keys (`TaskContext` `kwestup_data_${STORAGE_VERSION}`, widget handler same + `kwestup_timer_state_${STORAGE_VERSION}`).
+- Residual: ~15 versioned prefixes, coarse whole-version migration; `kwestup_last_version`/`kwestup_last_clear` bookkeeping semantics across upgrades still unconfirmed. No `.env`/secret files in scope — local-first, nothing committed.
+
+**Telemetry consent — opt-in default holds through Phase 17 (re-verified pattern, not re-read line-by-line this pass).**
+- Files: `App.js` (default `false`, consent modal), `src/screens/SettingsScreen.js` (toggle).
+- Watch item: any Phase 18 state refactor must keep the default `false` and the `clearAllCaches` shield.
+
+**AI model download — integrity gap STILL OPEN (re-verified).**
+- Files: `src/utils/aiService.js` (L17 mutable `resolve/main` HuggingFace URL; size-only validity check; no SHA-256/pinning — grep confirms no `checksum`/`SHA` in file).
+- Risk: bytes can change under the branch pointer undetected; size check cannot catch substitution.
+- Recommendation: pin immutable commit/tag URL + post-download SHA-256 before `initLlama`; store checksum alongside `kwestup_ai_model_*`.
+
+**Phase 15 review outcome — all 6 warnings VERIFIED FIXED (`7a706b1`).**
+- `parseLocalDate` silent-today → now strict `YYYY-MM-DD` regex + round-trip, Invalid Date on garbage (`src/utils/dateUtils.js`).
+- Calendar rollover (`2023-02-29`, ISO-datetime truncation) → rejected by strict contract.
+- Epoch-0 falsiness (`getYesterday/TomorrowLocalDateString`, `isSameLocalDay(0,0)`) → explicit null/undefined/empty checks.
+- `BillingScreen` unguarded `t.date.startsWith` → `(t.date || '').startsWith`; `formatMonthLabel` guards non-`YYYY-MM` → `""`.
+- Search-vs-Daily streak divergence → streak/totalCompleted bookkeeping added to `SearchScreen`.
+- `DashboardScreen.computeBirthdayDaysRemaining` → regex + range + round-trip validation, sentinel `999` on invalid, finite-check on diff.
+- Remaining Info-level notes NOT fixed (accepted): render-time `today` snapshot staleness past midnight, `aiService` unvalidated birthday day (`Oct 99`), out-of-contract input coercion edge (`dateUtils` Info), adversarial-input test additions (partially — `dateUtils.test.js` gained cases in the fix commit).
 
 ## Reliability / Offline Risks
 
-**AsyncStorage single-blob persistence has no per-entity schema.**
-- Files: `src/utils/storage.js` (`kwestup_data_${STORAGE_VERSION}` + per-area keys), `App.js` (load/save), `src/utils/billingStorage.js`
-- Risk: all tasks/lists/birthdays/billing/settings serialize into one JSON string; corruption or quota pressure fails atomically; no partial recovery. Large datasets grow a single payload. Notes are safely on-disk via `src/utils/fileStorage.js`, but structured data is not.
-- Phase 17 relevance: the unified mutation layer should add write-through validation + atomic save guards (write-temp-then-rename equivalent for AsyncStorage: serialize → validate → multi-set), and keep a last-known-good fallback.
+**Widget ↔ app convergence improved but still last-writer-wins with a JSON-compare race window (CHANGED).**
+- Files: `widgets/widget-task-handler.tsx` (writes full `kwestup_data_*` blob via shared `toggleTask`); `src/context/TaskContext.js` (`refreshTasksFromStorage` L61–103, `AppState` foreground listener L106–123); `App.js` legacy load path still active.
+- Good: foreground re-sync now exists in BOTH `TaskContext` and `App.js`; shared mutation removes behavior drift for tasks.
+- Risk: full-blob read-modify-write on both sides with `JSON.stringify` compare — concurrent foreground edit + widget toggle can drop one side's write; 600 ms ticking-animation `setTimeout` in the widget handler (L122) widens the race; no queue/lock/vector-clock.
+- Safe change: serialize widget writes (single-flight), narrow writes to per-task keys or add a revision counter; add a conflict test.
 
-**`aiService` global mutable state + busy-wait mutex.**
-- Files: `src/utils/aiService.js` (lines 23–24 `_llamaContext`/`_isInitializing`; lines 161–201 init with `while (_isInitializing)` spin-sleep; line 184 `n_ctx: 2048` CPU-only `n_gpu_layers: 0`; line 208 `unloadModel`)
-- Risk: concurrent init storm spins on 100 ms sleep loop; any rejection resets context to `null`, forcing a multi-second reload on next call; 468 MB model + 10-retry resumable download (state in AsyncStorage per failure) is heavy on mid-range devices; `unloadModel`/`releaseAllLlama` exist but callers must remember to free RAM.
-- Safe change: promise-chain mutex with single in-flight init; coalesce reloads; audit all `initLlama` callers for unload pairing.
+**`TaskContext` initial-prop sync can clobber newer state (NEW).**
+- Files: `src/context/TaskContext.js` (L42–58: `if (initialTasks.length > 0) setTasks(initialTasks)` on every `initialTasks` identity change).
+- Risk: `App.js` passes arrays that change identity on each render path; a late/stale `initialTasks` arrival overwrites in-context edits made since mount. Same pattern in all four providers (`BillingContext`, `BirthdayContext`, `VaultContext` untested — see Test Gaps).
+- Safe change: sync once on mount (or gate on a boot-token/revision), not on every identity change.
 
-**Note filename sanitizer + unsanitized folder path.**
-- Files: `src/utils/fileStorage.js` (lines 37–50 `saveNote`, 72–77 path rebuild; title sanitized via `.replace(/[/\\?%*:|"<>._ ]/g, "_")` — note: the character class also flattens `.` and spaces; folder is only `.trim()`ed, not sanitized)
-- Risk: titles colliding after sanitization overwrite each other; empty/whitespace titles fall back to `"Untitled Note"` (ok); folder names with `/`, `..`, or null bytes flow into `vaultPath + folder + /` unchecked — path traversal / unexpected directories if folder input is ever user-controlled.
-- Safe change: share one sanitizer for folder + title, reject `..`/separators, add empty-title/unusual-char/null-byte tests (currently 0% screen-level coverage of these flows).
+**Notification side-effects split across layers (NEW).**
+- Files: `TaskContext.toggleTaskComplete` schedules + patches `notificationId` in a nested `setTasks` (L126–140); `handleSaveTask` awaits cancel/schedule before `setTasks` (L183–211); legacy `App.js` handlers have their own variants; widget path schedules nothing.
+- Risk: spawned-recurrence notification scheduled in context but never persisted back to AsyncStorage by the same write (second `setTasks` may race with `refreshTasksFromStorage`); tasks completed via widget lose due-date alarms silently.
+- Safe change: make notification-id assignment part of the mutation result (return `notificationId` intent from the pure layer), persist atomically.
 
-**Birthday/notification scheduling is untested date math.**
-- Files: `src/utils/notifications.js` (lines 117–182 `scheduleCustomBirthdayReminders`; 0% coverage)
-- Risk: this-year/next-year scheduling with `< today` skips, `getMonth()`-based Feb rollover fix, and `parts.length`-inferred date parsing break silently on format drift. No tests guard day/Feb-29/advance-day behavior.
-- Safe change: add unit tests over `dateUtils.js` (already 95% — extend) + `notifications.js` scheduling pure logic before Phase 17 refactors touch scheduling.
+**AsyncStorage single-blob persistence, no per-entity schema (unchanged).**
+- Files: `src/utils/storage.js`, `App.js` load/save, `src/utils/billingStorage.js`.
+- Risk: whole-blob atomic failure; no partial recovery; growth in one payload. Notes safe on-disk (`src/utils/fileStorage.js`).
+- Phase 18 relevance: add write-through validation + last-known-good fallback in the unified layer.
 
-**Widget ↔ app state divergence (offline interaction race).**
-- Files: `widgets/widget-task-handler.tsx`, `App.js`
-- Risk: widget toggles write AsyncStorage directly; foreground app holds stale in-memory state until next `AppState` reload — user sees reverted checkboxes. Same class of bug as the recurrence duplication above; Phase 17 must close it, not just document it.
+**`aiService` global mutable state + busy-wait mutex (unchanged).**
+- Files: `src/utils/aiService.js` (module `_llamaContext`/`_isInitializing`, spin-sleep init, `n_ctx: 2048` CPU-only, 468 MB resumable download, manual unload pairing).
+- Safe change: promise-chain single-flight init; audit unload pairing.
+
+**Note folder path still unsanitized (re-verified OPEN).**
+- Files: `src/utils/fileStorage.js` (folder only `.trim()`ed at L37/72/101/139; title sanitized at L38–40/73–75/102–104; `vaultImport.js` L55 same title-only pattern).
+- Risk: `..`/`/`/null-byte folder input → path traversal / unexpected directories; title collisions after flattening (`.` and space → `_`) overwrite.
+- Safe change: one shared sanitizer for folder + title; reject `..`/separators; add collision/traversal tests.
+
+**Birthday/notification date math — partially covered now (improved).**
+- Files: `src/utils/notifications.js` (0% coverage, unchanged); `src/screens/DashboardScreen.js` (hardened, see above); `src/utils/dateUtils.js` 92% stmts.
+- Safe change: unit-test `scheduleCustomBirthdayReminders` pure logic before Phase 18 touches scheduling.
 
 ## Test Gaps
 
-- Suite status (verified `npm test -- --ci --coverage`): **7 suites, 88 tests, all passing.** Runners: `jest.config.js` (`jest-expo/android` preset, `__tests__/setup/jest.setup.js`, `testMatch __tests__/**/*.test.js`); CI (`.github/workflows/ci.yml`) runs ESLint + Jest with coverage on `main`/`development`. No Semgrep gate in CI despite `.semgrepignore` existing (it currently ignores only `UI Design plan/**`).
-- Covered (good): `dateUtils.js` 95% stmts, `storage.js` ~92%, `syncService.js` ~95% — Phase 14/15/16 hardening is guarded.
-- Partially covered: `exportService.js` ~67%, `fileStorage.js` ~67%, `vaultService.js` ~64% — encrypt/decrypt round-trip and vault migration have tests (`exportImportService.test.js`, `vaultAndFileStorage.test.js`, `storageMigration.test.js`) but filesystem/error branches (lines cited in coverage output) remain open.
-- Zero coverage (priority-ordered): **all screens 0%** (`NotesScreen`, `SettingsScreen`, `TaskListScreen`, `DailyTasksScreen`, `DashboardScreen`, `FocusTimerScreen`, `SearchScreen`), `theme/*` 0%, `aiService.js` 0% (parse/command fallback regex, init failure paths), `notifications.js` 0%, `diagnostics.js` 0% (version-check logic that depends on the triple-source version), `vaultImport.js` 0%, `billingStorage.js` ~21%, `billingNotifications.js` ~10%.
-- Structural gap: `__tests__/phase12-widget-logic.test.js` duplicates handler logic in local helper functions (only imports `getLocalDateString` from production) — it tests copies, not the shipped widget path. Either import the real handlers or delete in favor of `__tests__/unit/*` coverage.
-- Missing types: no component/integration/E2E tests; no test for `clearAllCaches` shield list beyond migration unit tests; no checksum/pinning test (blocked on the AI-model fix itself).
+- Suite status (verified `npm test -- --ci --coverage`): **9 suites, 109 tests, all passing** (was 7/88). New: `__tests__/unit/taskMutations.test.js` (307 lines, `taskMutations.js` 97% stmts) and `__tests__/unit/taskContext.test.js` (141 lines, `TaskContext.js` ~60% stmts).
+- Covered (good): `dateUtils.js` 92%, `storage.js` ~92%, `syncService.js` ~95%, `taskMutations.js` 97%.
+- Partially covered: `exportService.js` ~67–68%, `fileStorage.js` ~67%, `vaultService.js` ~64%, `TaskContext.js` ~60% (AppState listener, refresh-from-storage, notification branches uncovered at L50/56/77/85/91–101/110–111/117–120/130–133/143–154/165/173/191–193/200–201/214–216/221–223/228–230/235–237).
+- Zero coverage (priority-ordered): **all screens 0%**, `theme/*` 0%, `aiService.js` 0%, `notifications.js` ~1% (was 0 — one line now hit incidentally), `diagnostics.js` 0%, `vaultImport.js` 0%, `billingStorage.js` ~21%, `billingNotifications.js` ~10%, **all three new providers 0%: `BillingContext.js`, `BirthdayContext.js`, `VaultContext.js`**.
+- Structural gap (still open): `__tests__/phase12-widget-logic.test.js` re-implements toggle/sort helpers locally instead of importing `src/utils/taskMutations.js` / the widget handler — passes while production drifts. Replace with real imports now that the shared module exists (trivial win).
+- Missing types: no component/integration/E2E tests; no conflict/race test for widget↔app concurrent writes; no `clearAllCaches` shield test beyond migration units; no checksum/pinning test (blocked on AI-model fix).
 
-## Recommended Next Investigations (esp. relevant to Phase 17)
+## Recommended Next Investigations (esp. relevant to Phase 18)
 
-1. **Inventory every `setState` + AsyncStorage write in `App.js`** (start: 32 `useState`, lines ~125–250 state declarations, ~700–950 mutation handlers, ~1100–1210 persistence/consent) and map them to the proposed unified mutation actions before writing the Phase 17 plan — this is the work-breakdown input.
-2. **Decide widget→app notification mechanism** (storage subscription, event emitter, or polling on `AppState` change) and verify `react-native-android-widget` supports it without the postinstall-patched `RNWidgetUtil.java` breaking — prototype before committing the plan.
-3. **Extract recurrence as the pilot shared module** (`App.js` spawn + `widget-task-handler.tsx` 141–179 → one tested module) to prove the Phase 17 pattern on a small surface before migrating all mutations.
-4. **Close the plaintext-LAN-sync documentation gap**: confirm product stance (trusted-LAN-only) and add in-app copy + a `performSync`/`pingSyncServer` timeout audit while in the area.
-5. **Un-track the committed APK** (`git rm --cached build/kwestup-v3.0.1.apk`, ignore `build/`) and delete `.eslintrc.js` — two 10-minute chores that remove confusion before Phase 17 diffs.
-6. **Add the three highest-value tests first**: `notifications.js` scheduling, `fileStorage.js` sanitizer/collision/traversal, and a real-import widget-handler test to replace the phase-12 logic copy — these guard exactly the code Phase 17 will move.
+1. **Kill the dual-writer path first**: delete legacy `App.js` task handlers, route screens through `useTasks()`, remove `AppNavigator` fallbacks and raw `setTasks` escape hatches — with the 109-test suite green before/after.
+2. **Fix `TaskContext` initial-prop sync** (mount-once or revision-gated) and add a regression test: context edit → stale `initialTasks` arrival → edit must survive.
+3. **Prove widget↔app convergence**: concurrent-write test (foreground edit + widget toggle) against `refreshTasksFromStorage`; consider revision counter or per-task keys.
+4. **Fold notification-id assignment into the persisted write** so spawned-recurrence alarms survive reloads; document the widget-schedules-nothing limitation.
+5. **Extract `toggleDailyTask` as the second shared pure module** (Search/Daily/`App.js` loadData) with streak tests — rehearses the Phase 18 pattern on a small surface.
+6. **Close the small chores**: `git rm --cached build/kwestup-v3.0.1.apk` + ignore `build/`; delete `.eslintrc.js`; replace `phase12-widget-logic` copies with real `taskMutations.js` imports; add `notifications.js` scheduling + `fileStorage.js` sanitizer/traversal tests.
+7. **Android/native audit** (still unexamined): `patch-llama-gradle.js` regex fragility, `RNWidgetUtil.java` patch interaction with widget re-render throttling, `versionCode 7` bump discipline, and Binder-payload limits on large task lists.
 
 ---
 
-*Concerns audit: 2026-09-27*
+*Concerns audit: 2026-09-28*
