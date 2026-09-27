@@ -86,10 +86,18 @@ describe('dateUtils', () => {
       expect(fromNum.getTime()).toBe(orig.getTime());
     });
 
-    it('falls back safely to valid Date without throwing for invalid inputs', () => {
-      expect(parseLocalDate(null)).toBeInstanceOf(Date);
-      expect(parseLocalDate('')).toBeInstanceOf(Date);
-      expect(parseLocalDate('random-junk')).toBeInstanceOf(Date);
+    it('returns Invalid Date (never today) for invalid inputs', () => {
+      for (const bad of [null, undefined, '', '   ', 'random-junk', '2023-02-29', '2026-13-01', '2026-09-27T23:30:00.000Z', true, {}, NaN]) {
+        const result = parseLocalDate(bad);
+        expect(result).toBeInstanceOf(Date);
+        expect(isNaN(result.getTime())).toBe(true);
+      }
+    });
+
+    it('handles epoch timestamp 0 as a valid date (not today)', () => {
+      const epoch = parseLocalDate(0);
+      expect(isNaN(epoch.getTime())).toBe(false);
+      expect(epoch.getTime()).toBe(new Date(0).getTime());
     });
   });
 

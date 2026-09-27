@@ -49,8 +49,10 @@ const getCategoryIcon = (cat) =>
 const toMonthStr = (date) => getLocalMonthString(date);
 
 const formatMonthLabel = (monthStr) => {
+  if (!monthStr || !/^\d{4}-\d{2}$/.test(monthStr)) return "";
   const [y, m] = monthStr.split("-").map(Number);
   const d = new Date(y, m - 1, 1);
+  if (isNaN(d.getTime())) return "";
   return d.toLocaleString("en-IN", { month: "short", year: "numeric" }).toUpperCase();
 };
 
@@ -121,7 +123,7 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
   const filteredTx = useMemo(() => {
     return transactions
       .filter((t) => {
-        if (!t.date.startsWith(viewMonth)) return false;
+        if (!(t.date || '').startsWith(viewMonth)) return false;
         if (txTab === "income") return t.type === "income";
         if (txTab === "expenses") return t.type === "expense";
         return true;

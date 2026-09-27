@@ -6,7 +6,7 @@ import { LiquidGlassBackground } from '../components/LiquidGlassBackground';
 import { CustomTextInput } from '../components/CustomTextInput';
 import { TaskCard } from '../components/TaskCard';
 import { injectFontFamily } from "../theme/styles";
-import { getLocalDateString } from '../utils/dateUtils';
+import { getLocalDateString, getYesterdayLocalDateString } from '../utils/dateUtils';
 
 export const SearchScreen = ({
   currentTheme,
@@ -60,14 +60,35 @@ export const SearchScreen = ({
 
   const handleToggleDailyTask = (taskId) => {
     const today = getLocalDateString();
+    const yesterdayStr = getYesterdayLocalDateString();
     setDailyTasks(prev => prev.map(task => {
       if (task.id === taskId) {
         const newCompletedStatus = !task.completed;
+        let streak = task.streak || 0;
+        let totalCompleted = task.totalCompleted || 0;
+
+        if (newCompletedStatus) {
+          totalCompleted += 1;
+          if (task.lastCompletedDate === yesterdayStr) {
+            streak += 1;
+          } else if (task.lastCompletedDate === today) {
+            // already completed today (e.g. toggled multiple times), keep streak unchanged
+          } else {
+            streak = 1; // new streak started
+          }
+        } else {
+          // untoggled
+          totalCompleted = Math.max(0, totalCompleted - 1);
+          streak = Math.max(0, streak - 1);
+        }
+
         return {
           ...task,
           completed: newCompletedStatus,
           completedDate: newCompletedStatus ? today : null,
           lastCompletedDate: newCompletedStatus ? today : null,
+          streak,
+          totalCompleted,
         };
       }
       return task;

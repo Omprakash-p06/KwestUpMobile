@@ -47,15 +47,25 @@ const computeBirthdayDaysRemaining = (bday) => {
   const dateStr = bday.birthDate || bday.date || "";
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const parts = dateStr.split("-");
-  let month = 0, day = 1;
-  if (parts.length === 3) {
+  const trimmed = String(dateStr).trim();
+  const parts = trimmed.split("-");
+  let month = -1, day = -1;
+  if (parts.length === 3 && /^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
     month = parseInt(parts[1], 10) - 1;
     day = parseInt(parts[2], 10);
-  } else if (parts.length === 2) {
+  } else if (parts.length === 2 && /^\d{2}-\d{2}$/.test(trimmed)) {
     month = parseInt(parts[0], 10) - 1;
     day = parseInt(parts[1], 10);
   } else return { ...bday, daysRemaining: 999 };
+
+  // Validate month/day ranges and calendar reality (round-trip check)
+  if (!Number.isInteger(month) || !Number.isInteger(day) || month < 0 || month > 11 || day < 1 || day > 31) {
+    return { ...bday, daysRemaining: 999 };
+  }
+  const probe = new Date(2024, month, day); // leap year so Feb 29 validates
+  if (probe.getMonth() !== month || probe.getDate() !== day) {
+    return { ...bday, daysRemaining: 999 };
+  }
 
   const currentYear = today.getFullYear();
   let nextBday = new Date(currentYear, month, day);
@@ -65,6 +75,7 @@ const computeBirthdayDaysRemaining = (bday) => {
     if (nextBday.getMonth() !== month) nextBday = new Date(currentYear + 1, month, day + 1);
   }
   const diffDays = Math.ceil((nextBday.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  if (!Number.isFinite(diffDays)) return { ...bday, daysRemaining: 999 };
   return { ...bday, daysRemaining: diffDays };
 };
 
