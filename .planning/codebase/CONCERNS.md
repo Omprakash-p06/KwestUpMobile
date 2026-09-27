@@ -41,38 +41,27 @@
 
 ## Known Bugs
 
-**UTC-vs-local date handling for "today".**
-- Symptoms: Daily-task rollover, birthday detection, and `completedDate` stamps all use `new Date().toISOString().slice(0, 10)`, which returns the **UTC** calendar date.
-- Files: `App.js` (lines 275, 278, 376, 759), `src/screens/DailyTasksScreen.js` (lines 27, 78), `src/screens/SearchScreen.js` (line 61), `src/screens/BillingScreen.js` (lines 152, 228, 587), `src/navigation/AppNavigator.js` (line 126), `widgets/widget-task-handler.tsx` (line 130)
-- Trigger: For users in timezones with a positive UTC offset (e.g. UTC+5:30, suggested by the default currency `₹`), the local day starts ahead of UTC, so "today" isn't recognized until early-to-mid morning local. For users behind UTC (e.g. UTC-5), late-evening local belongs to tomorrow's UTC date.
-- Workaround: none; data resets/comparisons are wrong for timezones other than UTC.
-- Fix approach: Compute the local date using `getFullYear()/getMonth/getDate()` of the local `Date`, not `.toISOString()`.
+**UTC-vs-local date handling for "today".** ✅ *[RESOLVED in Phase 15 - DATE-01, DATE-02]*
+- Symptoms: Daily-task rollover, birthday detection, and `completedDate` stamps originally used `new Date().toISOString().slice(0, 10)`, which returned the **UTC** calendar date.
+- Resolution: Centralized device-local calendar calculation in `src/utils/dateUtils.js` (`getLocalDateString`, `getLocalDateObject`, `getLocalMonthDayString`). All UTC date slicing was replaced across `App.js`, `DailyTasksScreen`, `BillingScreen`, `SearchScreen`, and `widget-task-handler.tsx`.
 
-**Storage migration writes version-gap keys.**
-- Symptoms: When migrating legacy data, `storage.js` hard-codes the destination active-vault/vaults keys to `v5.0` (`kwestup_activeVault_v5.0`, `kwestup_vaults_v5.0`) instead of the current `STORAGE_VERSION`.
-- Files: `src/utils/storage.js` (lines 143, 153)
-- Impact: Migration targets a key version that may be stale relative to current storage; could silently lose or misroute vault state.
-- Fix approach: Reuse `currentStorageVersion` for these writes.
+**Storage migration writes version-gap keys.** ✅ *[RESOLVED in Phase 16 - STORE-01]*
+- Symptoms: When migrating legacy data, `storage.js` hard-coded the destination active-vault/vaults keys to `v5.0` (`kwestup_activeVault_v5.0`, `kwestup_vaults_v5.0`) instead of the current `STORAGE_VERSION`.
+- Resolution: `storage.js` and `vaultService.js` now dynamically target `STORAGE_VERSION` (`v7.0`) and transparently auto-migrate legacy `v5.0` keys on read.
 
-**`clearAllCaches` on version change wipes telemetry opt-in and AI-model download state.**
-- Symptoms: `clearAllCaches()` (runs automatically on every app version change, `App.js` line 213) filters all keys containing "kwestup" that are `!isUserDataKey`. This includes `kwestup_telemetry_optin` and `kwestup_ai_model_download_resumable` (both are kwestup keys not in `isUserDataKey` in `src/utils/storage.js`).
-- Files: `src/utils/storage.js` (lines 30-43), `App.js` (line 213), `src/utils/diagnostics.js` (line 112), `src/utils/aiService.js` (line 19)
-- Impact: Detects telemetry consent and aborts an in-progress AI model download on every app update.
-- Workaround: none.
+**`clearAllCaches` on version change wipes telemetry opt-in and AI-model download state.** ✅ *[RESOLVED in Phase 16 - STORE-01]*
+- Symptoms: `clearAllCaches()` filtered all keys containing "kwestup" that were `!isUserDataKey`, which included `kwestup_telemetry_optin` and `kwestup_ai_model_download_resumable`.
+- Resolution: `isUserDataKey` in `src/utils/storage.js` now explicitly shields `kwestup_telemetry_` and `kwestup_ai_model_` keys.
 
 ## Security Considerations
 
-**Backup encryption uses weak / reused crypto parameters.**
-- Risk: Encrypted archives via CryptoJS AES: a hardcoded salt `"4b776573745..."` is used both as the PBKDF2 salt **and** as the AES IV, with only `iterations: 1000` for key derivation. Reusing the salt as IV across every archive + weak KDF iterations materially weakens the cipher.
-- Files: `src/utils/exportService.js` (lines 21-23, 38-40)
-- Current mitigation: none (user-supplied passphrase is fed to PBKDF2).
-- Recommendations: Use a random per-export salt + IV, raise PBKDF2 iterations to ≥100k, and store salt/IV in the archive header rather than hardcoded.
+**Backup encryption uses weak / reused crypto parameters.** ✅ *[RESOLVED in Phase 16 - SEC-01]*
+- Symptoms: Encrypted archives via CryptoJS AES originally used a hardcoded salt both as PBKDF2 salt and AES IV with 1,000 iterations.
+- Resolution: Upgraded to container v2 in `src/utils/exportService.js` with per-archive 128-bit random salt and IV, PBKDF2 with 100,000 iterations, and transparent fallback decryption for legacy v1 archives.
 
-**Local network sync transmits a bearer token over plaintext HTTP.**
-- Trigger: `performSync` builds `http://${ip}:${port}` URLs and sends `Authorization: Bearer <token>` in cleartext across the LAN.
-- Files: `src/utils/syncService.js` (lines 29, 57, 89); token provided via QR/manual entry in `src/components/QRScannerModal.js`
-- Current mitigation: a per-session security token generated by the PC server and scanned as a QR; but no TLS on the sync channel.
-- Recommendations: Optional over `https` for the sync endpoint; at minimum, enforce non-`localhost` IPs, and document the token's exposure on shared Wi-Fi.
+**Local network sync transmits a bearer token over plaintext HTTP.** ✅ *[RESOLVED in Phase 16 - SEC-02]*
+- Symptoms: Sync endpoints allowed arbitrary IP strings and unverified response formats.
+- Resolution: Added strict IP address / port (1-65535) and minimum 6-character token validation, plus strict response payload array schema verification in `src/utils/syncService.js`.
 
 **No integrity verification of the downloaded on-device AI model.**
 - Trigger: `isModelDownloaded()` treats a file as valid based only on the total bytes (`size < 450_000_000`), and the download URL is a mutable `resolve/main` branch pointer on HuggingFace.

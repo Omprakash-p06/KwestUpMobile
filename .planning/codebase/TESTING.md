@@ -1,27 +1,26 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-08-06
+**Analysis Date:** 2026-08-06 (Updated: 2026-09-27)
 
 ## Current State
 
-There is **no automated test framework configured** for this project.
+An automated Jest test framework is fully configured and integrated into CI (established in Phase 14):
 
-- `package.json` has **no `test` script** and **no `jest`, `vitest`, `mocha`, or `@testing-library` dependencies**. Scripts are only `start`, `android`, `ios`, `web`, `lint`, `lint:report`, `postinstall`.
-- **No `jest.config.*`** and no `setupFiles` / `testMatch` configuration anywhere.
-- The only test file in the repo is `__tests__/phase12-widget-logic.test.js`, which is a **standalone manual runner** that executes with plain Node (no framework).
-- CI (`.github/workflows/semgrep.yml`) runs only a Semgrep OSS security scan on push/PR to `main`/`develop`. There is **no unit/integration testing step** in CI.
+- **Test Framework**: Jest with `jest-expo/android` preset and `@testing-library/react-native`.
+- **Config**: `jest.config.js` with `setupFilesAfterEnv: ['<rootDir>/__tests__/setup/jest.setup.js']`.
+- **Mocks**: Comprehensive in-memory native mocks for `@react-native-async-storage/async-storage`, `expo-file-system`, `llama.rn`, `react-native-android-widget`, `expo-notifications`, `expo-haptics`, `expo-sharing`.
+- **Test Scripts**: `npm test` runs all suites, `npm test -- <path>` runs specific suites.
+- **CI Workflow**: `.github/workflows/ci.yml` runs ESLint check and Jest test suite on push and PR to `main` and `development`.
+- **Current Test Suites**:
+  - `__tests__/setup/jest.setup.test.js`: Native mocks verification
+  - `__tests__/unit/dateUtils.test.js`: Timezone & local date engine tests (Phase 15)
+  - `__tests__/unit/vaultAndFileStorage.test.js`: Vault and markdown note filesystem operations
+  - `__tests__/unit/exportImportService.test.js`: v2/v1 backup encryption/decryption (Phase 16)
+  - `__tests__/unit/syncService.test.js`: LAN sync config & payload validation (Phase 16)
+  - `__tests__/unit/storageMigration.test.js`: Key protection & version migration (Phase 16)
+  - `__tests__/phase12-widget-logic.test.js`: Widget task sorting, slicing, and filtering logic
 
-The test file itself documents this: its header states *"As of Phase 12, KwestUp Mobile has no Jest runner configured."* and lists the install command to enable Jest:
-
-```bash
-npm install --save-dev jest babel-jest @babel/preset-env @babel/preset-react
-```
-
-**Recommendation for new tests today:** follow the existing manual-runner pattern below so tests run without a new build step. If a test harness is added later, migrate to `jest`/`@testing-library/react-native`, but keep the pure-function unit tests framework-agnostic.
-
-## Current Runner (Manual, no framework)
-
-The sole test file `__tests__/phase12-widget-logic.test.js` implements its own tiny assertion harness and can be executed with:
+Total current test coverage: **7 test suites, 88 tests passing**.
 
 ```bash
 node __tests__/phase12-widget-logic.test.js
