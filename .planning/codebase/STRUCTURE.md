@@ -1,156 +1,124 @@
-# Codebase Structure
+# Repository Structure
 
-**Analysis Date:** 2026-08-06
+**Analysis Date:** 2026-09-27
 
-## Directory Layout
+## Root Layout
 
 ```
-kwestupmobile/  (project root)
-├── App.js                    # Root component — owns ALL state & boot logic (monolith)
-├── index.js                  # Expo root registration + widget handler registration (~11 lines)
-├── app.json                  # Expo app config; android package, plugins, widget definitions
-├── package.json              # Scripts + dependencies (Expo 53, RN 0.79, React 19)
-├── eas.json                  # EAS Build profiles (development/preview/production)
-├── babel.config.js           # babel-preset-expo + react-native-reanimated/plugin
-├── metro.config.js           # Expo metro default config
-├── eslint.config.js          # ESLint flat config (babel parser, react/react-native/react-hooks)
-├── tsconfig.json             # Extends expo/tsconfig.base; compilerOptions empty
-├── .eslintrc.js              # Legacy ESLint config (superseded by eslint.config.js)
-├── patch-llama-gradle.js     # postinstall script patching llama.rn gradle
-├── CHECKOP.BAT / check.bat   # Dev helper scripts (root)
-├── src/                      # Primary app source
-│   ├── screens/              # 9 feature screens
-│   ├── components/           # 14 shared UI components
-│   ├── navigation/           # Drawer navigator + custom drawer content
-│   ├── theme/                # color palettes + shared styles
-│   └── utils/                # service modules (11 files)
-├── widgets/                  # Android home-screen widgets (.tsx)
-├── assets/                   # Images: app-logo, splash-icon, favicon, widget previews
-├── android/                  # Native Android project (Expo prebuild output)
-├── __tests__/                # Jest tests (phase12-widget-logic.test.js)
-├── .github/                  # CI workflows
-└── .planning/                # GSD planning artifacts (this document lives here/codebase/)
+KwestUpMobile/
+├── App.js                  # Root component: all state, handlers, persistence, providers (~1268 lines)
+├── index.js                # Expo entry: registerRootComponent + widget task handler (11 lines)
+├── app.json                # Expo config: name/slug/version, Android package, plugins, 4 widgets, EAS id
+├── package.json            # Deps (Expo 53, RN 0.79.5, llama.rn, android-widget) + jest/eslint scripts
+├── babel.config.js         # Babel preset (expo)
+├── metro.config.js         # Metro bundler config
+├── tsconfig.json           # TypeScript config (widgets are .tsx)
+├── jest.config.js          # jest-expo/android preset, setup file, transform allowlist
+├── eslint.config.js / .eslintrc.js  # Flat + legacy lint configs
+├── eas.json                # EAS build profiles
+├── patch-llama-gradle.js   # postinstall native patch for llama.rn Android build
+├── check.bat               # Local lint+test helper script
+├── src/                    # All app source (components, navigation, screens, theme, utils)
+├── widgets/                # Android home-screen widgets + headless task handler (.tsx)
+├── android/                # Ejected/bare native shell (gradle, app/src, debug.keystore)
+├── assets/                 # App icon, splash, fonts bundle refs, widget previews
+├── build/                  # Local build output (generated, not source)
+├── coverage/               # Jest coverage output (generated)
+├── __tests__/              # Jest suites (unit/ + widget logic + setup/)
+├── .planning/              # GSD planning: PROJECT/ROADMAP/STATE, phases/, codebase/, debug/
+├── .github/workflows/      # CI gate (ESLint + Jest + coverage)
+├── GEMINI.md / README.md   # Repo docs
+└── node_modules/           # Installed deps (generated)
 ```
 
-## Directory Purposes
+| Entry | Kind | Purpose |
+|---|---|---|
+| `App.js` | file | State owner + provider stack + global modals |
+| `index.js` | file | Dual registration: UI root + widget handler |
+| `src/` | dir | Screens, components, navigation, theme, service utils |
+| `widgets/` | dir | 4 Android widgets + `widget-task-handler.tsx` |
+| `android/` | dir | Native Android project (package `com.omprakashp06.kwestupmobile`) |
+| `assets/` | dir | Icons, splash, `widget-preview/` images |
+| `__tests__/` | dir | 7 suites / 88 tests (per STATE.md) |
+| `.planning/` | dir | Project memory: phase summaries, roadmap, codebase maps |
+| `coverage/` | dir | Generated coverage report |
+| `build/` | dir | Generated build artifacts |
+| `app.json`, `package.json`, `eas.json` | files | Expo / npm / EAS build configuration |
+| `jest.config.js`, `eslint.config.js`, `.eslintrc.js` | files | Test + lint configuration |
+| `patch-llama-gradle.js` | file | `postinstall` native-build fixup for `llama.rn` |
 
-**`src/`** — Primary source tree.
-- Purpose: All React app code (screens, components, navigation, theme, utils).
-- Key files: `App.js` is the container and is REQUIRED alongside `src/`.
+## src/ Breakdown
 
-**`src/screens/`**
-- Purpose: One file per feature screen.
-- Contains: `DashboardScreen.js`, `DailyTasksScreen.js`, `BirthdaysScreen.js`, `BillingScreen.js`, `TaskListScreen.js`, `NotesScreen.js`, `FocusTimerScreen.js`, `SettingsScreen.js`, `SearchScreen.js` (9 screens).
-- Key files: `SettingsScreen.js` (~1100 lines, includes diagnostics/AI model/backup/sync/theme), `NotesScreen.js` (~2000 lines, vault file explorer + inline editor).
+```
+src/
+├── components/   # 14 reusable UI pieces (primitives + domain + AI + glass)
+├── navigation/   # Drawer navigator + custom drawer content (2 files)
+├── screens/      # 9 route screens (Dashboard … Search)
+├── theme/        # colors.js (palette) + styles.js (shared StyleSheet)
+└── utils/        # 12 domain services (storage, sync, AI, notifications…)
+```
 
-**`src/components/`**
-- Purpose: Reusable UI primitives, consumed by screens and `App.js`.
-- Contains: `CustomButton.js`, `CustomTextInput.js`, `CustomCard.js`, `CustomBadge.js`, `CustomSwitch.js`, `CustomSegmentedButtons.js`, `CustomDateTimePicker.js`, `LiquidGlassCard.js`, `LiquidGlassBackground.js`, `TaskCard.js`, `TaskEditModal.js`, `TimerLockoutOverlay.js`, `QRScannerModal.js`, `AIAssistant.js` (14 files).
-- Most exports are named exports (see `App.js` import style `import { CustomButton } from "./src/components/CustomButton"`).
+**`src/components/` — reusable UI (14 files):**
+- Purpose: themed primitives and domain sheets shared across screens.
+- Contains: `CustomButton.js`, `CustomTextInput.js`, `CustomCard.js`, `CustomBadge.js`, `CustomSwitch.js`, `CustomSegmentedButtons.js`, `CustomDateTimePicker.js` (primitives); `TaskCard.js`, `TaskEditModal.js`, `TimerLockoutOverlay.js` (domain); `AIAssistant.js` (floating NL overlay), `QRScannerModal.js` (sync-config scan); `LiquidGlassBackground.js`, `LiquidGlassCard.js` (glass surfaces).
+- Key files: `TaskEditModal.js` (task create/edit form used globally from `App.js`), `AIAssistant.js` (wired in `AppNavigator.js` with `onTaskCreated/onBirthdayCreated/onTransactionCreated/onTasksExtracted`).
 
-**`src/navigation/`**
-- `AppNavigator.js` — Drawer navigator wiring all 9 screens and prop-drilling from `App.js`.
-- `CustomDrawerContent.js` — custom styled drawer with theme toggle.
+**`src/navigation/` — navigation shell (2 files):**
+- Purpose: drawer router + drawer chrome; the only place screens are composed.
+- Contains: `AppNavigator.js` (Drawer.Navigator, 9 `Drawer.Screen` render-prop bindings, AI overlay mount, `onTaskCreated/onBirthdayCreated/onTransactionCreated` creators), `CustomDrawerContent.js` (9-item themed menu, avatar header, light→dark→amoled cycler).
+- Key files: `src/navigation/AppNavigator.js` — add a new route here (new `Drawer.Screen` + drawer item in `CustomDrawerContent.js`).
 
-**`src/theme/`**
-- `colors.js` — exports `themes` (5 palette names × 3 modes).
-- `styles.js` — shared global `StyleSheet` + `injectFontFamily()` mutation helper.
+**`src/screens/` — route screens (9 files):**
+- Purpose: one file per drawer route; presentational, props-in/callbacks-out, no direct persistence.
+- Contains: `DashboardScreen.js` (overview), `DailyTasksScreen.js` (habits/streaks), `BirthdaysScreen.js`, `BillingScreen.js` (transactions/budgets/bills), `TaskListScreen.js` (lists/subtasks/recurrence), `NotesScreen.js` (vault browser + editor), `FocusTimerScreen.js`, `SettingsScreen.js` (theme/backup/sync/telemetry/reset), `SearchScreen.js` (cross-domain search).
+- Key files: `SettingsScreen.js` (entry to `exportArchive`/`importArchive`/`performSync`), `NotesScreen.js` (vault switching via `handleSetActiveVault`).
 
-**`src/utils/`**
-- Purpose: Stateless service modules for side effects (see table below).
-- 11 files: `storage.js`, `notifications.js`, `fileStorage.js`, `vaultService.js`, `vaultImport.js`, `syncService.js`, `exportService.js`, `aiService.js`, `diagnostics.js`, `billingStorage.js`, `billingNotifications.js`.
+**`src/theme/` — theming (2 files):**
+- Purpose: single source of palette + shared styles.
+- Contains: `colors.js` (`themes[5 names][light|dark|amoled]`), `styles.js` (container, dialogs, inputs).
+- Key files: `src/theme/colors.js` — add a theme name here and register it in `App.js` `VALID_THEME_NAMES`.
 
-| Util | Responsibility |
-|------|----------------|
-| `src/utils/storage.js` | Versioned keys, `clearAllCaches`, `migrateUserDataIfNeeded`, `isUserDataKey`. |
-| `src/utils/notifications.js` | Permissions; schedule due-date, daily, push, birthday reminders. |
-| `src/utils/fileStorage.js` | Vault-parameterized `.md` note read/write/delete/scan/wipe + hashtag extraction. |
-| `src/utils/vaultService.js` | Vault CRUD, active-vault path/ID resolution, migrations. |
-| `src/utils/vaultImport.js` | `importMDFilesAsVault` via document picker. |
-| `src/utils/syncService.js` | LAN REST sync client (`pingSyncServer`, `performSync`). |
-| `src/utils/exportService.js` | AES-256 encrypted backup export/import. |
-| `src/utils/aiService.js` | llama.rn model lifecycle + inference (summarize/extract/parse/assist). |
-| `src/utils/diagnostics.js` | Device/network diagnostics, GitHub release update check, telemetry. |
-| `src/utils/billingStorage.js` | Billing transactions/budgets/recurring bills AsyncStorage CRUD. |
-| `src/utils/billingNotifications.js` | Recurring bill reminder scheduling. |
+**`src/utils/` — domain services (12 files):**
+- Purpose: all I/O and logic: storage, files, vaults, backup crypto, sync, billing, notifications, dates, AI, diagnostics, import.
+- Contains: `storage.js` (versions, key allowlist, cache clear, migration), `fileStorage.js` (vault `.md` CRUD/scan/wipe), `vaultService.js` (vault registry + migration), `exportService.js` (backup pipelines), `vaultImport.js` (`.md` picker import), `syncService.js` (LAN client), `billingStorage.js` + `billingNotifications.js` (finance store + alarms), `notifications.js` (task/birthday alarms), `dateUtils.js` (local-date authority), `aiService.js` (on-device LLM), `diagnostics.js` (device/network/update/telemetry).
+- Key files: `storage.js` (`STORAGE_VERSION = "v7.0"` — bump + extend `migrateUserDataIfNeeded` when changing persisted shape); `syncService.js` (validators + `performSync`); `exportService.js` (v2 envelope).
 
-**`widgets/`**
-- Purpose: Android home-screen widgets (render + shared data reader).
-- Contains: `FocusTimerWidget.tsx`, `DailyTasksWidget.tsx`, `ImportantTasksWidget.tsx`, `TasksListWidget.tsx`, `widget-task-handler.tsx`.
-- Widgets use `.tsx` while the rest of the app uses `.js`; they import from `src/utils/storage.js` (JS) so shared source is duplicated across TS/JS boundaries.
+## Entry Points
 
-**`android/`** — Prebuild native Android project (Gradle). Contains `app/`, `build.gradle`, `gradlew`, `settings.gradle`. Not hand-authored; regenerated from Expo prebuild when `app.json` changes. `.gitignore` present to exclude build outputs.
+| Entry | Path | Triggers | Responsibility |
+|---|---|---|---|
+| JS root | `index.js` | Expo launch | Registers `App` + widget handler; nothing else |
+| App root | `App.js` | Mount after font/init gate | Init (`initializeApp`), load (`loadData`), save effects, widget push, providers, global modals |
+| Navigation root | `src/navigation/AppNavigator.js` | Rendered by `App` inside `NavigationContainer` | Route table (initial `Dashboard`), prop fan-out to screens, AI overlay |
+| Widget headless | `widgets/widget-task-handler.tsx` | `WIDGET_ADDED/UPDATE/RESIZED/CLICK` from launcher | Tab switch + direct-AsyncStorage task toggle + widget re-render |
+| Native launch | `android/app/src/` | OS process start | Android activity/application wiring for the Expo run build |
 
-**`assets/`** — App logo, splash icon, favicon, template fonts, widget preview images.
+Startup order: `index.js` → `App` mount → font load + `initializeApp` (AsyncStorage parallel read, `initNotesFolder`, background vault-migration/cache-clear/diagnostics) → loading gate (`isLoading || !fontsLoaded`) → `loadData` (blob + filesystem + billing + alarms) → `NavigationContainer/AppNavigator` render.
 
-**`__tests__/`** — Jest test folder (currently one file: `phase12-widget-logic.test.js`).
+## Platform-specific (android/, widgets/)
 
-**`build/`** — Build artifacts (from EAS/native and/or `dist`) — the repo root also lists a `build/` dir (not source; exclusions may vary).
+**`android/` — bare native shell:**
+- Purpose: Expo `run:android` / EAS native project; package `com.omprakashp06.kwestupmobile` (`app.json:23`), `versionCode 7`.
+- Contains: `app/` (`build.gradle`, `proguard-rules.pro`, `debug.keystore`, `src/` with MainActivity/Application + manifest), `gradle/`, `gradlew[.bat]`, `settings.gradle`, `build.gradle`, `gradle.properties`.
+- Notes: `patch-llama-gradle.js` (`package.json` `postinstall`) patches the `llama.rn` Gradle module so the on-device LLM builds; `expo-build-properties` plugin sets iOS `useFrameworks: static` (relevant if iOS target is re-added).
+- Committed: yes (ejected shell is part of the repo); `android/app/build`-type outputs are generated.
 
-## Key File Locations
+**`widgets/` — Android home-screen widgets (5 `.tsx` files):**
+- Purpose: launcher widgets driven by `react-native-android-widget` (declared in `app.json:48-103`: FocusTimer, DailyTasks, ImportantTasks, TasksList; each `updatePeriodMillis: 1800000`, with preview PNGs in `assets/widget-preview/`).
+- Contains: `FocusTimerWidget.tsx` (remaining/running projection), `DailyTasksWidget.tsx` (count/completed ring), `ImportantTasksWidget.tsx` (top-5 important unfinished), `TasksListWidget.tsx` (interactive sorted top-8, tab filter, ticking animation), `widget-task-handler.tsx` (action dispatch + AsyncStorage read/write + re-render).
+- Data contract: widgets never call React state — they read `kwestup_data_<STORAGE_VERSION>` / `kwestup_timer_state_*` / `kwestup_widget_*` keys directly; `App.js` pushes, foreground reload absorbs reverse writes. iOS has no widget target (Android-only).
 
-**Entry Points:**
-- `index.js`: app + widget bootstrap (`registerRootComponent`, `registerWidgetTaskHandler`).
-- `App.js`: root React component; mount point for providers and `AppNavigator`.
+## Tests & Planning (.planning/, __tests__/, coverage/)
 
-**Configuration:**
-- `app.json`: Expo app config; contains the `react-native-android-widget` plugin config listing the 4 widgets.
-- `eas.json`: EAS build profiles.
-- `babel.config.js` / `metro.config.js` / `tsconfig.json`: bundler/compiler config.
-- `eslint.config.js`: flat lint config; legacy `.eslintrc.js` still present but ignored.
-- `patch-llama-gradle.js`: `postinstall` hook that patches llama.rn's gradle file after install.
+**`__tests__/` — Jest suites (`jest-expo/android` preset):**
+- Layout: `unit/` (5 files) + `phase12-widget-logic.test.js` + `setup/jest.setup.js` (native-module mocks for Node execution).
+- Files: `__tests__/unit/dateUtils.test.js`, `exportImportService.test.js`, `storageMigration.test.js`, `syncService.test.js`, `vaultAndFileStorage.test.js`; `__tests__/phase12-widget-logic.test.js` (widget toggle/recurrence parity).
+- Commands: `npm test` (all), `npm run test:watch`, `npm run test:coverage` → `coverage/`. Per `.planning/STATE.md`: 7 suites / 88 tests passing after Phases 14–16.
+- Where to add: colocate by domain — storage/versioning → `unit/storageMigration.test.js`; sync validators → `unit/syncService.test.js`; vault/FS ops → `unit/vaultAndFileStorage.test.js`; backup crypto → `unit/exportImportService.test.js`; new widget behavior → extend `phase12-widget-logic.test.js` or add `unit/<domain>.test.js` (auto-matched by `testMatch: **/__tests__/**/*.test.[jt]s?(x)`).
 
-**Core Logic:**
-- `App.js`: state ownership, load/save, recurrence-spawning, sync orchestration, widget update push.
-- `src/navigation/AppNavigator.js`: route wiring + prop plumbing.
-- `src/utils/*.js`: services (storage, notifications, sync, AI, vault, billing, export).
+**`.planning/` — project memory (GSD):**
+- Files: `PROJECT.md` (vision/constraints), `ROADMAP.md` (19 phases), `STATE.md` (Phase 16/19 complete, Phase 17 next: State Architecture & Unified Mutation Layer), `phases/` (per-phase `PLAN.md` + `*-SUMMARY.md`), `codebase/` (these maps), `debug/` (forensics sessions).
+- Relevance: Phase 17 planning must read `STATE.md` decisions (offline-first, v2 backup, LAN hardening, versioned storage) before restructuring state; do not regress the dual-writer widget contract without updating `widget-task-handler.tsx` + its test.
 
-**Testing:**
-- `__tests__/phase12-widget-logic.test.js`: the single Jest test.
-
-## Naming Conventions
-
-**Files:**
-- `.js` for all app source (screens, components, utils, navigation, theme).
-- `.tsx` only under `widgets/` (Android widget renderers).
-- PascalCase file name per screen/component (e.g. `DashboardScreen.js`, `CustomButton.js`).
-- Lowercase for service/theme wiring files where unambiguous: `storage.js`, `colors.js`, `styles.js`, `AppNavigator.js`/`CustomDrawerContent.js` (PascalCase for navigation).
-- Test files: `phase12-<feature>-logic.test.js` pattern in `__tests__/`.
-
-**Export style:**
-- Screens/components/navigation export **named** members (`export const DashboardScreen = () => {}`).
-- Root `App.js` has `export default App`.
-- Utils mix named `export const fn` / `export async function fn` same files (e.g. `notifications.js` uses `export async function`, `storage.js` uses `export const`).
-- Widgets export default components where convenient (e.g. `FocusTimerWidget`), but `FocusTimerWidget` imported as named in `App.js`.
-
-## Where to Add New Code
-
-**New Feature / Screen:**
-- Add a screen in `src/screens/<FeatureScreen>.js` and register it in `src/navigation/AppNavigator.js` (add `<Drawer.Screen>` + prop plumbing). Any new persisted state slice should be added to the `App.js` state buckets and mentioned in the `saveData`/`loadData`/`STORAGE_VERSION`-key set so it persists.
-
-**New Shared UI Component:**
-- `src/components/<ComponentName>.js`, using named export, consistent with existing primitives. If global styles are needed, add to `src/theme/styles.js` `rawStyles` (the `injectFontFamily` mutation will run).
-
-**New Service / Side-Effect Module:**
-- `src/utils/<name>.js`. Import the version/context utilities from `src/utils/storage.js` (`STORAGE_VERSION`, `APP_VERSION`, `isUserDataKey`) rather than hardcoding keys.
-
-**New Widget:**
-- Add the renderer under `widgets/<Name>Widget.tsx`, wire it into `nameToWidget` in `widgets/widget-task-handler.tsx`, register it in `app.json` under the `react-native-android-widget` plugin widgets list, and push updates from `App.js`.
-
-**Complex route/screen logic:**
-- Keep computation in screens but add any shared, picky business logic (e.g. recurrence, streak/streak reset) to `src/utils/` — DRY is a struggle because `App.js` and widget handler duplicate it.
-
-## Special Directories
-
-| Directory | Purpose | Generated | Committed |
-|-----------|---------|-----------|-----------|
-| `.planning/` | GSD planning, codebase docs (`codebase/`), phases, milestones | No | Yes |
-| `android/` | Native Android project (Expo prebuild output) | Yes | Partially (`.gitignore` present) |
-| `assets/` | Static images/fonts | No | Yes |
-| `build/` | Build/dist artifacts | Yes | No |
-| `__tests__/` | Jest tests | No | Yes |
-| `.github/` | CI/workflows | No | Yes |
-
----
-
-*Structure analysis: 2026-08-06*
+**`coverage/` — generated Jest coverage:**
+- Purpose: HTML/lcov output of `npm run test:coverage`; not source, safe to regenerate/delete.
