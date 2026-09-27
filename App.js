@@ -62,6 +62,7 @@ import { FocusTimerWidget } from './widgets/FocusTimerWidget';
 import { DailyTasksWidget } from './widgets/DailyTasksWidget';
 import { ImportantTasksWidget } from './widgets/ImportantTasksWidget';
 import { TasksListWidget } from './widgets/TasksListWidget';
+import { getLocalDateString, getYesterdayLocalDateString } from './src/utils/dateUtils';
 
 // Configuration
 const FORCE_CLEAR_ALL_STORAGE = false;
@@ -272,10 +273,8 @@ const App = () => {
       if (storedDataRaw) {
         const parsedData = JSON.parse(storedDataRaw);
         const loadedDailyTasks = parsedData.dailyTasks || [];
-        const todayStr = new Date().toISOString().slice(0, 10);
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().slice(0, 10);
+        const todayStr = getLocalDateString();
+        const yesterdayStr = getYesterdayLocalDateString();
 
         const resetDailyTasks = loadedDailyTasks.map((t) => {
           // If the task was completed on a previous day, reset completion status
@@ -373,7 +372,7 @@ const App = () => {
       // Reschedule birthday notifications on app start so they cover
       // both this year AND next year's dates (since absolute Date triggers fire once)
       if (birthdays.length > 0) {
-        const todayKey = new Date().toISOString().slice(0, 10);
+        const todayKey = getLocalDateString();
         if (lastBirthdayRescheduleRef.current !== todayKey) {
           lastBirthdayRescheduleRef.current = todayKey;
           setTimeout(async () => {
@@ -756,7 +755,7 @@ const App = () => {
             updatedTasks.push({
               ...task,
               completed: newCompletedStatus,
-              completedDate: newCompletedStatus ? new Date().toISOString().slice(0, 10) : null,
+              completedDate: newCompletedStatus ? getLocalDateString() : null,
               completedAt: newCompletedStatus ? new Date().toISOString() : null,
             });
           }
@@ -797,7 +796,7 @@ const App = () => {
           return {
             ...task,
             completed: true,
-            completedDate: now.slice(0, 10),
+            completedDate: getLocalDateString(),
             completedAt: now
           };
         }

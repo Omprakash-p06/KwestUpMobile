@@ -27,6 +27,7 @@ import {
   scheduleRecurringBillReminder as scheduleBillReminder,
   cancelRecurringBillReminders as cancelBillReminders,
 } from "../utils/billingNotifications";
+import { getLocalDateString, getLocalMonthString } from "../utils/dateUtils";
 
 
 // ─── Category config ──────────────────────────────────────────────────────────
@@ -45,8 +46,7 @@ const getCategoryIcon = (cat) =>
   CATEGORIES.find((c) => c.label === cat)?.icon || "dots-horizontal";
 
 // ─── Month helpers ────────────────────────────────────────────────────────────
-const toMonthStr = (date) =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+const toMonthStr = (date) => getLocalMonthString(date);
 
 const formatMonthLabel = (monthStr) => {
   const [y, m] = monthStr.split("-").map(Number);
@@ -149,7 +149,7 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
       amount: amt,
       category: txCategory,
       description: txDesc.trim() || txCategory,
-      date: txDate.toISOString().slice(0, 10),
+      date: getLocalDateString(txDate),
       createdAt: new Date().toISOString(),
     };
     const updated = await saveAddTx(newTx);
@@ -225,7 +225,7 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
   }, [showConfirmation]);
 
   const handleMarkBillPaid = useCallback(async (bill) => {
-    const paidDate = new Date().toISOString().slice(0, 10);
+    const paidDate = getLocalDateString();
     // Cancel old, reschedule new
     await cancelBillReminders(bill.notificationIds || []);
     const notifId = await scheduleBillReminder(bill, currency);
@@ -584,7 +584,7 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
               style={[s.datePickerBtn, { borderColor: currentTheme.border }]}
             >
               <MaterialCommunityIcons name="calendar" size={16} color={currentTheme.primary} />
-              <Text style={[s.datePickerText, { color: currentTheme.text }]}>DATE: {txDate.toISOString().slice(0, 10)}</Text>
+              <Text style={[s.datePickerText, { color: currentTheme.text }]}>DATE: {getLocalDateString(txDate)}</Text>
             </TouchableOpacity>
 
             <View style={s.modalActions}>

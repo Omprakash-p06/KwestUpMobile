@@ -24,7 +24,7 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 
 ### Milestone 2: Hardened Offline-First & Production Readiness
 - [x] **Phase 14: Automated Testing Framework & CI/CD Pipeline** - Jest test runner, native module mocks, unit test suites, and GitHub Actions CI workflow. ✅ COMPLETE
-- [ ] **Phase 15: Centralized Local Date Engine & Timezone Bug Fixes** - Device-local calendar date utility replacing UTC slicing across app, screens, and widgets.
+- [x] **Phase 15: Centralized Local Date Engine & Timezone Bug Fixes** - Device-local calendar date utility replacing UTC slicing across app, screens, and widgets. ✅ COMPLETE
 - [ ] **Phase 16: Security & Storage Migration Hardening** - Per-archive random salt/IV with PBKDF2 100k+, LAN sync transport security, and storage migration key hardening.
 - [ ] **Phase 17: State Architecture & Unified Mutation Layer** - Decouple App.js into domain contexts/stores and unify task recurrence/completion between app and widgets.
 - [ ] **Phase 18: On-Device AI Pipeline Hardening** - SHA-256 checksum model verification, pinned releases, fallback handling, and memory lifecycle cleanup.
@@ -183,7 +183,7 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 | 12. Interactable Widget v2 | 2/2 | ✅ Complete | 2026-06-28 |
 | 13. Billing & Money Management | 2/2 | ✅ Complete | 2026-07-07 |
 | 14. Testing & CI/CD | 3/3 | ✅ Complete | 2026-09-27 |
-| 15. Local Date Engine | 0/2 | ⏳ Pending | - |
+| 15. Local Date Engine | 2/2 | ✅ Complete | 2026-09-27 |
 | 16. Security & Storage Hardening | 0/2 | ⏳ Pending | - |
 | 17. State & Mutation Architecture | 0/2 | ⏳ Pending | - |
 | 18. Local AI Hardening | 0/2 | ⏳ Pending | - |
@@ -218,8 +218,8 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
   2. All `new Date().toISOString().slice(0, 10)` callsites in `App.js`, `DailyTasksScreen`, `BillingScreen`, `SearchScreen`, and `widget-task-handler.tsx` are refactored to use local date utilities.
   3. Comprehensive unit tests verify boundary conditions (midnight rollover, positive/negative UTC offsets, leap years).
 **Plans**:
-- [ ] 15-01-PLAN.md — Implement centralized `dateUtils.js` with comprehensive timezone boundary tests.
-- [ ] 15-02-PLAN.md — Refactor screens, handlers, and widgets to use `dateUtils.js`.
+- [x] 15-01-PLAN.md — Implement centralized `dateUtils.js` with comprehensive timezone boundary tests. ✅
+- [x] 15-02-PLAN.md — Refactor screens, handlers, and widgets to use `dateUtils.js`. ✅
 
 ---
 

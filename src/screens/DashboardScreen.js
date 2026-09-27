@@ -5,6 +5,7 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
 import { LiquidGlassCard } from "../components/LiquidGlassCard";
 import { injectFontFamily } from "../theme/styles";
+import { isSameLocalDay } from "../utils/dateUtils";
 
 const DAYS = 7;
 const dayLabels = ["S", "M", "T", "W", "T", "F", "S"];
@@ -14,15 +15,15 @@ const getDailyCompletions = (tasks) => {
   const buckets = Array.from({ length: DAYS }, (_, i) => {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
-    return d.toDateString();
+    return d;
   }).reverse();
 
-  const counts = buckets.map((dayStr) => {
+  const counts = buckets.map((bucketDate) => {
     return tasks.filter((t) => {
       if (!t.completed) return false;
       const date = t.completedDate || t.completedAt || t.updatedAt;
       if (!date) return false;
-      return new Date(date).toDateString() === dayStr;
+      return isSameLocalDay(date, bucketDate);
     }).length;
   });
 
@@ -39,7 +40,7 @@ const getDailyCompletions = (tasks) => {
   const activeDays = counts.filter((c) => c > 0).length;
   const completionRate = Math.round((activeDays / DAYS) * 100);
 
-  return { labels: buckets.map((b) => dayLabels[new Date(b).getDay()]), counts, max, total, streak, completionRate };
+  return { labels: buckets.map((b) => dayLabels[b.getDay()]), counts, max, total, streak, completionRate };
 };
 
 const computeBirthdayDaysRemaining = (bday) => {

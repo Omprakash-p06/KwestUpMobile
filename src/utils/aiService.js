@@ -9,6 +9,7 @@
 import { initLlama, releaseAllLlama } from "llama.rn";
 import * as FileSystem from "expo-file-system";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getLocalMonthDayString } from "./dateUtils";
 
 // === Model Configuration ===
 const MODEL_FILENAME = "qwen2.5-0.5b-instruct-q4_k_m.gguf";
@@ -427,7 +428,7 @@ Parse this command: "${command}"
   if (lower.includes("birthday") || lower.includes("born") || lower.includes("bday")) {
     // Extract a name: e.g. "Mom's birthday on Oct 10" -> "Mom's birthday" or "Mom"
     let name = command;
-    let dateStr = new Date().toISOString().slice(5, 10); // default Oct/Nov etc.
+    let dateStr = getLocalMonthDayString(); // default MM-DD
 
     // Try finding date like "Oct 10", "10-15", etc.
     const monthNames = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];

@@ -9,6 +9,7 @@ import { LiquidGlassCard } from "../components/LiquidGlassCard";
 import { scheduleDailyTaskNotification, cancelDueDateNotification } from "../utils/notifications";
 import { CustomTextInput } from "../components/CustomTextInput";
 import { injectFontFamily } from "../theme/styles";
+import { getLocalDateString, getYesterdayLocalDateString } from "../utils/dateUtils";
 
 export const DailyTasksScreen = ({
   currentTheme,
@@ -24,7 +25,7 @@ export const DailyTasksScreen = ({
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [tempTime, setTempTime] = useState(new Date());
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getLocalDateString();
 
 
 
@@ -73,9 +74,7 @@ export const DailyTasksScreen = ({
 
           if (newCompletedStatus) {
             totalCompleted += 1;
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayStr = yesterday.toISOString().slice(0, 10);
+            const yesterdayStr = getYesterdayLocalDateString();
 
             if (task.lastCompletedDate === yesterdayStr) {
               streak += 1;

@@ -15,8 +15,8 @@ Requirements for the hardening and production readiness milestone.
 
 ### Date & Timezone Integrity
 
-- [ ] **DATE-01**: Centralize device-local calendar date and timezone calculations in `src/utils/dateUtils.js`.
-- [ ] **DATE-02**: Eliminate all UTC `toISOString().slice(0, 10)` date bugs across `App.js`, `DailyTasksScreen`, `BillingScreen`, `SearchScreen`, and `widget-task-handler.tsx`.
+- [x] **DATE-01**: Centralize device-local calendar date and timezone calculations in `src/utils/dateUtils.js`.
+- [x] **DATE-02**: Eliminate all UTC `toISOString().slice(0, 10)` date bugs across `App.js`, `DailyTasksScreen`, `BillingScreen`, `SearchScreen`, and `widget-task-handler.tsx`.
 
 ### Security & Storage
 
@@ -55,8 +55,8 @@ Requirements for the hardening and production readiness milestone.
 | TEST-01 | Phase 14 | Complete |
 | TEST-02 | Phase 14 | Complete |
 | TEST-03 | Phase 14 | Complete |
-| DATE-01 | Phase 15 | Pending |
-| DATE-02 | Phase 15 | Pending |
+| DATE-01 | Phase 15 | Complete |
+| DATE-02 | Phase 15 | Complete |
 | SEC-01  | Phase 16 | Pending |
 | SEC-02  | Phase 16 | Pending |
 | STORE-01| Phase 16 | Pending |

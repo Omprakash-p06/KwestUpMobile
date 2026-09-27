@@ -7,6 +7,7 @@ import { DailyTasksWidget } from './DailyTasksWidget';
 import { ImportantTasksWidget } from './ImportantTasksWidget';
 import { TasksListWidget } from './TasksListWidget';
 import { STORAGE_VERSION } from '../src/utils/storage';
+import { getLocalDateString } from '../src/utils/dateUtils';
 
 const nameToWidget = {
   FocusTimer: FocusTimerWidget,
@@ -127,7 +128,7 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
                   updatedTasks.push({
                     ...task,
                     completed: nextCompletedState,
-                    completedDate: nextCompletedState ? now.slice(0, 10) : undefined,
+                    completedDate: nextCompletedState ? getLocalDateString() : undefined,
                     completedAt: nextCompletedState ? now : undefined,
                   });
 

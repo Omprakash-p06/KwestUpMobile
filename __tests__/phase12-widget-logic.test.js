@@ -5,6 +5,8 @@
  * and tab switching logic used by the widget system.
  */
 
+import { getLocalDateString } from '../src/utils/dateUtils';
+
 // ---------------------------------------------------------------------------
 // Helpers — extracted pure-function equivalents of handler logic
 // ---------------------------------------------------------------------------
@@ -19,7 +21,7 @@ function toggleTaskInList(tasks, taskId) {
       return {
         ...task,
         completed: nextCompletedState,
-        completedDate: nextCompletedState ? now.slice(0, 10) : undefined,
+        completedDate: nextCompletedState ? getLocalDateString() : undefined,
         completedAt: nextCompletedState ? now : undefined,
       };
     }

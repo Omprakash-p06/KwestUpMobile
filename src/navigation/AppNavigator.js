@@ -17,6 +17,7 @@ import {
   scheduleCustomBirthdayReminders,
 } from "../utils/notifications";
 import { useNavigationState } from "@react-navigation/native";
+import { getLocalDateString } from "../utils/dateUtils";
 
 const Drawer = createDrawerNavigator();
 
@@ -123,7 +124,7 @@ export const AppNavigator = ({
       amount: txData.amount,
       category: txData.category,
       description: txData.description,
-      date: new Date().toISOString().slice(0, 10),
+      date: getLocalDateString(),
       createdAt: new Date().toISOString(),
     };
     const updated = await addTransaction(newTx);

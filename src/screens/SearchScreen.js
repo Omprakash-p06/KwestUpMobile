@@ -6,6 +6,7 @@ import { LiquidGlassBackground } from '../components/LiquidGlassBackground';
 import { CustomTextInput } from '../components/CustomTextInput';
 import { TaskCard } from '../components/TaskCard';
 import { injectFontFamily } from "../theme/styles";
+import { getLocalDateString } from '../utils/dateUtils';
 
 export const SearchScreen = ({
   currentTheme,
@@ -58,7 +59,7 @@ export const SearchScreen = ({
     filteredBirthdays.length > 0;
 
   const handleToggleDailyTask = (taskId) => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getLocalDateString();
     setDailyTasks(prev => prev.map(task => {
       if (task.id === taskId) {
         const newCompletedStatus = !task.completed;
