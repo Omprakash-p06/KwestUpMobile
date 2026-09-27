@@ -40,6 +40,10 @@ import { LiquidGlassBackground } from "./src/components/LiquidGlassBackground";
 import { themes } from "./src/theme/colors";
 import { styles } from "./src/theme/styles";
 import { AppNavigator } from "./src/navigation/AppNavigator";
+import { TaskProvider } from "./src/context/TaskContext";
+import { VaultProvider } from "./src/context/VaultContext";
+import { BillingProvider } from "./src/context/BillingContext";
+import { BirthdayProvider } from "./src/context/BirthdayContext";
 import { initNotesFolder, getAllNotesFromFilesystem, wipeNotesFilesystem, saveNoteFile } from "./src/utils/fileStorage";
 import { migrateToVaultSystem, getVaults, getActiveVaultId, setActiveVaultId } from "./src/utils/vaultService";
 
@@ -1047,60 +1051,81 @@ const App = () => {
         <PaperProvider theme={{ colors: currentTheme }}>
           <LiquidGlassBackground theme={currentTheme}>
             <View style={[styles.container, { backgroundColor: "transparent" }]}>
-              <NavigationContainer theme={{ colors: { background: "transparent" } }}>
-                <AppNavigator
-                currentTheme={currentTheme}
-                tasks={tasks}
-                setTasks={setTasks}
-                taskLists={taskLists}
-                handleCreateList={handleCreateList}
-                handleRenameList={handleRenameList}
-                handleDeleteList={handleDeleteList}
-                handleToggleSubtask={handleToggleSubtask}
-                notes={notes}
-                setNotes={setNotes}
-                handleCompleteTask={handleCompleteTask}
-                toggleTaskComplete={toggleTaskComplete}
-                deleteTask={deleteTask}
-                setSelectedTask={setSelectedTask}
-                setModalVisible={setModalVisible}
-                dailyTasks={dailyTasks}
-                setDailyTasks={setDailyTasks}
-                birthdays={birthdays}
-                setBirthdays={setBirthdays}
-                showConfirmation={showConfirmation}
-                setConfettiVisible={setConfettiVisible}
-                timerDuration={timerDuration}
-                timerRemaining={timerRemaining}
-                isTimerRunning={isTimerRunning}
-                setIsTimerRunning={setIsTimerRunning}
-                setTimerRemaining={setTimerRemaining}
-                setTimerDuration={setTimerDuration}
-                setShowTimerLockout={setShowTimerLockout}
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                userName={userName}
-                setUserName={setUserName}
-                themeMode={themeMode}
-                setThemeMode={setThemeMode}
-                selectedThemeName={selectedThemeName}
-                setSelectedThemeName={setSelectedThemeName}
-                handleResetData={handleResetData}
-                handleExecuteSync={handleExecuteSync}
-                lastSynced={lastSynced}
-                isSyncing={isSyncing}
-                vaults={vaults}
-                setVaults={setVaults}
-                activeVaultId={activeVaultId}
-                handleSetActiveVault={handleSetActiveVault}
-                activeNote={activeNote}
-                setActiveNote={setActiveNote}
-                billingData={billingData}
-                setBillingData={setBillingData}
-                telemetryEnabled={telemetryEnabled}
-                setTelemetryEnabled={setTelemetryEnabled}
-              />
-            </NavigationContainer>
+              <TaskProvider
+                initialTasks={tasks}
+                initialTaskLists={taskLists}
+                initialDailyTasks={dailyTasks}
+                showConfirmationDialog={showConfirmation}
+              >
+                <VaultProvider
+                  initialVaults={vaults}
+                  initialActiveVaultId={activeVaultId}
+                  initialNotes={notes}
+                  initialActiveNote={activeNote}
+                >
+                  <BillingProvider initialBillingData={billingData}>
+                    <BirthdayProvider
+                      initialBirthdays={birthdays}
+                      showConfirmationDialog={showConfirmation}
+                    >
+                      <NavigationContainer theme={{ colors: { background: "transparent" } }}>
+                        <AppNavigator
+                          currentTheme={currentTheme}
+                          tasks={tasks}
+                          setTasks={setTasks}
+                          taskLists={taskLists}
+                          handleCreateList={handleCreateList}
+                          handleRenameList={handleRenameList}
+                          handleDeleteList={handleDeleteList}
+                          handleToggleSubtask={handleToggleSubtask}
+                          notes={notes}
+                          setNotes={setNotes}
+                          handleCompleteTask={handleCompleteTask}
+                          toggleTaskComplete={toggleTaskComplete}
+                          deleteTask={deleteTask}
+                          setSelectedTask={setSelectedTask}
+                          setModalVisible={setModalVisible}
+                          dailyTasks={dailyTasks}
+                          setDailyTasks={setDailyTasks}
+                          birthdays={birthdays}
+                          setBirthdays={setBirthdays}
+                          showConfirmation={showConfirmation}
+                          setConfettiVisible={setConfettiVisible}
+                          timerDuration={timerDuration}
+                          timerRemaining={timerRemaining}
+                          isTimerRunning={isTimerRunning}
+                          setIsTimerRunning={setIsTimerRunning}
+                          setTimerRemaining={setTimerRemaining}
+                          setTimerDuration={setTimerDuration}
+                          setShowTimerLockout={setShowTimerLockout}
+                          searchQuery={searchQuery}
+                          setSearchQuery={setSearchQuery}
+                          userName={userName}
+                          setUserName={setUserName}
+                          themeMode={themeMode}
+                          setThemeMode={setThemeMode}
+                          selectedThemeName={selectedThemeName}
+                          setSelectedThemeName={setSelectedThemeName}
+                          handleResetData={handleResetData}
+                          handleExecuteSync={handleExecuteSync}
+                          lastSynced={lastSynced}
+                          isSyncing={isSyncing}
+                          vaults={vaults}
+                          setVaults={setVaults}
+                          activeVaultId={activeVaultId}
+                          handleSetActiveVault={handleSetActiveVault}
+                          activeNote={activeNote}
+                          setActiveNote={setActiveNote}
+                          billingData={billingData}
+                          setBillingData={setBillingData}
+                          telemetryEnabled={telemetryEnabled}
+                          setTelemetryEnabled={setTelemetryEnabled}
+                        />
+                      </NavigationContainer>
+                    </BirthdayProvider>
+                  </BillingProvider>
+                </VaultProvider>
+              </TaskProvider>
 
 
             {/* Confirmation Modal */}

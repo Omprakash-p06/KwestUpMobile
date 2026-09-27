@@ -8,6 +8,7 @@ import { ImportantTasksWidget } from './ImportantTasksWidget';
 import { TasksListWidget } from './TasksListWidget';
 import { STORAGE_VERSION } from '../src/utils/storage';
 import { getLocalDateString } from '../src/utils/dateUtils';
+import { toggleTask } from '../src/utils/taskMutations';
 
 const nameToWidget = {
   FocusTimer: FocusTimerWidget,
@@ -122,63 +123,11 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
               }
               // -------------------------
 
-              const updatedTasks = [];
-              for (const task of parsed.tasks) {
-                if (task.id === taskId) {
-                  updatedTasks.push({
-                    ...task,
-                    completed: nextCompletedState,
-                    completedDate: nextCompletedState ? getLocalDateString() : undefined,
-                    completedAt: nextCompletedState ? now : undefined,
-                  });
-
-                  if (nextCompletedState && task.recurrence && task.recurrence !== "none") {
-                    const date = new Date(task.dueDate || now);
-                    if (isNaN(date.getTime())) {
-                      date.setTime(Date.now());
-                    }
-
-                    let newTitle = task.title || (task as any).name;
-                    if (task.recurrence === "daily") {
-                      date.setDate(date.getDate() + 1);
-                    } else if (task.recurrence === "weekly") {
-                      date.setDate(date.getDate() + 7);
-                    } else if (task.recurrence === "monthly") {
-                      date.setMonth(date.getMonth() + 1);
-                    } else if (task.recurrence === "progressive") {
-                      date.setDate(date.getDate() + 1);
-                      const match = newTitle.match(/\d+(?!.*\d)/);
-                      if (match) {
-                        const num = parseInt(match[0], 10);
-                        newTitle = newTitle.substring(0, match.index) + (num + 1) + newTitle.substring(match.index + match[0].length);
-                      } else {
-                        newTitle += " - 2";
-                      }
-                    }
-
-                    const spawnedTask = {
-                      ...task,
-                      id: Date.now().toString() + Math.random().toString(36).slice(2),
-                      title: newTitle,
-                      completed: false,
-                      completedDate: null,
-                      completedAt: null,
-                      dueDate: date.toISOString(),
-                      createdAt: now,
-                      updatedAt: now,
-                      notificationId: null,
-                    };
-                    // Instead of pushing the completed parent and the spawned task,
-                    // we actually want the parent to be pushed (it will be filtered out by UI anyway, but we need it for history)
-                    // Wait, App.js removes it. For widget parity, let's also NOT push the parent if it's recurring.
-                    updatedTasks.pop(); // remove the completed parent we just pushed
-                    updatedTasks.push(spawnedTask);
-                  }
-                } else {
-                  updatedTasks.push(task);
-                }
-              }
-              parsed.tasks = updatedTasks;
+              const { updatedTasks } = toggleTask(parsed.tasks, taskId, {
+                now,
+                todayDate: getLocalDateString(),
+              });
+              parsed.tasks = updatedTasks as TaskItemType[];
 
               await AsyncStorage.setItem(storageKey, JSON.stringify(parsed));
               console.log('[WidgetTaskHandler] Task completion status toggled:', taskId);

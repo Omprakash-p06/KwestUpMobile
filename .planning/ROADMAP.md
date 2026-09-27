@@ -246,8 +246,8 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
   2. Shared task mutation module handles task toggling and recurrence spawning for both `App` and `widgets/widget-task-handler.tsx`.
   3. App foreground reload automatically synchronizes in-memory state with widget-driven AsyncStorage mutations.
 **Plans**:
-- [ ] 17-01-PLAN.md — Create shared task mutation and recurrence module with unit test coverage.
-- [ ] 17-02-PLAN.md — Refactor `App.js` to consume domain contexts and subscribe to storage changes.
+- [x] 17-01-PLAN.md — Create shared task mutation and recurrence module with unit test coverage. ✅
+- [x] 17-02-PLAN.md — Refactor `App.js` to consume domain contexts and subscribe to storage changes. ✅
 
 ---
 

@@ -18,6 +18,10 @@ import {
 } from "../utils/notifications";
 import { useNavigationState } from "@react-navigation/native";
 import { getLocalDateString } from "../utils/dateUtils";
+import { useTasks } from "../context/TaskContext";
+import { useVaults } from "../context/VaultContext";
+import { useBilling } from "../context/BillingContext";
+import { useBirthdays } from "../context/BirthdayContext";
 
 const Drawer = createDrawerNavigator();
 
@@ -74,6 +78,41 @@ export const AppNavigator = ({
   setTelemetryEnabled,
 }) => {
   const { width } = useWindowDimensions();
+  const taskCtx = useTasks();
+  const vaultCtx = useVaults();
+  const billingCtx = useBilling();
+  const birthdayCtx = useBirthdays();
+
+  const effectiveTasks = taskCtx?.tasks ?? tasks ?? [];
+  const effectiveSetTasks = taskCtx?.setTasks ?? setTasks;
+  const effectiveTaskLists = taskCtx?.taskLists ?? taskLists ?? [];
+  const effectiveHandleCreateList = taskCtx?.handleCreateList ?? handleCreateList;
+  const effectiveHandleRenameList = taskCtx?.handleRenameList ?? handleRenameList;
+  const effectiveHandleDeleteList = taskCtx?.handleDeleteList ?? handleDeleteList;
+  const effectiveHandleToggleSubtask = taskCtx?.handleToggleSubtask ?? handleToggleSubtask;
+  const effectiveHandleCompleteTask = taskCtx?.handleCompleteTask ?? handleCompleteTask;
+  const effectiveToggleTaskComplete = taskCtx?.toggleTaskComplete ?? toggleTaskComplete;
+  const effectiveDeleteTask = taskCtx?.deleteTask ?? deleteTask;
+  const effectiveSetSelectedTask = taskCtx?.setSelectedTask ?? setSelectedTask;
+  const effectiveSetModalVisible = taskCtx?.setModalVisible ?? setModalVisible;
+  const effectiveDailyTasks = taskCtx?.dailyTasks ?? dailyTasks ?? [];
+  const effectiveSetDailyTasks = taskCtx?.setDailyTasks ?? setDailyTasks;
+
+  const effectiveBirthdays = birthdayCtx?.birthdays ?? birthdays ?? [];
+  const effectiveSetBirthdays = birthdayCtx?.setBirthdays ?? setBirthdays;
+
+  const effectiveVaults = vaultCtx?.vaults ?? vaults ?? [];
+  const effectiveSetVaults = vaultCtx?.setVaults ?? setVaults;
+  const effectiveActiveVaultId = vaultCtx?.activeVaultId ?? activeVaultId ?? "default";
+  const effectiveHandleSetActiveVault = vaultCtx?.handleSetActiveVault ?? handleSetActiveVault;
+  const effectiveNotes = vaultCtx?.notes ?? notes ?? [];
+  const effectiveSetNotes = vaultCtx?.setNotes ?? setNotes;
+  const effectiveActiveNote = vaultCtx?.activeNote ?? activeNote;
+  const effectiveSetActiveNote = vaultCtx?.setActiveNote ?? setActiveNote;
+
+  const effectiveBillingData = billingCtx?.billingData ?? billingData;
+  const effectiveSetBillingData = billingCtx?.setBillingData ?? setBillingData;
+
   const activeRouteName = useNavigationState((state) => {
     if (!state) return null;
     let route = state.routes[state.index];
@@ -84,6 +123,10 @@ export const AppNavigator = ({
   });
 
   const onTaskCreated = (taskData) => {
+    if (taskCtx?.handleSaveTask) {
+      taskCtx.handleSaveTask(taskData);
+      return;
+    }
     const newTask = {
       id: Date.now().toString(),
       title: taskData.title,
@@ -94,29 +137,56 @@ export const AppNavigator = ({
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    setTasks((prev) => [...prev, newTask]);
+    if (effectiveSetTasks) {
+      effectiveSetTasks((prev) => [...prev, newTask]);
+    }
     if (newTask.dueDate) {
-      scheduleDueDateNotification(newTask).then(notificationId => {
-        setTasks(prev => prev.map(t => t.id === newTask.id ? { ...t, notificationId } : t));
+      scheduleDueDateNotification(newTask).then((notificationId) => {
+        if (effectiveSetTasks) {
+          effectiveSetTasks((prev) =>
+            prev.map((t) => (t.id === newTask.id ? { ...t, notificationId } : t))
+          );
+        }
       });
     }
   };
 
   const onBirthdayCreated = async (birthdayData) => {
+    if (birthdayCtx?.handleSaveBirthday) {
+      await birthdayCtx.handleSaveBirthday({
+        name: birthdayData.name,
+        birthDate: birthdayData.date,
+        remindAtTime: "09:00",
+        advanceReminder: "none",
+      });
+      return;
+    }
     const newBday = {
       id: Date.now().toString(),
       name: birthdayData.name,
       birthDate: birthdayData.date,
       remindAtTime: "09:00",
       advanceReminder: "none",
-      notificationIds: []
+      notificationIds: [],
     };
     const notificationIds = await scheduleCustomBirthdayReminders(newBday);
     const finalBday = { ...newBday, notificationIds };
-    setBirthdays((prev) => [...prev, finalBday]);
+    if (effectiveSetBirthdays) {
+      effectiveSetBirthdays((prev) => [...prev, finalBday]);
+    }
   };
 
   const onTransactionCreated = async (txData) => {
+    if (billingCtx?.addTransactionAction) {
+      await billingCtx.addTransactionAction({
+        type: txData.transactionType,
+        amount: txData.amount,
+        category: txData.category,
+        description: txData.description,
+        date: getLocalDateString(),
+      });
+      return;
+    }
     const { addTransaction } = await import("../utils/billingStorage");
     const newTx = {
       id: Date.now().toString(),
@@ -128,7 +198,9 @@ export const AppNavigator = ({
       createdAt: new Date().toISOString(),
     };
     const updated = await addTransaction(newTx);
-    setBillingData(updated);
+    if (effectiveSetBillingData) {
+      effectiveSetBillingData(updated);
+    }
   };
 
   return (
@@ -175,13 +247,13 @@ export const AppNavigator = ({
         <Drawer.Screen name="Dashboard" options={{ title: "Dashboard" }}>
           {() => (
             <DashboardScreen
-              tasks={tasks}
-              notes={notes}
-              birthdays={birthdays}
+              tasks={effectiveTasks}
+              notes={effectiveNotes}
+              birthdays={effectiveBirthdays}
               currentTheme={currentTheme}
-              setSelectedTask={setSelectedTask}
-              setModalVisible={setModalVisible}
-              toggleTaskComplete={toggleTaskComplete}
+              setSelectedTask={effectiveSetSelectedTask}
+              setModalVisible={effectiveSetModalVisible}
+              toggleTaskComplete={effectiveToggleTaskComplete}
             />
           )}
         </Drawer.Screen>
@@ -189,10 +261,10 @@ export const AppNavigator = ({
           {() => (
             <DailyTasksScreen
               currentTheme={currentTheme}
-              setSelectedTask={setSelectedTask}
-              setModalVisible={setModalVisible}
-              dailyTasks={dailyTasks}
-              setDailyTasks={setDailyTasks}
+              setSelectedTask={effectiveSetSelectedTask}
+              setModalVisible={effectiveSetModalVisible}
+              dailyTasks={effectiveDailyTasks}
+              setDailyTasks={effectiveSetDailyTasks}
               showConfirmation={showConfirmation}
             />
           )}
@@ -201,10 +273,10 @@ export const AppNavigator = ({
           {() => (
             <BirthdaysScreen
               currentTheme={currentTheme}
-              setSelectedTask={setSelectedTask}
-              setModalVisible={setModalVisible}
-              birthdays={birthdays}
-              setBirthdays={setBirthdays}
+              setSelectedTask={effectiveSetSelectedTask}
+              setModalVisible={effectiveSetModalVisible}
+              birthdays={effectiveBirthdays}
+              setBirthdays={effectiveSetBirthdays}
               showConfirmation={showConfirmation}
               setConfettiVisible={setConfettiVisible}
             />
@@ -214,8 +286,8 @@ export const AppNavigator = ({
           {() => (
             <BillingScreen
               currentTheme={currentTheme}
-              billingData={billingData}
-              setBillingData={setBillingData}
+              billingData={effectiveBillingData}
+              setBillingData={effectiveSetBillingData}
               showConfirmation={showConfirmation}
             />
           )}
@@ -223,19 +295,19 @@ export const AppNavigator = ({
         <Drawer.Screen name="Tasks" options={{ title: "Task List" }}>
           {() => (
             <TaskListScreen
-              tasks={tasks}
-              setTasks={setTasks}
-              taskLists={taskLists}
-              handleCreateList={handleCreateList}
-              handleRenameList={handleRenameList}
-              handleDeleteList={handleDeleteList}
-              handleToggleSubtask={handleToggleSubtask}
-              handleCompleteTask={handleCompleteTask}
-              toggleTaskComplete={toggleTaskComplete}
-              deleteTask={deleteTask}
+              tasks={effectiveTasks}
+              setTasks={effectiveSetTasks}
+              taskLists={effectiveTaskLists}
+              handleCreateList={effectiveHandleCreateList}
+              handleRenameList={effectiveHandleRenameList}
+              handleDeleteList={effectiveHandleDeleteList}
+              handleToggleSubtask={effectiveHandleToggleSubtask}
+              handleCompleteTask={effectiveHandleCompleteTask}
+              toggleTaskComplete={effectiveToggleTaskComplete}
+              deleteTask={effectiveDeleteTask}
               currentTheme={currentTheme}
-              setSelectedTask={setSelectedTask}
-              setModalVisible={setModalVisible}
+              setSelectedTask={effectiveSetSelectedTask}
+              setModalVisible={effectiveSetModalVisible}
               showConfirmation={showConfirmation}
             />
           )}
@@ -244,17 +316,17 @@ export const AppNavigator = ({
           {() => (
             <NotesScreen
               currentTheme={currentTheme}
-              notes={notes}
-              setNotes={setNotes}
+              notes={effectiveNotes}
+              setNotes={effectiveSetNotes}
               showConfirmation={showConfirmation}
-              tasks={tasks}
-              setTasks={setTasks}
-              vaults={vaults}
-              setVaults={setVaults}
-              activeVaultId={activeVaultId}
-              handleSetActiveVault={handleSetActiveVault}
-              activeNote={activeNote}
-              setActiveNote={setActiveNote}
+              tasks={effectiveTasks}
+              setTasks={effectiveSetTasks}
+              vaults={effectiveVaults}
+              setVaults={effectiveSetVaults}
+              activeVaultId={effectiveActiveVaultId}
+              handleSetActiveVault={effectiveHandleSetActiveVault}
+              activeNote={effectiveActiveNote}
+              setActiveNote={effectiveSetActiveNote}
               onTaskCreated={onTaskCreated}
               onBirthdayCreated={onBirthdayCreated}
             />
@@ -299,38 +371,44 @@ export const AppNavigator = ({
           {() => (
             <SearchScreen
               currentTheme={currentTheme}
-              setSelectedTask={setSelectedTask}
-              setModalVisible={setModalVisible}
-              dailyTasks={dailyTasks}
-              setDailyTasks={setDailyTasks}
-              birthdays={birthdays}
-              tasks={tasks}
-              notes={notes}
+              setSelectedTask={effectiveSetSelectedTask}
+              setModalVisible={effectiveSetModalVisible}
+              dailyTasks={effectiveDailyTasks}
+              setDailyTasks={effectiveSetDailyTasks}
+              birthdays={effectiveBirthdays}
+              tasks={effectiveTasks}
+              notes={effectiveNotes}
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
-              handleCompleteTask={handleCompleteTask}
-              toggleTaskComplete={toggleTaskComplete}
-              deleteTask={deleteTask}
+              handleCompleteTask={effectiveHandleCompleteTask}
+              toggleTaskComplete={effectiveToggleTaskComplete}
+              deleteTask={effectiveDeleteTask}
             />
           )}
         </Drawer.Screen>
       </Drawer.Navigator>
 
-      {!activeNote && activeRouteName !== "Settings" && (
+      {!effectiveActiveNote && activeRouteName !== "Settings" && (
         <AIAssistant
           currentTheme={currentTheme}
-          noteContent={activeNote ? activeNote.content : ""}
-          noteTitle={activeNote ? activeNote.title : ""}
+          noteContent={effectiveActiveNote ? effectiveActiveNote.content : ""}
+          noteTitle={effectiveActiveNote ? effectiveActiveNote.title : ""}
           onTasksExtracted={(extractedTaskTitles) => {
-            const newTasks = extractedTaskTitles.map((title) => ({
-              id: Date.now().toString() + Math.random().toString(36).slice(2),
-              title,
-              listId: "default_inbox",
-              completed: false,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            }));
-            setTasks((prev) => [...prev, ...newTasks]);
+            if (taskCtx?.handleSaveTask) {
+              extractedTaskTitles.forEach((title) => {
+                taskCtx.handleSaveTask({ title, listId: "default_inbox", completed: false });
+              });
+            } else if (effectiveSetTasks) {
+              const newTasks = extractedTaskTitles.map((title) => ({
+                id: Date.now().toString() + Math.random().toString(36).slice(2),
+                title,
+                listId: "default_inbox",
+                completed: false,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              }));
+              effectiveSetTasks((prev) => [...prev, ...newTasks]);
+            }
           }}
           onTaskCreated={onTaskCreated}
           onBirthdayCreated={onBirthdayCreated}

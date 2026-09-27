@@ -26,8 +26,8 @@ Requirements for the hardening and production readiness milestone.
 
 ### Architecture & State
 
-- [ ] **ARCH-01**: Decouple monolithic state and callbacks from `App.js` into dedicated domain stores/context providers.
-- [ ] **ARCH-02**: Unify task recurrence and completion mutations into a single authoritative data mutation layer shared between app and home-screen widgets.
+- [x] **ARCH-01**: Decouple monolithic state and callbacks from `App.js` into dedicated domain stores/context providers.
+- [x] **ARCH-02**: Unify task recurrence and completion mutations into a single authoritative data mutation layer shared between app and home-screen widgets.
 
 ### Local AI Pipeline
 
@@ -60,8 +60,8 @@ Requirements for the hardening and production readiness milestone.
 | SEC-01  | Phase 16 | Complete |
 | SEC-02  | Phase 16 | Complete |
 | STORE-01| Phase 16 | Complete |
-| ARCH-01 | Phase 17 | Pending |
-| ARCH-02 | Phase 17 | Pending |
+| ARCH-01 | Phase 17 | Complete |
+| ARCH-02 | Phase 17 | Complete |
 | AI-01   | Phase 18 | Pending |
 | AI-02   | Phase 18 | Pending |
 | OBS-01  | Phase 19 | Pending |
