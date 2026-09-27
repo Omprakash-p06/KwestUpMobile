@@ -43,4 +43,20 @@ module.exports = [
       'no-console': 'warn',
     },
   },
+  {
+    files: ['__tests__/**/*.{js,jsx}', '*.test.{js,jsx}'],
+    languageOptions: {
+      globals: {
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        jest: 'readonly',
+      },
+    },
+  },
 ];
