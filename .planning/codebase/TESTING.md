@@ -4,41 +4,75 @@
 
 ## Framework & Config (Jest + Babel, presets, mocks)
 
-- **Runner:** Jest `^29.7.0` via `jest-expo@~53.0.0`, preset `jest-expo/android` (`jest.config.js:4`), pulling the Android preset's `setupFiles` plus `<rootDir>/__tests__/setup/jest.setup.js` (`jest.config.js:5-8`).
-- **Transform:** `babel-jest` through `babel.config.js` (`babel-preset-expo` + `react-native-reanimated/plugin`). `transformIgnorePatterns` (`jest.config.js:9-11`) whitelists RN/Expo/navigation/Reanimated/Paper/SVG/modal/confetti-cannon/`llama.rn`/`react-native-android-widget` for transformation — required for headless Android-preset runs.
-- **Module resolution:** `moduleFileExtensions` prioritizes `android.js/jsx/ts/tsx` before plain `js/jsx/ts/tsx` (`jest.config.js:12-23`), matching the Android widget + `widgets/widget-task-handler.tsx` target.
-- **Discovery:** `testMatch: ['**/__tests__/**/*.test.[jt]s?(x)']` (`jest.config.js:24`) — only files inside `__tests__/` run. `collectCoverageFrom: ['src/**/*.{js,jsx,ts,tsx}', '!src/**/*.styles.js']` (`jest.config.js:25-29`).
-- **Global mocks (`__tests__/setup/jest.setup.js`):** official `AsyncStorage` in-memory mock; `expo-file-system` virtual FS (`Map` + `mockNormalizePath`, seeded `/mock-docs/`, `/mock-cache/`, helpers `__inMemoryFS`/`__resetFS`); `llama.rn` (`initLlama` → mock context with `completion`/`release`/`tokenize`); `react-native-android-widget` (`requestWidgetUpdate`, `registerWidgetTaskHandler`, `FlexWidget`/`TextWidget`/`IconWidget` stubs); `expo-notifications`, `expo-haptics`, `expo-sharing`, `expo-document-picker`, `expo-camera`; `react-native-reanimated`.
-- **Test conventions:** `import` source relatively (`../../src/utils/...`); `beforeEach` clears `AsyncStorage` (+ `FileSystem.__resetFS()` where FS is touched) and `jest.clearAllMocks()`; deterministic time via injected `now`/`todayDate` options (`taskMutations` functions accept `{ now, todayDate }`); provider tests use `react-test-renderer` + `await act(async () => …)`.
+- **Runner:** Jest 29 (`jest: ^29.7.0`, `babel-jest: ^29.7.0`, `@types/jest: ^29.5.14` in `package.json` devDependencies) with `jest-expo ~53.0.0`.
+- **Preset:** `jest-expo/android` — `jest.config.js:1-4` imports `jest-expo/android/jest-preset.js` and spreads its `setupFiles`, then appends `<rootDir>/__tests__/setup/jest.setup.js`.
+- **Babel:** `babel-preset-expo` (`babel.config.js`); production strips `console.log/info/debug` via `babel-plugin-transform-remove-console` (keeps `error/warn`).
+- **Test discovery:** `testMatch: ['**/__tests__/**/*.test.[jt]s?(x)']` (`jest.config.js:24`) — only files under `__tests__/` run. `testPathIgnorePatterns` is not customized.
+- **Module resolution:** `moduleFileExtensions` prioritizes `android.js/android.jsx/android.ts/android.tsx` before `js/jsx/ts/tsx/json/node` (`jest.config.js:12-23`).
+- **Transform:** `transformIgnorePatterns` whitelists RN/Expo/Llama/Widget packages so they transform under Jest (`jest.config.js:9-11`).
+- **Coverage collection:** `collectCoverageFrom: ['src/**/*.{js,jsx,ts,tsx}', '!src/**/*.styles.js', '!**/node_modules/**']` (`jest.config.js:25-29`); styles files excluded.
+- **Global mocks — `__tests__/setup/jest.setup.js` (208 lines):**
+  1. `@react-native-async-storage/async-storage` → official in-memory mock.
+  2. `expo-file-system` → in-memory virtual FS (`Map` + `mockNormalizePath`, seeded `/mock-docs/`, `/mock-cache/`; exposes `__inMemoryFS`/`__resetFS`; implements `getInfoAsync/makeDirectoryAsync/writeAsStringAsync/readAsStringAsync/deleteAsync/readDirectoryAsync/copyAsync/moveAsync`).
+  3. `llama.rn` → `initLlama` resolves `{completion, release, tokenize, detokenize}`; `releaseAllLlama` resolves `true`.
+  4. `react-native-android-widget` → `requestWidgetUpdate` resolves `true`, `registerWidgetTaskHandler` noop, string component stubs.
+  5. `expo-notifications` / `expo-haptics` / `expo-sharing` / `expo-document-picker` / `expo-camera` / `expo-clipboard` / `@expo/vector-icons` (React `Text`-based `MockIcon`) / `react-native-reanimated` (official `react-native-reanimated/mock`).
+- **Mock hygiene convention:** suites reset state in `beforeEach` — `AsyncStorage.clear()` + `FileSystem.__resetFS()` (see `__tests__/setup/jest.setup.test.js:7-12`); AI suites `jest.useRealTimers(); await unloadModel(); jest.clearAllMocks(); initLlama.mockReset(); releaseAllLlama.mockReset()` (see `__tests__/unit/aiService.test.js:33-41`). Console fns stubbed/restored per-test in logger-adjacent suites (`__tests__/unit/logger.test.js:20-42`).
 
-## Test Suites
+## Test Suites (table: suite | path | count | what it covers)
+
+Counts are `it(`/`test(` occurrences per file (headers verified; total ≈ 174–179).
 
 | Suite | Path | Count | What it covers |
-|---|---|---:|---|
-| On-device AI service (Phase 18) | `__tests__/unit/aiService.test.js` | 40 | Upstream model commit pinning, SHA-256 verification, size integrity, corruption deletion, coalescing Promise mutex, `getModelContextStatus`, `handleAppStateChange` background unloader, idle timeout unloader, heuristic task extraction, heuristic summarization, inference fallbacks, chunked streaming SHA-256 hash, race condition handling, AppState unsubscribe lifecycle |
-| Date utils (Phase 15) | `__tests__/unit/dateUtils.test.js` | 28 | `getLocalDateString` (default-today, local fields, epoch ms, `''` on invalid, leap years), `parseLocalDate` (local midnight, leap day, Date/number cloning, invalid inputs), yesterday/tomorrow boundaries, month/day formatting, `isSameLocalDay` |
-| Sync service validation + handshake (Phase 16) | `__tests__/unit/syncService.test.js` | 16 | `validateSyncConfig` (IPv4/hostname/localhost accept, octet rejection, port 1–65535, token ≥6 chars), `validateSyncPayload` (defaults `taskLists`, rejects null/missing arrays), `pingSyncServer`, `performSync` (offline error, Bearer auth, merged result) |
-| Task mutations (Phase 17) | `__tests__/unit/taskMutations.test.js` | 15 | `toggleTask` non-recurring complete/incomplete, daily/weekly/monthly recurrence date math + parent replacement, progressive title increment (`Day 1→2`), invalid-`dueDate` fallback; `completeTask`, `saveTask`, `deleteTask`, `toggleSubtask`, list create/rename/delete |
-| Vault + file storage | `__tests__/unit/vaultAndFileStorage.test.js` | 11 | `getVaultPath` layout, `ensureVaultsDir`, vault create/active/rename/delete (+FS dir lifecycle), note save with title sanitization, note read/delete, folder delete, `getAllNotesFromFilesystem` scan |
-| Export/import + crypto envelope (Phase 16) | `__tests__/unit/exportImportService.test.js` | 10 | `encryptBackup`/`decryptBackup` round-trip, v2 envelope (`v:2`, PBKDF2-SHA256, 100k iters, 32-char hex salt/iv), random salt/IV uniqueness, legacy v1 static-salt fallback; `exportArchive` share sheet, `importArchive` restore |
-| Widget logic (Phase 12) | `__tests__/phase12-widget-logic.test.js` | 10 | Local pure-function equivalents tagged `[12-P1]`–`[12-P10]`: toggle complete/uncomplete, tab guard, uncompleted-first sort, 8-task slice cap, important-only filter capped at 5 |
-| Storage migration + vault fallback (Phase 16) | `__tests__/unit/storageMigration.test.js` | 9 | `isUserDataKey` classification, `clearAllCaches` preserving user data/telemetry/AI-model keys, `migrateUserDataIfNeeded` highest-legacy-wins, legacy `v5.0` vault/active-id auto-migration |
-| Task context provider (Phase 17) | `__tests__/unit/taskContext.test.js` | 5 | `TaskProvider` initial-tasks render, `toggleTaskComplete`, `handleSaveTask`, `deleteTask`, `refreshTasksFromStorage` widget-parity sync via `react-test-renderer` + consumer hook |
-| Mock harness smoke | `__tests__/setup/jest.setup.test.js` | 5 | `AsyncStorage` set/get/remove/`getAllKeys`, virtual FS mkdir/write/read/ls/delete, `llama.rn` init/completion/release, `requestWidgetUpdate` passthrough |
-| AIAssistant smoke (Phase 18) | `__tests__/unit/aiAssistant-smoke.test.js` | 1 | Component module clean import and function export verification |
-| **Total** | 11 suites | **150** | |
+|---|---|---|---|
+| aiService (pipeline hardening + memory lifecycle) | `__tests__/unit/aiService.test.js` | 40 | Model pinning constants, `verifyModelIntegrity`/`isModelDownloaded`, `loadModel` mutex, idle-unload/AppState lifecycle, heuristic extractors/summarizers, inference-fallback resilience, SHA-256 default path, unload-while-inflight race, native-release on inference error, numbered-list precision, AppState subscription lifecycle |
+| dateUtils | `__tests__/unit/dateUtils.test.js` | 28 | `getLocalDateString`, `parseLocalDate` (strict), yesterday/tomorrow helpers, month/month-day strings, `isSameLocalDay` |
+| logger | `__tests__/unit/logger.test.js` | 19 | Dev-mode emission per level, prod suppression of debug/info, ring-buffer FIFO eviction at 50, `babel.config.js` strip-config verification |
+| syncService | `__tests__/unit/syncService.test.js` | 16 | `validateSyncConfig`, `validateSyncPayload`, `pingSyncServer`, `performSync` |
+| taskMutations | `__tests__/unit/taskMutations.test.js` | 15 | `toggleTask` + `calculateNextRecurrence`, `completeTask`, `saveTask`, `deleteTask`, `toggleSubtask`, task-list CRUD |
+| vault + fileStorage | `__tests__/unit/vaultAndFileStorage.test.js` | 11 | `vaultService` path/dir init, vault CRUD + active-vault state, `fileStorage` note persistence + filename sanitization |
+| export/import | `__tests__/unit/exportImportService.test.js` | 10 | `encryptBackup`/`decryptBackup` round-trip, `exportArchive` pipeline, `importArchive` pipeline |
+| ErrorBoundary | `__tests__/unit/errorBoundary.test.js` | 10 | Crash fallback render, retry reset, copy-report path, details toggle, themed variants |
+| widget logic (Phase 12) | `__tests__/phase12-widget-logic.test.js` | 10 | Pure-function equivalents of widget handler: toggle-in-list, tab validation, sort/slice (limit 8) |
+| storage migration | `__tests__/unit/storageMigration.test.js` | 9 | `isUserDataKey` filter, `clearAllCaches`, `migrateUserDataIfNeeded`, vault version-migration + key fallback |
+| TaskContext provider | `__tests__/unit/taskContext.test.js` | 5 | Provider state sync, mutation write-through paths |
+| AIAssistant smoke | `__tests__/unit/aiAssistant-smoke.test.js` | 1 | Component import/render smoke (`C-2`) |
+| jest.setup harness self-test | `__tests__/setup/jest.setup.test.js` | ~5 | AsyncStorage mock, virtual FS, llama/widget/notification mocks sanity (file is 87 lines; also matched by `testMatch` so it runs as a suite) |
 
 ## Coverage & CI Gates
 
-- **CI (`.github/workflows/ci.yml`):** Runs on `push`/`pull_request` against `main` and `development`. Executes `npm run lint` followed by `npm test -- --ci --maxWorkers=2 --coverage` on Node 20.
-- **Local gate (`check.bat`):** Runs `npm run lint` and `npm test`, aborting (`exit /b 1`) on any failure.
+- **CI — `.github/workflows/ci.yml` (`CI Pipeline (Lint & Test)`):** triggers on `push`/`pull_request` to `main` + `development`; `ubuntu-latest`, Node 20 with npm cache; steps: `npm install` → `npm run lint` → `npm test -- --ci --maxWorkers=2 --coverage`. There is no coverage-threshold gate (`--coverage` reports only) and no `tsc` step.
+- **Security scan — `.github/workflows/semgrep.yml`:** Semgrep `config: auto` on the same branch triggers; repo-local suppressions in `.semgrepignore`.
+- **Coverage artifacts:** `coverage/` is present locally (`clover.xml`, `coverage-final.json`, `lcov.info`, `lcov-report/`); `collectCoverageFrom` covers `src/**` except `*.styles.js`.
+- **Local gate — `check.bat`:** verifies `node`/`npm`/`git`/`expo` exist, then `npm run lint` (fail → exit 1), then `npm test` (fail → exit 1). Run before pushing; mirrors CI without `--coverage`.
 
-## How to Run
+## How to Run (commands from package.json / check.bat)
 
-```bash
-npm test               # Jest all 10 suites, headless Android preset (--passWithNoTests)
-npm run test:watch     # Jest in interactive watch mode
-npm run test:coverage  # Jest with coverage collection
-npm run lint           # ESLint across codebase
-check.bat              # Full local toolchain check -> lint -> test validation
+```bat
+npm test                  REM all suites headless (jest --passWithNoTests)
+npm run test:watch        REM watch mode (jest --watch)
+npm run test:coverage     REM with coverage (jest --coverage)
+npm run lint              REM ESLint over repo (dual .eslintrc.js + eslint.config.js)
+check.bat                 REM env checks + lint + full test suite (pre-push gate)
 ```
+
+Single-suite runs (not in scripts, standard Jest):
+
+```bat
+npx jest __tests__/unit/aiService.test.js
+npx jest __tests__/unit/logger.test.js --coverage --collectCoverageFrom="src/utils/logger.js"
+```
+
+## Gaps / Notes
+
+- **No E2E / component coverage beyond smoke:** only `aiAssistant-smoke.test.js` (1 test) and `errorBoundary.test.js` touch components; no Detox/Maestro/Expo E2E harness. Screens (`src/screens/*`), navigation (`src/navigation/AppNavigator.js`), and most `src/components/*` are untested.
+- **Thin provider coverage:** `taskContext.test.js` has 5 tests vs 366 lines of `src/context/TaskContext.js` (debounced write-through, hydration races untested); `VaultContext`/`BillingContext`/`BirthdayContext` have no dedicated suites (they still use raw `console.*` — see CONVENTIONS.md).
+- **Untested services:** `diagnostics.js`, `notifications.js`, `billingStorage.js`, `billingNotifications.js`, `vaultImport.js` have no suites; `storage.js` only via migration tests.
+- **Widget tests are duplicates, not imports:** `phase12-widget-logic.test.js` re-implements handler pure functions locally instead of importing `widgets/widget-task-handler.tsx` — logic drift will not be caught. `taskMutations.js` (shared engine) *is* imported and tested — prefer that pattern.
+- **Timers are real by default:** AI suites explicitly call `jest.useRealTimers()`; no fake-timer discipline for debounce/idle-timeout paths (`IDLE_UNLOAD_TIMEOUT_MS` 5 min never exercised under fake timers).
+- **`jest.setup.test.js` runs as a suite** (matches `testMatch`) — intentional harness self-test, not stray config; keep it green when editing `jest.setup.js`.
+- **Line-count reference (largest suites):** `aiService.test.js` 659 lines, `errorBoundary.test.js` 304, `taskMutations.test.js` 307, `logger.test.js` 257, `syncService.test.js` 217.
+
+---
+
+*Testing analysis: 2026-09-28*

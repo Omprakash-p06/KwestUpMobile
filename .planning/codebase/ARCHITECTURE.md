@@ -1,102 +1,96 @@
 # Architecture
 
-**Analysis Date:** 2026-09-28
+**Analysis Date:** 2026-09-28 — Phase 19 of 19 complete (Milestone 2 complete, 100%).
 
 ## Overview
 
-KwestUp Mobile is a local-first, privacy-preserving productivity app built on React Native / Expo SDK 53. All user data lives on-device — tasks, habits, birthdays, billing, and markdown notes in per-vault folders under `documentDirectory/Notes/Vaults/` — with no mandatory cloud account or remote backend. The only network paths are opt-in and device-local: LAN sync to a user-run PC sync server (`POST /sync` over HTTP with bearer token), optional anonymous telemetry (opt-in gated), GitHub release checks, and a one-time HuggingFace GGUF model download for fully on-device LLM inference.
+KwestUpMobile is a local-first, privacy-preserving personal productivity app built on React Native / Expo (managed workflow, `registerRootComponent` in `index.js`). All user data lives on-device: structured state in `AsyncStorage` under versioned keys (`kwestup_*_${STORAGE_VERSION}`, currently `v7.0` in `src/utils/storage.js`), note markdown as real files under `Notes/Vaults/<vaultId>/` via `expo-file-system`, and an optional on-device LLM (Qwen2.5-0.5B GGUF via `llama.rn`) for summarization/task extraction. There are no cloud accounts or third-party backends; the only network paths are opt-in LAN sync to a user-run PC server (`src/utils/syncService.js`), an opt-in anonymous launch telemetry event, a GitHub-releases update check, and the one-time HuggingFace model download — diagnostics probes are dev-gated (`__DEV__`).
 
-State architecture employs a modular domain provider layer: pure task transformations live in `src/utils/taskMutations.js` (exported pure functions) and are shared by both `src/context/TaskContext.js` (React provider with notification side-effects) and `widgets/widget-task-handler.tsx` (headless widget writer). Four domain context providers (`TaskContext`, `VaultContext`, `BillingContext`, `BirthdayContext`) wrap the tree in `App.js`, and `src/navigation/AppNavigator.js` wires screens to these contexts with backward-compatible prop fallbacks (`taskCtx?.x ?? props`). Persistence is cleanly segregated: structured data as a single JSON blob in AsyncStorage (`kwestup_data_<STORAGE_VERSION>`), notes as `.md` files on `expo-file-system`, billing under its own key, and timer state under a decoupled low-overhead key.
+Composition root is `App.js` (1067 lines): it bootstraps fonts/theme/vaults/telemetry, owns non-task domains (birthdays, notes handles, theme, timer, userName, `lastSynced`), and mounts providers in strict nesting order `TaskProvider > VaultProvider > BillingProvider > BirthdayProvider > NavigationContainer(AppNavigator)`. `src/components/ErrorBoundary.js` wraps the entire provider+navigation tree inside `LiquidGlassBackground`, receiving `currentTheme` + explicit `isDark={resolvedThemeMode !== "light"}` so the crash fallback renders correctly even when theme objects are unavailable.
 
 ## Layers
 
-### UI — Screens + Components + Navigation + Theme
+**UI (`src/screens/`, `src/components/`, `src/navigation/`, `src/theme/`):**
+- 9 drawer screens (`DashboardScreen`, `DailyTasksScreen`, `TaskListScreen`, `NotesScreen`, `BirthdaysScreen`, `BillingScreen`, `FocusTimerScreen`, `SearchScreen`, `SettingsScreen`) registered in `src/navigation/AppNavigator.js` via `createDrawerNavigator`, with `CustomDrawerContent` (`src/navigation/CustomDrawerContent.js`) and transparent glass headers.
+- Reusable primitives in `src/components/` (`CustomButton`, `CustomCard`, `CustomTextInput`, `CustomDateTimePicker`, `CustomSegmentedButtons`, `CustomSwitch`, `CustomBadge`, `TaskCard`, `TaskEditModal`, `TimerLockoutOverlay`, `LiquidGlassBackground`, `LiquidGlassCard`, `QRScannerModal`, `AIAssistant`, `ErrorBoundary`).
+- `TaskEditModal` is mounted once in `AppNavigator` (not per-screen) and bound to the shared `TaskContext` selection state (`selectedTask`/`modalVisible`); `AIAssistant` floating entry is also mounted in `AppNavigator` and hidden while a note is open or on Settings.
+- Theming: `src/theme/colors.js` (`themes[name][mode]`, modes `light|dark|amoled`, names `clean|blue|green|purple|dribbble`) + `src/theme/styles.js`; resolved with `resolveThemeMode`/`resolveThemeName` fallbacks in `App.js`.
 
-- Drawer navigation (`@react-navigation/drawer` v6, `front` type) defined in `src/navigation/AppNavigator.js`; 9 routes: Dashboard, Daily, Birthdays, Billing, Tasks, Notes, Focus, Settings, Search. Custom drawer chrome in `src/navigation/CustomDrawerContent.js` (themed header, avatar initials, light/dark/amoled cycle toggle). `AppNavigator` resolves every domain slice as context-first with prop fallback (`src/navigation/AppNavigator.js`), so screens work seamlessly whether state comes from providers or legacy props.
-- 9 screens in `src/screens/`: `DashboardScreen.js`, `DailyTasksScreen.js`, `BirthdaysScreen.js`, `BillingScreen.js`, `TaskListScreen.js`, `NotesScreen.js`, `FocusTimerScreen.js`, `SettingsScreen.js`, `SearchScreen.js`. Screens are presentational and callback-driven; they receive state and setters as props and own no persistence.
-- 14 reusable components in `src/components/`: primitives (`CustomButton.js`, `CustomTextInput.js`, `CustomCard.js`, `CustomBadge.js`, `CustomSwitch.js`, `CustomSegmentedButtons.js`, `CustomDateTimePicker.js`), domain (`TaskCard.js`, `TaskEditModal.js`, `TimerLockoutOverlay.js`), AI (`AIAssistant.js`, `QRScannerModal.js` for sync-token scan), theming (`LiquidGlassBackground.js`, `LiquidGlassCard.js`).
-- Theming via `src/theme/colors.js` (`themes[name][mode]`, 5 names × 3 modes) and `src/theme/styles.js`. Fonts loaded in `App.js` (`expo-font` + `@expo-google-fonts/*`): Inter, HankenGrotesk, JetBrainsMono. Provider stack in `App.js`: `GestureHandlerRootView` → `StatusBar` → `SafeAreaProvider` → `PaperProvider` → `LiquidGlassBackground` → `TaskProvider` → `VaultProvider` → `BillingProvider` → `BirthdayProvider` → `NavigationContainer` → `AppNavigator`, plus global modals (confirmation, name onboarding, telemetry opt-in, `TaskEditModal`, `TimerLockoutOverlay`, confetti).
-- Floating `AIAssistant` overlay rendered by `AppNavigator.js` on every route except Settings and when no note is open; prefers context actions (`taskCtx.handleSaveTask`, `birthdayCtx.handleSaveBirthday`, `billingCtx.addTransactionAction`) with legacy prop-callback fallbacks. Unloads native model context upon unmount.
+**State (`src/context/` + `App.js` local state):**
+- `TaskContext` (`src/context/TaskContext.js`) — sole writer of `tasks`/`taskLists`/`dailyTasks`. Thin React wrapper over the pure engine `src/utils/taskMutations.js`; exposes `toggleTaskComplete`, `handleCompleteTask`, `handleSaveTask`, `deleteTask`, `handleToggleSubtask`, `handleCreateList/RenameList/DeleteList`, plus `refreshTasksFromStorage` on AppState `active`. Persists via 500 ms debounced read-modify-write (`writeTaskSnapshot`) with a boot guard (`tasksHydratedRef`) so empty boot state can never wipe real storage.
+- `VaultContext` (`src/context/VaultContext.js`) — `vaults`, `activeVaultId`, `notes`, `activeNote`; `handleSetActiveVault` persists + reloads notes from filesystem; `loadVaultNotes`/`refreshVaults`.
+- `BillingContext` (`src/context/BillingContext.js`) — sole writer of billing state via `updateBillingDataState` (which calls `saveBillingData`); action wrappers (`addTransactionAction`, `upsertBudgetAction`, `addRecurringBillAction`, …) over `src/utils/billingStorage.js`.
+- `BirthdayContext` (`src/context/BirthdayContext.js`) — `birthdays` + `handleSaveBirthday`/`handleDeleteBirthday`, each cancelling/rescheduling `expo-notifications` IDs via `src/utils/notifications.js`.
+- `App.js` retains ownership of non-task domains (`birthdays` array itself is still App state passed as `initialBirthdays`, plus `notes` handles, theme, timer, `userName`, billing boot load, sync/reset handlers) and merges its periodic save onto stored JSON (`{...stored, ...dataToSave}`) so it never clobbers TaskContext's eager task writes. Timer state is decoupled to its own key (`kwestup_timer_state_*`).
 
-### State — Four Domain Contexts
+**Services (`src/utils/` domain engines):**
+- `taskMutations.js` — pure, framework-agnostic mutation engine (`toggleTask`, `completeTask`, `saveTask`, `deleteTask`, `toggleSubtask`, `createTaskList`, `renameTaskList`, `deleteTaskList`, `calculateNextRecurrence`). Shared verbatim by `TaskContext` and the headless widget handler. Recurrence modes: `daily|weekly|monthly|progressive` (progressive also increments trailing number in title).
+- `dateUtils.js` — centralized local-date engine (`getLocalDateString`, `parseLocalDate` strict `YYYY-MM-DD`→local-midnight, `getYesterday/TomorrowLocalDateString`, `getLocalMonthString`, `getLocalMonthDayString`, `isSameLocalDay`). Eliminates UTC-slicing bugs; used by mutations, streak reset, AI fallbacks, sync payloads.
+- `aiService.js` — on-device LLM lifecycle (`llama.rn` `initLlama`/`releaseAllLlama`, 2048 ctx, 2 threads, CPU-only), pinned model (`MODEL_PINNED_COMMIT`, `MODEL_EXPECTED_SHA256`, `MODEL_EXPECTED_SIZE` 491400032) downloaded resumably from HuggingFace with post-download SHA-256 gate, 5-min idle unload, AppState auto-unload (`subscribeAppState`/`unsubscribeAppState` wired from `App.js`), generation counter against unload-while-inflight races, plus heuristic fallbacks (`extractTasksFromNoteHeuristic`, `summarizeNoteHeuristic`, keyword/regex `parseGlobalCommand` fallback) so every AI entry works offline.
+- `notifications.js` / `billingNotifications.js` — `expo-notifications` scheduling for due-date, daily-task, custom birthday (rescheduled for this+next year on boot/sync), and recurring-bill reminders.
+- `diagnostics.js` — dev-gated probes (`runDeviceDiagnostics`, `runNetworkDiagnostics` against httpbin, skipped in release), GitHub-releases `checkForUpdates` (prompts via App confirmation modal), opt-in `sendTelemetryEvent("launch")`.
 
-- `src/context/TaskContext.js`: owns `tasks`, `taskLists`, `dailyTasks`, `selectedTask`, `modalVisible`. Seeds from `initialTasks/initialTaskLists/initialDailyTasks` props passed by `App.js` and re-syncs when those props change. Exposes `toggleTaskComplete`, `handleCompleteTask`, `deleteTask`, `handleSaveTask`, `handleToggleSubtask`, `handleCreateList/RenameList/DeleteList`, plus `refreshTasksFromStorage` (JSON-compare re-read of `kwestup_data_*` on `AppState` foreground). All task math delegates to `src/utils/taskMutations.js`; notification scheduling (`scheduleDueDateNotification`, `cancelDueDateNotification`, push on complete) and haptics stay in the context layer.
-- `src/context/VaultContext.js`: owns `vaults`, `activeVaultId`, `notes`, `activeNote`. Exposes `handleSetActiveVault` (persist + reload notes via `src/utils/fileStorage.js`), `loadVaultNotes`, `refreshVaults` (via `src/utils/vaultService.js`).
-- `src/context/BillingContext.js`: owns `billingData`; wraps `src/utils/billingStorage.js` helpers (`add/deleteTransaction`, `upsert/deleteBudget`, `add/deleteRecurringBill`) as persist-and-set actions; `setBillingData` auto-persists via `saveBillingData`.
-- `src/context/BirthdayContext.js`: owns `birthdays`; `handleSaveBirthday` / `handleDeleteBirthday` pair notification cancel/re-schedule (`expo-notifications` + `src/utils/notifications.js`) with state update.
-- Persistence triggers in `App.js`: 15-second throttled `saveData` effect (Binder-flooding guard for NothingOS), decoupled high-frequency `saveTimerState` effect, immediate theme-key saves, billing save-on-change, foreground-reload via `AppState` listener (mirrored by `TaskContext.refreshTasksFromStorage`).
+**Storage (`src/utils/storage.js`, `fileStorage.js`, `vaultService.js`, `billingStorage.js`, `exportService.js`, `vaultImport.js`):**
+- `storage.js` — `APP_VERSION v3.5.0`, `STORAGE_VERSION v7.0`; `isUserDataKey` allowlist (never wiped by `clearAllCaches`); `migrateUserDataIfNeeded` copies highest legacy `kwestup_data_v*` + related keys forward; version-change cache clear preserves telemetry/AI-model keys.
+- `vaultService.js` — vault registry in AsyncStorage (`kwestup_vaults_*`, `kwestup_activeVault_*` with legacy `v5.0` fallback); path helper `getVaultPath` → `<documentDirectory>Notes/Vaults/<vaultId>/`; `createVault`/`renameVault`/`deleteVault`; one-time `migrateToVaultSystem` (flat `Notes/` → `Notes/Vaults/default/`).
+- `fileStorage.js` — vault-parameterized markdown file CRUD (`saveNoteFile`, `readNoteFile`, `deleteNoteFile`, `getAllNotesFromFilesystem` non-recursive scan with hashtag extraction, `wipeNotesFilesystem`) + active-vault wrappers. Notes are deliberately excluded from the monolithic AsyncStorage blob.
+- `billingStorage.js` — isolated billing key (`kwestup_billing_*`): transactions/budgets/recurringBills/currency + month analytics (`getSpendingByCategory`, `getMonthlyTotals`).
+- `exportService.js` — encrypted backup pipeline: `collectAsyncStorageData` + `packVaults` + billing → AES-256/PBKDF2-SHA256-100k per-archive salt+IV v2 envelope (`encryptBackup`/`decryptBackup` with legacy v1 fallback) → temp `.kwestup` in cache → `expo-sharing` share sheet → cleanup; `importArchive` read→decrypt→clear→`multiSet`→rewrite vault files→reschedule bill reminders.
 
-### Services — Domain logic in `src/utils/`
+**Sync (`src/utils/syncService.js` + `App.js#handleExecuteSync`):**
+- LAN-only REST to user PC: `validateSyncConfig` (strict IPv4/hostname/IPv6, port 1–65535, ≥6-char token) → `pingSyncServer` (`GET /ping`) → `POST /sync` Bearer token (4 s/10 s abort timeouts) → `validateSyncPayload` (requires `notes`/`tasks`/`birthdays` arrays). `App.js` then wipes active-vault FS, rewrites synced markdown, cancels+reschedules birthday notifications, overwrites React state, stamps `lastSynced`. No cloud intermediary.
 
-- `src/utils/taskMutations.js` — pure engine, zero imports except `getLocalDateString`: `calculateNextRecurrence` (daily/weekly/monthly/progressive with title-number increment), `toggleTask` (recurring completion spawns replacement, returns `{ updatedTasks, toggledTask, spawnedTask }`), `completeTask`, `saveTask` (upsert), `deleteTask`, `toggleSubtask`, `createTaskList` / `renameTaskList` / `deleteTaskList` (`default_inbox` protected). Deterministic via injectable `options.now` / `options.todayDate` for tests.
-- `src/utils/dateUtils.js` — authoritative local-timezone date engine (7 exports: `getLocalDateString`, `parseLocalDate`, `getYesterday/TomorrowLocalDateString`, `getLocalMonthString`, `getLocalMonthDayString`, `isSameLocalDay`); eliminates UTC-slicing bugs.
-- `src/utils/aiService.js` — on-device LLM via `llama.rn`:
-  - Immutable commit pinning: upstream download pinned to commit `9217f5db79a29953eb74d5343926648285ec7e67`, size `491400032` bytes, SHA-256 `74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db`.
-  - Integrity verification: `verifyModelIntegrity` purges corrupted/incomplete files before loading.
-  - Mutex lock: Coalescing Promise lock `_initPromise` prevents parallel initialization races.
-  - Active memory lifecycle: `handleAppStateChange` auto-unloads context on `background`/`inactive`; 5-minute idle timeout with timer unref support; component unmount cleanup in `AIAssistant.js`.
-  - Deterministic fallbacks: `extractTasksFromNoteHeuristic`, `summarizeNoteHeuristic`, and regex command parser ensure continuous offline uptime without crashes.
-- `src/utils/notifications.js` — `expo-notifications` handler config, permission request, daily/due-date/birthday/custom schedulers and cancellers.
-- `src/utils/billingNotifications.js` — recurring-bill reminder scheduling.
-- `src/utils/diagnostics.js` — `runDeviceDiagnostics`, `runNetworkDiagnostics` (httpbin ping), `checkForUpdates` (GitHub releases `Omprakash-p06/KwestUpMobile`), opt-in-gated `sendTelemetryEvent`.
-- `src/utils/vaultImport.js` — `importMDFilesAsVault` via `expo-document-picker` → `createVault` + file copy.
-
-### Storage — AsyncStorage (JSON) + expo-file-system (markdown) + versioned migration
-
-- `src/utils/storage.js` — `APP_VERSION = "v3.5.0"`, `STORAGE_VERSION = "v7.0"`; `isUserDataKey()` allowlist (`kwestup_data_`, `userName_`, `theme_mode_`, `theme_name_`, `timer_state_`, `activeVault_`, `vaults_`, `billing_`, `widget_`, `telemetry_`, `ai_model_`); `clearAllCaches()` (preserves user keys, stamps `kwestup_last_version`); `migrateUserDataIfNeeded()` (highest-version `kwestup_data_v*` promotion plus vault/billing key carry-over).
-- Structured blob `kwestup_data_<STORAGE_VERSION>` holds `{ dailyTasks, birthdays, tasks, taskLists, notes, themeMode, selectedThemeName, userName, lastSynced }`. Decoupled keys: `kwestup_timer_state_*` (minimal payload, avoids Binder -22 on large saves), `kwestup_theme_mode_*/name_*`, `kwestup_userName_*`, `kwestup_billing_*` (`src/utils/billingStorage.js`), `kwestup_vaults_*/activeVault_*` (`src/utils/vaultService.js`), `kwestup_widget_active_tab`, `kwestup_telemetry_optin`, `kwestup_ai_model_download_resumable`.
-- Notes are files, not blob rows: `src/utils/fileStorage.js` — `initNotesFolder`, `saveNoteFile/readNoteFile/deleteNoteFile/deleteFolderFile`, `getAllNotesFromFilesystem`, `wipeNotesFilesystem`. Vaults in `src/utils/vaultService.js` — path `Notes/Vaults/<vaultId>/`, CRUD (`createVault/renameVault/deleteVault`), active-ID tracking with legacy `v5.0` fallback.
-- Backup/encryption in `src/utils/exportService.js` — v2 envelope (AES-256, per-archive 128-bit salt/IV, PBKDF2-SHA256 100k iterations, auto-fallback to v1 static-salt/1k-iteration decrypt); `exportArchive` and `importArchive`.
-
-### Sync — LAN REST + Android widgets (secondary writers)
-
-- `src/utils/syncService.js` — `validateSyncConfig` (strict IPv4/hostname/IPv6 + port 1–65535 + ≥6-char token), `validateSyncPayload` (requires `notes/tasks/birthdays` arrays), `pingSyncServer` (`GET /ping`, 3 s timeout), `performSync` (`POST /sync` with `Authorization: Bearer`, 10 s timeout, 401/403 → re-scan error). `App.js:handleExecuteSync` orchestrates sync and state reconciliation.
-- Android widgets (`widgets/`, `react-native-android-widget`): `FocusTimerWidget.tsx`, `DailyTasksWidget.tsx`, `ImportantTasksWidget.tsx`, `TasksListWidget.tsx` (interactive, tab + toggle actions), `widget-task-handler.tsx` (headless handler: `SWITCH_TAB` persists tab keys; `TOGGLE_TASK/COMPLETE_TASK` applies shared `toggleTask` from `src/utils/taskMutations.js` directly to `kwestup_data_*` JSON with ticking animation; `WIDGET_ADDED/UPDATE/RESIZED/CLICK` re-renders from AsyncStorage). `App.js` pushes updates with active-only + 5 s throttle + staggered/sliced payloads to avoid Binder flooding. Foreground reload (`App.js` + `TaskContext`) picks up widget-side writes.
+**Observability (`src/utils/logger.js`, `src/components/ErrorBoundary.js`):**
+- `logger.js` — environment-aware structured logger + 50-entry frozen FIFO breadcrumb ring-buffer. `debug`/`info` are fully gated on `isDevelopment()` (neither console nor buffer in production); `warn`/`error` always buffer + passthrough. Key-based PII redaction (`content|body|note|title|text|message|passphrase|token|key|secret|password` → `[Redacted]`), string/array caps, `WeakSet` cycle guard, deep-freeze at record time, `getRecentLogs`/`clearLogs`.
+- `ErrorBoundary` — class component mounted in `App.js` around providers+navigation; `getDerivedStateFromError` + `componentDidCatch` (logs via `logger.error`); fallback card honors explicit `isDark` prop with hex-heuristic fallback; actions Try Again (reset state), Copy Error Report (clipboard→Share fallback, 8000-char cap over PII-redacted breadcrumbs), Restart Application (manual-restart hint — `expo-updates` not installed), collapsible stack/component-stack details.
 
 ## Data Flow
 
-### Mutation path (in-app)
+**Mutation path (tasks):** Screen/widget → `TaskContext` handler → pure `taskMutations.js` function computes `updatedTasks` → `setTasks` → 500 ms debounced `writeTaskSnapshot` (read-modify-write merge of task keys onto stored blob). Side effects (schedule/cancel due-date notification, haptics, push toast) fire alongside; recurrence toggle spawns the next occurrence via `calculateNextRecurrence`. Headless widgets bypass React and call `toggleTask` directly on the stored blob (`widgets/widget-task-handler.tsx`), then `TaskContext.refreshTasksFromStorage` + App foreground `loadData` converge on next `active`.
 
-1. User action in screen/component (e.g. toggle in `src/screens/TaskListScreen.js` via `TaskCard.js`) calls a prop callback resolved in `AppNavigator` to the context action first (`taskCtx?.toggleTaskComplete ?? toggleTaskComplete`).
-2. Context handler in `src/context/TaskContext.js` delegates math to the pure function (`toggleTask(currentTasks, id)` in `src/utils/taskMutations.js`), applies notification side-effects (schedule alarm for spawned recurrence), then `setState`.
-3. Legacy fallback: if context is absent, the `App.js` handler computes the same transition inline. Both paths converge on the persistence effects.
-4. `setState` updates React tree; effects persist: throttled blob save → `AsyncStorage(kwestup_data_v7.0)`; notes go through `fileStorage` markdown writes; billing through `billingStorage` (auto-persist in `BillingContext`); timer through its own key.
-5. Widget-push effects mirror a sliced projection to home-screen widgets (throttled, staggered, active-only).
+**Persistence:** Two writers, disjoint keys — `TaskContext` owns `tasks/taskLists/dailyTasks` (eager, debounced ≤1 s); `App.js` `saveData` owns `birthdays/notes-meta/theme/userName/lastSynced` (15 s throttled merge, never overwrites task keys); timer isolated (`saveTimerState`); billing isolated (`BillingContext.updateBillingDataState`); vault registry + active ID isolated. Boot: `initializeApp` (version/username/vaults/telemetry in parallel → `initNotesFolder` → fire-and-forget `migrateToVaultSystem` + cache clear) → `loadData` (`migrateUserDataIfNeeded`, parse blob, daily-streak reset via `dateUtils`, FS note scan, theme/timer resolution) → providers hydrate via `initial*` props.
 
-### Persistence
-
-- Cold start: `initializeApp` in `App.js` loads version/username/vaults/active-ID/telemetry in parallel → `initNotesFolder` → `migrateToVaultSystem` + cache clear + diagnostics. Then `loadData`: legacy migration scan → blob parse with daily-task streak reset (local-date compare via `dateUtils`) → `getAllNotesFromFilesystem(activeVault)` → theme resolution → timer rebase from `startTime` → birthday notification reschedule. Billing loads separately via `loadBillingData`. Provider `initial*` props seed the four contexts.
-- Hot foreground: `AppState` listeners in both `App.js` and `TaskContext.refreshTasksFromStorage` reload from AsyncStorage to absorb widget-side writes (JSON-compare guard avoids redundant renders).
+**Backup:** `exportArchive` (Settings) collects storage + packs vault FS + billing → encrypts → shares `.kwestup`; `importArchive` reverses with full wipe-then-restore. **Sync:** LAN handshake described above. **Logging:** every layer calls `logger.{debug,info,warn,error}`; breadcrumbs accumulate in-memory and are attached (redacted, capped) to the ErrorBoundary crash report.
 
 ## Key Patterns
 
-- **Local-first privacy:** on-device JSON + markdown + versioned keys; network is opt-in LAN sync / telemetry / update check / model download only. No cloud SDK, no auth provider.
-- **Pure mutation core:** `src/utils/taskMutations.js` is framework-agnostic with injectable `now`/`todayDate`; it is imported by both React (`TaskContext.js`) and headless (`widget-task-handler.tsx`) runtimes.
-- **Hardened on-device AI:** Immutable model commit pinning with pre-load SHA-256 and size verification, Promise mutex lock, active lifecycle (background unload + idle timeout), and pure rule-based fallback engines.
-- **Decoupled hot-path persistence:** timer state and theme keys saved separately from the large blob to avoid Binder transaction failures; 15 s save throttle + 5 s widget throttle + staggered widget updates + payload slicing.
-- **Vault-scoped filesystem:** every note op takes `vaultId`; active-vault wrappers resolve via dynamic import to avoid cycles; one-level directory scan with filename sanitization.
-- **Versioned storage with legacy fallback:** dynamic `STORAGE_VERSION` keys; migration promotes highest legacy `v*` blob; vault keys fall back to hardcoded `v5.0` legacy keys.
-- **Hardened sync/backup envelope:** strict config + payload validators on sync; v2 encrypted backup with v1 auto-detect fallback.
-- **Local-date authority:** all calendar logic funnels through `src/utils/dateUtils.js`; UTC `toISOString().slice` is banned by convention.
+- **Unified mutation layer:** all task writes flow through `taskMutations.js` (pure, tested) — `TaskContext` in-app, `widget-task-handler` headless. No duplicated hand-rolled mutation copies (removed per C-02).
+- **Sole-writer persistence:** each storage key has exactly one writer (TaskContext / App / BillingContext), using read-modify-write merges; fixes stale-snapshot clobbering (W-01/W-02/W-03).
+- **Local-first privacy:** on-device AsyncStorage + filesystem + on-device LLM; network is opt-in/explicit only; diagnostics dev-gated; telemetry opt-in with consent persisted across cache wipes.
+- **Centralized date engine:** all calendar logic via `dateUtils.js` local-timezone helpers; strict `parseLocalDate` never returns "today" for garbage (Invalid Date instead).
+- **Filesystem-as-database for notes:** markdown files are source of truth per vault; AsyncStorage holds only registry + app state; sync/backup operate on files, not embedded blobs.
+- **Graceful AI degradation:** every LLM call (`summarizeNote`, `extractTasksFromNote`, `parseGlobalCommand`, `assistWriting*`) clamps input to context budget and falls back to deterministic heuristics when the model is absent/fails.
+- **Binder-safe Android integration:** widget pushes throttled (5 s), staggered (250–500 ms), app-active-gated, payload-sliced (top-5 important / top-8 sorted); main save decoupled from timer writes.
+- **Forensic observability:** frozen, redacted, bounded breadcrumb buffer feeding the crash-report copy action; ErrorBoundary at the composition root with explicit dark-mode signal.
 
 ## Module Map
 
 | Module | Path | Responsibility |
 |---|---|---|
-| App root / persistence owner | `App.js` | Root `useState` slices, persistence/widget effects, provider seeding, global modals |
+| Composition root | `App.js` | Boot, theme, non-task state, save/merge, sync/reset handlers, provider nesting, `ErrorBoundary` mount (`currentTheme` + `isDark`) |
 | Expo entry | `index.js` | `registerRootComponent(App)` + `registerWidgetTaskHandler` |
-| Task state + actions | `src/context/TaskContext.js` | `tasks/taskLists/dailyTasks` state, context actions delegating to `taskMutations`, notification side-effects, foreground re-sync |
-| Vault/notes state | `src/context/VaultContext.js` | `vaults/activeVaultId/notes/activeNote`, vault switching + note loading |
-| Billing state | `src/context/BillingContext.js` | `billingData` with auto-persisting actions over `billingStorage` helpers |
-| Birthday state | `src/context/BirthdayContext.js` | `birthdays` with alarm-coupled save/delete actions |
-| Pure task engine | `src/utils/taskMutations.js` | Framework-agnostic task/list/recurrence/subtask transforms shared by app + widgets |
-| On-device AI service | `src/utils/aiService.js` | Pinned model download, pre-load integrity check, Promise mutex, memory lifecycle, heuristic fallbacks |
-| Local date engine | `src/utils/dateUtils.js` | Centralized timezone-aware date calculations and formatting |
-| Navigation shell | `src/navigation/AppNavigator.js` | Drawer navigator (9 screens), context-first/prop-fallback resolution, AI overlay mount |
-| Storage & migration | `src/utils/storage.js` | Storage version keys, user key allowlist, legacy data migration, cache clearing |
-| Notes filesystem | `src/utils/fileStorage.js` | Markdown file CRUD, sanitized paths, directory scan |
-| Vault management | `src/utils/vaultService.js` | Vault CRUD, directory creation, active vault ID persistence |
-| Backup & crypto | `src/utils/exportService.js` | AES-256 v2 backup packaging, encryption, export share sheet, archive restore |
-| LAN sync | `src/utils/syncService.js` | PC sync server handshake, strict config/payload validation, REST client |
-| Notifications | `src/utils/notifications.js` | Local notification scheduling for due dates, reminders, and daily repeats |
-| Widget task handler | `widgets/widget-task-handler.tsx` | Headless Android widget event receiver using `taskMutations.js` |
+| Navigation | `src/navigation/AppNavigator.js` | Drawer registry (9 screens), context→prop bridging, `TaskEditModal` + `AIAssistant` mounts |
+| Drawer chrome | `src/navigation/CustomDrawerContent.js` | Drawer UI, theme switch |
+| Task state | `src/context/TaskContext.js` | Sole task writer, debounced persistence, foreground re-sync, notification side effects |
+| Vault state | `src/context/VaultContext.js` | Vaults/active ID/notes/active note, FS-backed switching |
+| Billing state | `src/context/BillingContext.js` | Sole billing writer, storage-backed actions |
+| Birthday state | `src/context/BirthdayContext.js` | Birthday CRUD + notification lifecycle |
+| Mutation engine | `src/utils/taskMutations.js` | Pure task/list/recurrence transforms shared app+widget |
+| Date engine | `src/utils/dateUtils.js` | Authoritative local-timezone date helpers |
+| Structured logging | `src/utils/logger.js` | Gated levels, redacted frozen 50-entry breadcrumb buffer |
+| Crash boundary | `src/components/ErrorBoundary.js` | Root fallback UI, redacted capped error report |
+| AI service | `src/utils/aiService.js` | On-device LLM lifecycle, integrity-pinned model, heuristic fallbacks |
+| AI UI | `src/components/AIAssistant.js` | Floating assistant, command parsing → task/birthday/transaction creation |
+| LAN sync | `src/utils/syncService.js` | Config/payload validation, ping + `/sync` exchange |
+| Encrypted backup | `src/utils/exportService.js` | AES-256 v2 backup export/import pipeline |
+| Vault registry | `src/utils/vaultService.js` | Vault CRUD, paths, one-time flat→vault migration |
+| Note files | `src/utils/fileStorage.js` | Vault-scoped markdown file CRUD + FS scan |
+| Billing store | `src/utils/billingStorage.js` | Isolated billing persistence + month analytics |
+| Vault import | `src/utils/vaultImport.js` | External vault/folder import helpers |
+| Notifications | `src/utils/notifications.js` | Due-date/daily/birthday scheduling |
+| Bill reminders | `src/utils/billingNotifications.js` | Recurring-bill notification scheduling |
+| Storage core | `src/utils/storage.js` | Versions, user-data allowlist, cache clear, legacy migration |
+| Diagnostics | `src/utils/diagnostics.js` | Dev-gated probes, update check, opt-in telemetry |
+| Theming | `src/theme/colors.js`, `src/theme/styles.js` | Theme matrices + shared styles |
+| Widget handlers | `widgets/widget-task-handler.tsx` | Headless toggle/tab/render via `taskMutations` + AsyncStorage |
+| Widget views | `widgets/FocusTimerWidget.tsx`, `widgets/DailyTasksWidget.tsx`, `widgets/ImportantTasksWidget.tsx`, `widgets/TasksListWidget.tsx` | Glanceable Android widget UIs |
