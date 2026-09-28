@@ -18,6 +18,7 @@ import {
   schedulePushNotification,
 } from "../utils/notifications";
 import { STORAGE_VERSION } from "../utils/storage";
+import { logger } from "../utils/logger";
 
 const TaskContext = createContext(null);
 
@@ -138,7 +139,7 @@ export const TaskProvider = ({
           const prevJson = JSON.stringify(prevTasks);
           const nextJson = JSON.stringify(parsed.tasks);
           if (prevJson !== nextJson) {
-            console.log("🔄 Synchronized tasks from storage update");
+            logger.info("🔄 Synchronized tasks from storage update");
             return parsed.tasks;
           }
           return prevTasks;
@@ -165,7 +166,7 @@ export const TaskProvider = ({
         });
       }
     } catch (err) {
-      console.error("❌ Failed to refresh tasks from storage:", err);
+      logger.error("❌ Failed to refresh tasks from storage:", err);
     }
   }, []);
 

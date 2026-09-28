@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { logger } from "./logger";
 
 export const APP_VERSION = "v3.5.0";
 export const STORAGE_VERSION = "v7.0";
@@ -22,11 +23,11 @@ export const isUserDataKey = (key) => {
 
 // COMPREHENSIVE CACHE CLEARING SYSTEM (Safely preserves user data)
 export const clearAllCaches = async () => {
-  console.log("🧹 STARTING COMPREHENSIVE CACHE CLEAR...");
+  logger.info("🧹 STARTING COMPREHENSIVE CACHE CLEAR...");
 
   try {
     const allKeys = await AsyncStorage.getAllKeys();
-    console.log("📋 Found AsyncStorage keys:", allKeys);
+    logger.debug("📋 Found AsyncStorage keys:", allKeys);
 
     // Filter out active and legacy user data keys so they are protected from cache clear
     const kwestupKeys = allKeys.filter(
@@ -41,7 +42,7 @@ export const clearAllCaches = async () => {
 
     if (kwestupKeys.length > 0) {
       await AsyncStorage.multiRemove(kwestupKeys);
-      console.log("✅ Cleared KwestUp storage keys:", kwestupKeys);
+      logger.info("✅ Cleared KwestUp storage keys:", kwestupKeys);
     }
 
     const specificKeys = [
@@ -51,15 +52,15 @@ export const clearAllCaches = async () => {
     ];
 
     await AsyncStorage.multiRemove(specificKeys);
-    console.log("✅ Cleared specific storage keys");
+    logger.info("✅ Cleared specific storage keys");
 
     await AsyncStorage.setItem("kwestup_last_version", APP_VERSION);
     await AsyncStorage.setItem("kwestup_last_clear", new Date().toISOString());
 
-    console.log("✅ CACHE CLEAR COMPLETED SUCCESSFULLY");
+    logger.info("✅ CACHE CLEAR COMPLETED SUCCESSFULLY");
     return true;
   } catch (error) {
-    console.error("❌ CACHE CLEAR FAILED:", error);
+    logger.error("❌ CACHE CLEAR FAILED:", error);
     return false;
   }
 };
@@ -72,17 +73,17 @@ export const migrateUserDataIfNeeded = async (currentStorageVersion) => {
 
     // If current version already has data, no migration is needed!
     if (currentData) {
-      console.log(`📦 Data exists for current storage version ${currentStorageVersion}, skipping migration.`);
+      logger.debug(`📦 Data exists for current storage version ${currentStorageVersion}, skipping migration.`);
       return false;
     }
 
-    console.log(`🔍 No data found for ${currentStorageVersion}. Scanning for legacy user data to migrate...`);
+    logger.info(`🔍 No data found for ${currentStorageVersion}. Scanning for legacy user data to migrate...`);
     const allKeys = await AsyncStorage.getAllKeys();
 
     // Find all kwestup_data_v* keys
     const dataKeys = allKeys.filter((key) => key.startsWith("kwestup_data_"));
     if (dataKeys.length === 0) {
-      console.log("ℹ️ No legacy user data keys found to migrate.");
+      logger.debug("ℹ️ No legacy user data keys found to migrate.");
       return false;
     }
 
@@ -96,7 +97,7 @@ export const migrateUserDataIfNeeded = async (currentStorageVersion) => {
       .filter((item) => item !== null);
 
     if (versionedKeys.length === 0) {
-      console.log("ℹ️ No valid versioned data keys found.");
+      logger.debug("ℹ️ No valid versioned data keys found.");
       return false;
     }
 
@@ -114,7 +115,7 @@ export const migrateUserDataIfNeeded = async (currentStorageVersion) => {
     });
 
     const sourceItem = versionedKeys[0];
-    console.log(`✨ Found most recent legacy user data: ${sourceItem.key} (version ${sourceItem.version})`);
+    logger.info(`✨ Found most recent legacy user data: ${sourceItem.key} (version ${sourceItem.version})`);
 
     const sourceVersion = sourceItem.version;
     const sourceDataRaw = await AsyncStorage.getItem(sourceItem.key);
@@ -177,10 +178,10 @@ export const migrateUserDataIfNeeded = async (currentStorageVersion) => {
       }
     }
 
-    console.log(`🎉 Successfully migrated user data from v${sourceVersion} to ${currentStorageVersion}`);
+    logger.info(`🎉 Successfully migrated user data from v${sourceVersion} to ${currentStorageVersion}`);
     return true;
   } catch (err) {
-    console.error("❌ Error during user data migration:", err);
+    logger.error("❌ Error during user data migration:", err);
     return false;
   }
 };

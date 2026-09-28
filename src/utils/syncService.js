@@ -1,3 +1,5 @@
+import { logger } from "./logger";
+
 /**
  * KwestUp Mobile Client Synchronization Service
  * Manages local network pings, secure transport validation, and bidirectional REST sync handshakes.
@@ -121,7 +123,7 @@ export const pingSyncServer = async (config) => {
     const data = await response.json();
     return data && data.status === "online";
   } catch (error) {
-    console.error("❌ Sync Server Ping Failed:", error);
+    logger.error("❌ Sync Server Ping Failed:", error);
     return false;
   }
 };
@@ -134,7 +136,7 @@ export const performSync = async (config, localData) => {
   const validConfig = validateSyncConfig(config);
   const baseUrl = `http://${validConfig.ip}:${validConfig.port}`;
 
-  console.log(`🌐 INITIALIZING LOCAL NETWORK SYNC -> ${baseUrl}`);
+  logger.info(`🌐 INITIALIZING LOCAL NETWORK SYNC -> ${baseUrl}`);
 
   // 1. Verify connection first
   const isOnline = await pingSyncServer(validConfig);
@@ -181,10 +183,10 @@ export const performSync = async (config, localData) => {
     // 5. Validate and return synced result
     const rawResult = await response.json();
     const validatedResult = validateSyncPayload(rawResult);
-    console.log("✅ SYNC DATA EXCHANGED SUCCESSFULLY");
+    logger.info("✅ SYNC DATA EXCHANGED SUCCESSFULLY");
     return validatedResult;
   } catch (error) {
-    console.error("❌ Sync Service Request Failed:", error);
+    logger.error("❌ Sync Service Request Failed:", error);
     if (error.name === "AbortError") {
       throw new Error("Connection Timeout: The PC server took too long to resolve the sync. Please check server logs.");
     }

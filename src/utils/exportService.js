@@ -6,6 +6,7 @@ import { isUserDataKey, APP_VERSION, STORAGE_VERSION } from "./storage";
 import { getVaults, getVaultPath, ensureVaultsDir } from "./vaultService";
 import { loadBillingData, saveBillingData } from "./billingStorage";
 import { scheduleRecurringBillReminder, cancelRecurringBillReminders } from "./billingNotifications";
+import { logger } from "./logger";
 
 // ─── Encryption Helpers ───────────────────────────────────────────────────────
 
@@ -40,7 +41,7 @@ export const encryptBackup = (payloadObj, passphrase) => {
     };
     return JSON.stringify(envelope);
   } catch (error) {
-    console.error("❌ Encryption failed:", error);
+    logger.error("❌ Encryption failed:", error);
     throw new Error("Failed to encrypt data.");
   }
 };
@@ -90,7 +91,7 @@ export const decryptBackup = (encryptedText, passphrase) => {
     }
     return JSON.parse(decryptedText);
   } catch (error) {
-    console.error("❌ Decryption failed:", error);
+    logger.error("❌ Decryption failed:", error);
     throw new Error("Unable to decrypt archive. Please verify the passphrase.");
   }
 };
@@ -252,17 +253,17 @@ export const exportArchive = async (passphrase, onProgress) => {
     });
 
     onProgress?.(1.0);
-    console.log("✅ Archive exported successfully");
+    logger.info("✅ Archive exported successfully");
   } finally {
     // Always clean up temp file
     try {
       const fileInfo = await FileSystem.getInfoAsync(tempFilePath);
       if (fileInfo.exists) {
         await FileSystem.deleteAsync(tempFilePath, { idempotent: true });
-        console.log("🧹 Temp backup file cleaned up");
+        logger.debug("🧹 Temp backup file cleaned up");
       }
     } catch (cleanupErr) {
-      console.warn("⚠️ Failed to clean up temp file:", cleanupErr);
+      logger.warn("⚠️ Failed to clean up temp file:", cleanupErr);
     }
   }
 };
@@ -283,7 +284,7 @@ export const importArchive = async (filePath, passphrase, onProgress) => {
   try {
     encryptedText = await FileSystem.readAsStringAsync(filePath);
   } catch (err) {
-    console.error("❌ Failed to read archive file:", err);
+    logger.error("❌ Failed to read archive file:", err);
     throw new Error("Unable to read archive file. It may be corrupted or inaccessible.");
   }
 
@@ -302,7 +303,7 @@ export const importArchive = async (filePath, passphrase, onProgress) => {
     throw new Error("INVALID PASSPHRASE OR CORRUPTED ARCHIVE");
   }
 
-  console.log("✅ Archive decrypted. Restoring from version:", payload.metadata.appVersion);
+  logger.info("✅ Archive decrypted. Restoring from version:", payload.metadata.appVersion);
   onProgress?.(0.3);
 
   // Step 3: Clear existing AsyncStorage user data
@@ -310,7 +311,7 @@ export const importArchive = async (filePath, passphrase, onProgress) => {
   const userKeys = allKeys.filter(isUserDataKey);
   if (userKeys.length > 0) {
     await AsyncStorage.multiRemove(userKeys);
-    console.log("🧹 Cleared existing AsyncStorage user data:", userKeys.length, "keys");
+    logger.info("🧹 Cleared existing AsyncStorage user data:", userKeys.length, "keys");
   }
 
   onProgress?.(0.45);
@@ -319,7 +320,7 @@ export const importArchive = async (filePath, passphrase, onProgress) => {
   const storageEntries = Object.entries(payload.storage);
   if (storageEntries.length > 0) {
     await AsyncStorage.multiSet(storageEntries);
-    console.log("✅ Restored AsyncStorage:", storageEntries.length, "keys");
+    logger.info("✅ Restored AsyncStorage:", storageEntries.length, "keys");
   }
 
   onProgress?.(0.6);
@@ -335,7 +336,7 @@ export const importArchive = async (filePath, passphrase, onProgress) => {
       const vaultInfo = await FileSystem.getInfoAsync(vaultPath);
       if (!vaultInfo.exists) {
         await FileSystem.makeDirectoryAsync(vaultPath, { intermediates: true });
-        console.log("📂 Created vault directory:", vault.id);
+        logger.debug("📂 Created vault directory:", vault.id);
       }
 
       // Restore each note
@@ -357,12 +358,12 @@ export const importArchive = async (filePath, passphrase, onProgress) => {
         await FileSystem.writeAsStringAsync(notePath, content || "");
       }
 
-      console.log(`✅ Vault '${vault.name}' restored: ${(vault.notes || []).length} notes`);
+      logger.info(`✅ Vault '${vault.name}' restored: ${(vault.notes || []).length} notes`);
     }
   }
 
   onProgress?.(1.0);
-  console.log("✅ Archive import complete");
+  logger.info("✅ Archive import complete");
 
   // Step 6: Restore billing data and reschedule bill reminders
   if (payload.billing) {
@@ -375,6 +376,6 @@ export const importArchive = async (filePath, passphrase, onProgress) => {
       bill.notificationIds = notifId ? [notifId] : [];
     }
     await saveBillingData(billingToRestore);
-    console.log("✅ Billing data restored and bill reminders rescheduled");
+    logger.info("✅ Billing data restored and bill reminders rescheduled");
   }
 };

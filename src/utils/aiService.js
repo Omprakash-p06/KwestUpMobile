@@ -17,6 +17,7 @@ import {
   getTomorrowLocalDateString,
   parseLocalDate,
 } from "./dateUtils";
+import { logger } from "./logger";
 
 // === Model Configuration & Cryptographic Integrity Constants ===
 export const MODEL_FILENAME = "qwen2.5-0.5b-instruct-q4_k_m.gguf";
@@ -311,10 +312,10 @@ export const downloadModel = async (onProgress) => {
             progressCallback,
             parsedState.resumeData
           );
-          console.log("🔄 Resuming AI model download...");
+          logger.info("🔄 Resuming AI model download...");
         }
       } catch (e) {
-        console.warn("Failed to parse saved download state, starting fresh:", e);
+        logger.warn("Failed to parse saved download state, starting fresh:", e);
       }
     }
 
