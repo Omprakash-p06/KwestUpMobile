@@ -24,7 +24,7 @@ KwestUpMobile/
 ├── assets/                 # App icon, splash, fonts bundle refs, widget previews
 ├── build/                  # Local build output (generated, not source)
 ├── coverage/               # Jest coverage output (generated)
-├── __tests__/              # Jest suites (unit/ + widget logic + setup/) — 10 suites, 138 tests
+├── __tests__/              # Jest suites (unit/ + widget logic + setup/) — 11 suites, 150 tests
 ├── .planning/              # GSD planning: PROJECT/ROADMAP/STATE, phases/, codebase/, debug/
 ├── .github/workflows/      # CI gate (ESLint + Jest + coverage)
 ├── GEMINI.md / README.md   # Repo docs
@@ -40,7 +40,7 @@ KwestUpMobile/
 | `widgets/` | dir | 4 Android widgets + `widget-task-handler.tsx` |
 | `android/` | dir | Native Android project (package `com.omprakashp06.kwestupmobile`) |
 | `assets/` | dir | Icons, splash, `widget-preview/` images |
-| `__tests__/` | dir | 8 unit suites + widget-logic suite + setup smoke test (10 total suites) |
+| `__tests__/` | dir | 9 unit suites + widget-logic suite + setup smoke test (11 total suites) |
 | `.planning/` | dir | Project memory: `STATE.md`, phase summaries, roadmap, codebase maps |
 | `coverage/` | dir | Generated coverage report |
 | `build/` | dir | Generated build artifacts |
@@ -113,6 +113,7 @@ __tests__/
 │   ├── jest.setup.js               # Global test harness and native module mocks
 │   └── jest.setup.test.js          # 5 tests: mock integrity verification
 └── unit/
+    ├── aiAssistant-smoke.test.js   # 1 test: AIAssistant component import & export smoke test
     ├── aiService.test.js           # 29 tests: model pinning, integrity, memory lifecycle, fallbacks
     ├── dateUtils.test.js           # 28 tests: timezone-safe local date operations
     ├── exportImportService.test.js # 10 tests: v2 encryption envelope and backup import/export
@@ -122,4 +123,4 @@ __tests__/
     ├── taskMutations.test.js       # 15 tests: pure task mutation engine and recurrence
     └── vaultAndFileStorage.test.js # 11 tests: filesystem note operations and vault CRUD
 ```
-**Total:** 10 suites, 138 tests passing.
+**Total:** 11 suites, 150 tests passing.

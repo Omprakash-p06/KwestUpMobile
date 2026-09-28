@@ -55,7 +55,7 @@
 - Jest 29 (`jest@^29.7.0`) with `jest-expo/android` preset (`preset: 'jest-expo/android'` in `jest.config.js`)
 - `babel-jest@^29.7.0` + `babel-preset-expo` transform (`babel.config.js`); `transformIgnorePatterns` whitelists RN/Expo/llama/widget libs for Node execution
 - Setup harness `__tests__/setup/jest.setup.js` — in-memory mocks for `AsyncStorage`, `expo-file-system` (virtual FS map), `llama.rn`, `react-native-android-widget`, `expo-notifications`, `expo-haptics`, `expo-sharing`, `expo-document-picker`, `expo-camera`, `react-native-reanimated`
-- Test match `**/__tests__/**/*.test.[jt]s?(x)`; 10 suites covering `dateUtils`, `taskMutations`, `TaskContext`, `aiService`, `syncService`, storage migration, export/import, vault/file storage, widget logic (`__tests__/unit/`, `__tests__/phase12-widget-logic.test.js`). 138 total unit/integration tests passing.
+- Test match `**/__tests__/**/*.test.[jt]s?(x)`; 11 suites covering `dateUtils`, `taskMutations`, `TaskContext`, `aiService`, `aiAssistant-smoke`, `syncService`, storage migration, export/import, vault/file storage, widget logic (`__tests__/unit/`, `__tests__/phase12-widget-logic.test.js`). 150 total unit/integration tests passing.
 
 **Commands (`package.json` scripts):**
 ```bash

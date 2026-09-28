@@ -15,7 +15,7 @@
 
 | Suite | Path | Count | What it covers |
 |---|---|---:|---|
-| On-device AI service (Phase 18) | `__tests__/unit/aiService.test.js` | 29 | Upstream model commit pinning, SHA-256 verification, size integrity, corruption deletion, coalescing Promise mutex, `getModelContextStatus`, `handleAppStateChange` background unloader, idle timeout unloader, heuristic task extraction, heuristic summarization, inference fallbacks |
+| On-device AI service (Phase 18) | `__tests__/unit/aiService.test.js` | 40 | Upstream model commit pinning, SHA-256 verification, size integrity, corruption deletion, coalescing Promise mutex, `getModelContextStatus`, `handleAppStateChange` background unloader, idle timeout unloader, heuristic task extraction, heuristic summarization, inference fallbacks, chunked streaming SHA-256 hash, race condition handling, AppState unsubscribe lifecycle |
 | Date utils (Phase 15) | `__tests__/unit/dateUtils.test.js` | 28 | `getLocalDateString` (default-today, local fields, epoch ms, `''` on invalid, leap years), `parseLocalDate` (local midnight, leap day, Date/number cloning, invalid inputs), yesterday/tomorrow boundaries, month/day formatting, `isSameLocalDay` |
 | Sync service validation + handshake (Phase 16) | `__tests__/unit/syncService.test.js` | 16 | `validateSyncConfig` (IPv4/hostname/localhost accept, octet rejection, port 1–65535, token ≥6 chars), `validateSyncPayload` (defaults `taskLists`, rejects null/missing arrays), `pingSyncServer`, `performSync` (offline error, Bearer auth, merged result) |
 | Task mutations (Phase 17) | `__tests__/unit/taskMutations.test.js` | 15 | `toggleTask` non-recurring complete/incomplete, daily/weekly/monthly recurrence date math + parent replacement, progressive title increment (`Day 1→2`), invalid-`dueDate` fallback; `completeTask`, `saveTask`, `deleteTask`, `toggleSubtask`, list create/rename/delete |
@@ -25,7 +25,8 @@
 | Storage migration + vault fallback (Phase 16) | `__tests__/unit/storageMigration.test.js` | 9 | `isUserDataKey` classification, `clearAllCaches` preserving user data/telemetry/AI-model keys, `migrateUserDataIfNeeded` highest-legacy-wins, legacy `v5.0` vault/active-id auto-migration |
 | Task context provider (Phase 17) | `__tests__/unit/taskContext.test.js` | 5 | `TaskProvider` initial-tasks render, `toggleTaskComplete`, `handleSaveTask`, `deleteTask`, `refreshTasksFromStorage` widget-parity sync via `react-test-renderer` + consumer hook |
 | Mock harness smoke | `__tests__/setup/jest.setup.test.js` | 5 | `AsyncStorage` set/get/remove/`getAllKeys`, virtual FS mkdir/write/read/ls/delete, `llama.rn` init/completion/release, `requestWidgetUpdate` passthrough |
-| **Total** | 10 suites | **138** | |
+| AIAssistant smoke (Phase 18) | `__tests__/unit/aiAssistant-smoke.test.js` | 1 | Component module clean import and function export verification |
+| **Total** | 11 suites | **150** | |
 
 ## Coverage & CI Gates
 
