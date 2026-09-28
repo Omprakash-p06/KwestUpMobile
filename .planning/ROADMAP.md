@@ -273,5 +273,6 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
   1. Over 100 verbose `console.log` calls are stripped or routed through an environment-aware logger that silences debug logs in production.
   2. Top-level React error boundary catches unexpected runtime crashes with user-friendly recovery UI.
 **Plans**:
-- [ ] 19-01-PLAN.md — Logger utility, Babel transform for production log stripping, and root error boundary.
+- [ ] 19-01-PLAN.md — Build-Time Log Stripping & Runtime Structured Logger
+- [ ] 19-02-PLAN.md — Root Error Boundary & Structured Crash Recovery UI
 
