@@ -22,6 +22,7 @@ import {
   extractHashtags,
 } from "../utils/fileStorage";
 import { createVault, deleteVault, renameVault, getVaults, getActiveVaultId } from "../utils/vaultService";
+import { logger } from "../utils/logger";
 import { importMDFilesAsVault } from "../utils/vaultImport";
 import { AIAssistant } from "../components/AIAssistant";
 import { LiquidGlassCard } from "../components/LiquidGlassCard";
@@ -250,7 +251,7 @@ export const NotesScreen = ({
         (editFolder || "Uncategorized").trim() === (selectedNote.folder || "Uncategorized").trim() &&
         editingSanitizedTitle === currentSanitizedTitle
       ) {
-        console.log("⏱️ Debounced Auto-saving note to local disk...");
+        logger.debug("⏱️ Debounced Auto-saving note to local disk...");
         const result = await saveNoteFile(activeVaultId, selectedNote.folder, selectedNote.title, editContent);
         if (result.success) {
           setNotes((prevNotes) =>

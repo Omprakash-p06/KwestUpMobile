@@ -87,7 +87,7 @@ export const TaskProvider = ({
       await AsyncStorage.setItem(storageKey, JSON.stringify(merged));
       lastPersistedJsonRef.current = JSON.stringify(snapshot);
     } catch (err) {
-      console.error("❌ Failed to persist tasks to storage:", err);
+      logger.error("❌ Failed to persist tasks to storage:", err);
     }
   }, []);
 

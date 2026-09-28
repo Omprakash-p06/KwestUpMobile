@@ -13,6 +13,7 @@ import { isModelDownloaded, unloadModel, downloadModel } from "../utils/aiServic
 import { APP_VERSION } from "../utils/storage";
 import { checkForUpdates } from "../utils/diagnostics";
 import { exportArchive, importArchive } from "../utils/exportService";
+import { logger } from "../utils/logger";
 import { injectFontFamily } from "../theme/styles";
 import { CustomSwitch } from "../components/CustomSwitch";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -86,7 +87,7 @@ export const SettingsScreen = ({
         throw new Error(`Download failed with status code ${downloadResult ? downloadResult.status : 'unknown'}`);
       }
 
-      console.log("📥 APK download complete:", downloadResult.uri);
+      logger.debug("📥 APK download complete:", downloadResult.uri);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       // 3. Open Android Package Installer via sharing sheet

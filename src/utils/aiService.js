@@ -102,7 +102,7 @@ export const unsubscribeAppState = () => {
         _appStateSubscription.remove();
       }
     } catch (e) {
-      console.warn("Error removing AppState subscription:", e);
+      logger.warn("Error removing AppState subscription:", e);
     }
     _appStateSubscription = null;
   }
@@ -212,7 +212,7 @@ export const verifyModelIntegrity = async (filePath = MODEL_PATH, customValidato
 
     // 1. Exact byte size check
     if (fileInfo.size !== MODEL_EXPECTED_SIZE) {
-      console.warn(
+      logger.warn(
         `Model file size mismatch: expected ${MODEL_EXPECTED_SIZE} bytes, but got ${fileInfo.size} bytes. Deleting corrupted model.`
       );
       await FileSystem.deleteAsync(filePath, { idempotent: true });
@@ -234,11 +234,11 @@ export const verifyModelIntegrity = async (filePath = MODEL_PATH, customValidato
       } catch (hashErr) {
         // Fail-closed: a validator that throws (HSM offline, I/O error) is
         // treated as a mismatch, never as a pass.
-        console.warn("Model hash verification errored; treating as mismatch:", hashErr?.message);
+        logger.warn("Model hash verification errored; treating as mismatch:", hashErr?.message);
         isValidHash = false;
       }
       if (!isValidHash) {
-        console.warn(`Model checksum mismatch against ${MODEL_EXPECTED_SHA256}. Deleting corrupted model.`);
+        logger.warn(`Model checksum mismatch against ${MODEL_EXPECTED_SHA256}. Deleting corrupted model.`);
         await FileSystem.deleteAsync(filePath, { idempotent: true });
         return false;
       }
@@ -246,7 +246,7 @@ export const verifyModelIntegrity = async (filePath = MODEL_PATH, customValidato
 
     return true;
   } catch (err) {
-    console.error("Error verifying model integrity:", err);
+    logger.error("Error verifying model integrity:", err);
     return false;
   }
 };
@@ -300,7 +300,7 @@ export const downloadModel = async (onProgress) => {
         const isPinnedResume =
           parsedState.url === MODEL_DOWNLOAD_URL && parsedState.fileUri === MODEL_PATH;
         if (!isPinnedResume) {
-          console.warn(
+          logger.warn(
             "Discarding stale download resume state (URL/file mismatch — expected pinned model). Starting fresh."
           );
           await AsyncStorage.removeItem(RESUMABLE_DOWNLOAD_KEY);
@@ -360,7 +360,7 @@ export const downloadModel = async (onProgress) => {
     } catch (err) {
       attempt++;
       const errMsg = err.message || "";
-      console.warn("Download attempt %d failed:", attempt, errMsg);
+      logger.warn("Download attempt %d failed:", attempt, errMsg);
       
       const isNetworkError = 
         errMsg.includes("ENOTFOUND") || 
@@ -431,7 +431,7 @@ export const loadModel = async () => {
         try {
           await releaseAllLlama();
         } catch (releaseErr) {
-          console.warn("Error releasing superseded llama context:", releaseErr);
+          logger.warn("Error releasing superseded llama context:", releaseErr);
         }
         _llamaContext = null;
         throw new Error("Model load was cancelled (unload requested during initialization).");
@@ -471,7 +471,7 @@ export const unloadModel = async () => {
     try {
       await releaseAllLlama();
     } catch (e) {
-      console.warn("Error releasing llama context:", e);
+      logger.warn("Error releasing llama context:", e);
     }
     _llamaContext = null;
   }
@@ -659,7 +659,7 @@ ${clampedContent}
   } catch (err) {
     // Release native memory via the lifecycle manager (never just null the JS handle).
     await unloadModel();
-    console.warn("LLM summarization failed or model unavailable, falling back to heuristics:", err?.message);
+    logger.warn("LLM summarization failed or model unavailable, falling back to heuristics:", err?.message);
   }
 
   // Fallback to pure rule-based heuristic summarization
@@ -730,7 +730,7 @@ ${clampedContent}
   } catch (err) {
     // Release native memory via the lifecycle manager (never just null the JS handle).
     await unloadModel();
-    console.warn("LLM task extraction failed or model unavailable, falling back to heuristics:", err?.message);
+    logger.warn("LLM task extraction failed or model unavailable, falling back to heuristics:", err?.message);
   }
 
   // Fallback to pure rule-based heuristic extraction
@@ -796,7 +796,7 @@ Parse this command: "${command}"
     // Release native memory via the lifecycle manager (never just null the JS handle).
     await unloadModel();
     // Fall through to keyword-based fallback below
-    console.warn("LLM parsing failed or model unavailable, falling back to keyword extraction:", err?.message);
+    logger.warn("LLM parsing failed or model unavailable, falling back to keyword extraction:", err?.message);
   }
 
   rawOutput = rawOutput.trim();
@@ -808,7 +808,7 @@ Parse this command: "${command}"
       return parsed;
     }
   } catch (err) {
-    console.error("Failed to parse AI command JSON:", rawOutput, err);
+    logger.error("Failed to parse AI command JSON:", rawOutput, err);
   }
 
   // Robust fallback parsing using regex/keywords if GGUF returns invalid JSON or wrong format

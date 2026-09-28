@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system";
 import { STORAGE_VERSION } from "./storage";
+import { logger } from "./logger";
 
 // ─── AsyncStorage Keys ───────────────────────────────────────────────────────
 export const LEGACY_VAULTS_KEY = "kwestup_vaults_v5.0";
@@ -26,7 +27,7 @@ export const ensureVaultsDir = async () => {
   const info = await FileSystem.getInfoAsync(vaultsDir);
   if (!info.exists) {
     await FileSystem.makeDirectoryAsync(vaultsDir, { intermediates: true });
-    console.log("📂 Notes/Vaults/ directory initialized");
+    logger.debug("📂 Notes/Vaults/ directory initialized");
   }
 };
 
@@ -49,7 +50,7 @@ export const getVaults = async () => {
     if (!raw) return [];
     return JSON.parse(raw);
   } catch (error) {
-    console.error("❌ Failed to read vaults from AsyncStorage:", error);
+    logger.error("❌ Failed to read vaults from AsyncStorage:", error);
     return [];
   }
 };
@@ -62,7 +63,7 @@ export const saveVaults = async (vaults) => {
   try {
     await AsyncStorage.setItem(VAULTS_KEY, JSON.stringify(vaults));
   } catch (error) {
-    console.error("❌ Failed to save vaults to AsyncStorage:", error);
+    logger.error("❌ Failed to save vaults to AsyncStorage:", error);
   }
 };
 
@@ -87,7 +88,7 @@ export const createVault = async (name) => {
   vaults.push(vault);
   await saveVaults(vaults);
 
-  console.log("🗃️ Vault created:", vault.name, "at", path);
+  logger.debug("🗃️ Vault created:", vault.name, "at", path);
   return vault;
 };
 
@@ -104,7 +105,7 @@ export const deleteVault = async (vaultId) => {
       await FileSystem.deleteAsync(vaultPath, { idempotent: true });
     }
   } catch (error) {
-    console.error("❌ Failed to delete vault directory:", error);
+    logger.error("❌ Failed to delete vault directory:", error);
   }
 
   const vaults = await getVaults();
@@ -117,7 +118,7 @@ export const deleteVault = async (vaultId) => {
     await setActiveVaultId(remaining[0].id);
   }
 
-  console.log("🗑️ Vault deleted:", vaultId);
+  logger.debug("🗑️ Vault deleted:", vaultId);
 };
 
 /**
@@ -131,7 +132,7 @@ export const renameVault = async (vaultId, newName) => {
     v.id === vaultId ? { ...v, name: newName, updatedAt: new Date().toISOString() } : v
   );
   await saveVaults(updated);
-  console.log("✏️ Vault renamed:", vaultId, "→", newName);
+  logger.debug("✏️ Vault renamed:", vaultId, "→", newName);
 };
 
 // ─── Active Vault Tracking ────────────────────────────────────────────────────
@@ -152,7 +153,7 @@ export const getActiveVaultId = async () => {
     }
     return activeId;
   } catch (error) {
-    console.error("❌ Failed to read active vault ID:", error);
+    logger.error("❌ Failed to read active vault ID:", error);
     return null;
   }
 };
@@ -165,7 +166,7 @@ export const setActiveVaultId = async (id) => {
   try {
     await AsyncStorage.setItem(ACTIVE_KEY, id);
   } catch (error) {
-    console.error("❌ Failed to set active vault ID:", error);
+    logger.error("❌ Failed to set active vault ID:", error);
   }
 };
 
@@ -183,11 +184,11 @@ export const migrateToVaultSystem = async () => {
   // Check if already migrated
   const vaultsDirInfo = await FileSystem.getInfoAsync(vaultsDir);
   if (vaultsDirInfo.exists) {
-    console.log("✅ Vault system already initialized — skipping migration");
+    logger.debug("✅ Vault system already initialized — skipping migration");
     return;
   }
 
-  console.log("🔄 Migrating Notes/ to multi-vault structure...");
+  logger.debug("🔄 Migrating Notes/ to multi-vault structure...");
 
   // Create the Vaults/ directory and default vault directory
   const defaultVaultPath = `${vaultsDir}default/`;
@@ -208,14 +209,14 @@ export const migrateToVaultSystem = async () => {
 
     try {
       await FileSystem.moveAsync({ from: srcPath, to: destPath });
-      console.log("📦 Migrated:", item);
+      logger.debug("📦 Migrated:", item);
     } catch (moveErr) {
-      console.warn("⚠️ Move failed for", item, "— attempting copy:", moveErr.message);
+      logger.warn("⚠️ Move failed for", item, "— attempting copy:", moveErr.message);
       try {
         await FileSystem.copyAsync({ from: srcPath, to: destPath });
         await FileSystem.deleteAsync(srcPath, { idempotent: true });
       } catch (copyErr) {
-        console.error("❌ Copy fallback failed for", item, ":", copyErr.message);
+        logger.error("❌ Copy fallback failed for", item, ":", copyErr.message);
       }
     }
   }
@@ -232,5 +233,5 @@ export const migrateToVaultSystem = async () => {
   await saveVaults([defaultVault]);
   await setActiveVaultId("default");
 
-  console.log("✅ Migration complete — default vault created at", defaultVaultPath);
+  logger.debug("✅ Migration complete — default vault created at", defaultVaultPath);
 };

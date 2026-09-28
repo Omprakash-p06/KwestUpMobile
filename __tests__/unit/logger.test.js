@@ -78,6 +78,14 @@ describe('src/utils/logger', () => {
       expect(console.log).not.toHaveBeenCalled();
     });
 
+    test('CR-02: debug/info neither emit nor buffer in production', () => {
+      debug('Prod debug noise', { content: 'verbose' });
+      info('Prod info noise', { content: 'verbose' });
+      expect(console.log).not.toHaveBeenCalled();
+      expect(console.info).not.toHaveBeenCalled();
+      expect(getRecentLogs()).toHaveLength(0);
+    });
+
     test('info is silenced in production mode', () => {
       info('Silent info log');
       expect(console.info).not.toHaveBeenCalled();
@@ -86,6 +94,16 @@ describe('src/utils/logger', () => {
     test('warn still passes through in production mode', () => {
       warn('Critical operational warning');
       expect(console.warn).toHaveBeenCalledWith('Critical operational warning');
+    });
+
+    test('CR-02: warn/error still buffer + passthrough in production', () => {
+      warn('Prod warn signal');
+      error('Prod error signal');
+      expect(console.warn).toHaveBeenCalledWith('Prod warn signal');
+      expect(console.error).toHaveBeenCalledWith('Prod error signal');
+      const logs = getRecentLogs();
+      expect(logs).toHaveLength(2);
+      expect(logs.map((l) => l.level)).toEqual(['WARN', 'ERROR']);
     });
 
     test('error still passes through in production mode', () => {
@@ -124,11 +142,59 @@ describe('src/utils/logger', () => {
       info('Immutable test');
       const snapshot1 = getRecentLogs();
       snapshot1.push({ level: 'FAKE', message: 'Hacked' });
-      snapshot1[0].message = 'Mutated';
+      // WR-02: entries are deep-frozen at record time — mutation attempts
+      // either throw (strict mode) or silently no-op (transpiled output).
+      // Either way the live buffer must be unaffected.
+      try {
+        snapshot1[0].message = 'Mutated';
+      } catch {
+        // strict-mode throw is fine — buffer still intact
+      }
+      try {
+        snapshot1[0].details.push('injected');
+      } catch {
+        // strict-mode throw is fine — buffer still intact
+      }
 
       const snapshot2 = getRecentLogs();
       expect(snapshot2).toHaveLength(1);
       expect(snapshot2[0].message).toBe('Immutable test');
+      expect(snapshot2[0].details).toEqual([]);
+    });
+
+    test('nested detail mutation cannot corrupt the forensic buffer (WR-02)', () => {
+      error('Nested test', { cause: { reason: 'disk-full', nested: { code: 42 } } });
+      const snapshot = getRecentLogs();
+      expect(Object.isFrozen(snapshot[0])).toBe(true);
+      expect(Object.isFrozen(snapshot[0].details)).toBe(true);
+      expect(Object.isFrozen(snapshot[0].details[0])).toBe(true);
+      try {
+        snapshot[0].details[0].cause.nested.code = 999;
+      } catch {
+        // strict-mode throw is fine — buffer still intact
+      }
+
+      const fresh = getRecentLogs();
+      expect(fresh[0].details[0].cause.nested.code).toBe(42);
+    });
+
+    test('CR-01: sensitive keys are redacted before buffering', () => {
+      info('Vault opened', {
+        notebook: 'Personal',
+        title: 'Secret meeting notes',
+        content: 'User wrote private diary entry #42',
+        token: 'abc123',
+        safeField: 'operational-status-ok',
+      });
+      const logs = getRecentLogs();
+      const details = logs[0].details[0];
+      expect(details.notebook).toBe('[Redacted]');
+      expect(details.title).toBe('[Redacted]');
+      expect(details.content).toBe('[Redacted]');
+      expect(details.token).toBe('[Redacted]');
+      expect(details.safeField).toBe('operational-status-ok');
+      expect(JSON.stringify(logs)).not.toContain('Secret meeting notes');
+      expect(JSON.stringify(logs)).not.toContain('private diary entry #42');
     });
 
     test('clearLogs clears the buffer entirely', () => {

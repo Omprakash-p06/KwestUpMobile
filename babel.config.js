@@ -1,5 +1,11 @@
 module.exports = function (api) {
-  if (api && typeof api.cache === 'function') {
+  // WR-01: cache keyed on NODE_ENV (not `api.cache(true)`) so a long-lived
+  // Metro/babel daemon never serves a config evaluated for the wrong env —
+  // the plugin list below branches on NODE_ENV, so the cache must vary on it.
+  // Guarded for direct invocation in tests with a stubbed `api` object.
+  if (api && api.cache && typeof api.cache.using === 'function') {
+    api.cache.using(() => process.env.NODE_ENV);
+  } else if (api && typeof api.cache === 'function') {
     api.cache(true);
   }
 

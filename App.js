@@ -77,7 +77,7 @@ const resolveThemeMode = (value) => (VALID_THEME_MODES.includes(value) ? value :
 const resolveThemeName = (value) => (VALID_THEME_NAMES.includes(value) ? value : "dribbble");
 
 const App = () => {
-  console.log("🚀 KWESTUP MAIN APP COMPONENT LOADING...");
+  logger.debug("🚀 KWESTUP MAIN APP COMPONENT LOADING...");
 
   const [fontsLoaded] = useFonts({
     "Inter-Regular": Inter_400Regular,
@@ -147,7 +147,7 @@ const App = () => {
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextAppState) => {
       if (appState.current.match(/inactive|background/) && nextAppState === "active") {
-        console.log("[App] Came to foreground, reloading state from AsyncStorage...");
+        logger.debug("[App] Came to foreground, reloading state from AsyncStorage...");
         loadData();
       }
       appState.current = nextAppState;
@@ -217,14 +217,18 @@ const App = () => {
           if (FORCE_CLEAR_ALL_STORAGE) {
             await clearAllCaches();
           } else if (lastVersion !== APP_VERSION) {
-            console.log("🔄 Version change detected, clearing caches...");
+            logger.info("🔄 Version change detected, clearing caches...");
             await clearAllCaches();
           }
-          // Network & device diagnostics are purely informational
-          runDeviceDiagnostics();
-          runNetworkDiagnostics();
+          // WR-03: network & device diagnostics are dev-only informational
+          // probes — release builds must not phone third-party endpoints
+          // (httpbin) or pay the launch-latency cost on every cold start.
+          if (typeof __DEV__ !== "undefined" && __DEV__) {
+            runDeviceDiagnostics();
+            runNetworkDiagnostics();
+          }
         } catch (bgErr) {
-          console.warn("⚠️ Background init step failed (non-critical):", bgErr);
+          logger.warn("⚠️ Background init step failed (non-critical):", bgErr);
         }
       };
       backgroundInit(); // fire-and-forget
@@ -233,7 +237,7 @@ const App = () => {
       setIsInitialized(true);
       setIsLoading(false);
     } catch (error) {
-      console.error("❌ APP INITIALIZATION FAILED:", error);
+      logger.error("❌ APP INITIALIZATION FAILED:", error);
       setIsInitialized(true);
       setIsLoading(false);
     }
@@ -392,13 +396,13 @@ const App = () => {
                 setBirthdays(prev => prev.map(b => b.id === bday.id ? { ...b, notificationIds: newIds } : b));
               }
             } catch (e) {
-              console.warn("Birthday notification reschedule error:", e);
+              logger.warn("Birthday notification reschedule error:", e);
             }
           }, 500);
         }
       }
     } catch (error) {
-      console.error("❌ Failed to load data:", error);
+      logger.error("❌ Failed to load data:", error);
       setDailyTasks([]);
       setBirthdays([]);
       setTasks([]);
@@ -439,10 +443,10 @@ const App = () => {
       const storedRaw = await AsyncStorage.getItem(storageKey);
       const stored = storedRaw ? JSON.parse(storedRaw) : {};
       await AsyncStorage.setItem(storageKey, JSON.stringify({ ...stored, ...dataToSave }));
-      console.log("💾 Main data saved successfully to:", storageKey);
+      logger.debug("💾 Main data saved successfully to:", storageKey);
       lastSaveTimeRef.current = Date.now();
     } catch (error) {
-      console.error("❌ Failed to save main data:", error);
+      logger.error("❌ Failed to save main data:", error);
     }
   }, [
     birthdays,
@@ -469,7 +473,7 @@ const App = () => {
       await AsyncStorage.setItem(timerKey, JSON.stringify(timerState));
       // Log only on changes to avoid console spam, or keep silent
     } catch (error) {
-      console.error("❌ Failed to save timer state:", error);
+      logger.error("❌ Failed to save timer state:", error);
     }
   }, [timerDuration, timerRemaining, isTimerRunning, isDataLoaded]);
 
@@ -539,7 +543,7 @@ const App = () => {
             () => {
               if (updateInfo.releaseUrl) {
                 Linking.openURL(updateInfo.releaseUrl).catch((err) =>
-                  console.error("Failed to open update URL:", err)
+                  logger.error("Failed to open update URL:", err)
                 );
               }
             },
@@ -752,7 +756,7 @@ const App = () => {
             const newNotificationIds = await scheduleCustomBirthdayReminders(bday);
             updatedBday.notificationIds = newNotificationIds;
           } catch (err) {
-            console.error("reschedule custom birthdays failed:", bday.name, err);
+            logger.error("reschedule custom birthdays failed:", bday.name, err);
           }
           rescheduledBirthdays.push(updatedBday);
         }
@@ -839,7 +843,7 @@ const App = () => {
       <SafeAreaProvider>
         <PaperProvider theme={{ colors: currentTheme }}>
           <LiquidGlassBackground theme={currentTheme}>
-            <ErrorBoundary currentTheme={currentTheme}>
+            <ErrorBoundary currentTheme={currentTheme} isDark={resolvedThemeMode !== "light"}>
               <View style={[styles.container, { backgroundColor: "transparent" }]}>
               <TaskProvider
                 initialTasks={tasks}

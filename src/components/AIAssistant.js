@@ -29,6 +29,7 @@ import {
   assistWriting,
   assistWritingCustom,
 } from "../utils/aiService";
+import { logger } from "../utils/logger";
 
 // ─── Helper: format bytes ────────────────────────────────────────────────────
 const formatBytes = (bytes) => {
@@ -308,7 +309,7 @@ export const AIAssistant = ({
 
     try {
       const parsed = await parseGlobalCommand(globalCommand.trim());
-      console.log("🤖 AI Global Parsed result:", parsed);
+      logger.debug("🤖 AI Global Parsed result:", parsed);
 
       if (parsed.type === "task" && onTaskCreated) {
         onTaskCreated(parsed);
@@ -333,7 +334,7 @@ export const AIAssistant = ({
         throw new Error("Invalid command parsing structure.");
       }
     } catch (err) {
-      console.error("AI command execution error:", err);
+      logger.error("AI command execution error:", err);
       setError(`Command parsing failed: ${err.message}`);
       setAiState("error");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

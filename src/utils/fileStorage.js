@@ -1,5 +1,6 @@
 import * as FileSystem from "expo-file-system";
 import { getVaultPath } from "./vaultService";
+import { logger } from "./logger";
 
 // ─── Folder Initialization ────────────────────────────────────────────────────
 
@@ -13,10 +14,10 @@ export const initNotesFolder = async (vaultId) => {
     const dirInfo = await FileSystem.getInfoAsync(vaultPath);
     if (!dirInfo.exists) {
       await FileSystem.makeDirectoryAsync(vaultPath, { intermediates: true });
-      console.log("📂 Vault folder initialized at:", vaultPath);
+      logger.debug("📂 Vault folder initialized at:", vaultPath);
     }
   } catch (error) {
-    console.error("❌ Failed to initialize vault folder:", error);
+    logger.error("❌ Failed to initialize vault folder:", error);
   }
 };
 
@@ -51,10 +52,10 @@ export const saveNoteFile = async (vaultId, folder, title, content) => {
     await FileSystem.writeAsStringAsync(filePath, content || "", {
       encoding: FileSystem.EncodingType.UTF8,
     });
-    console.log("💾 Saved note file to:", filePath);
+    logger.debug("💾 Saved note file to:", filePath);
     return { success: true, filePath };
   } catch (error) {
-    console.error("❌ Failed to save note file:", error);
+    logger.error("❌ Failed to save note file:", error);
     return { success: false, error };
   }
 };
@@ -84,7 +85,7 @@ export const readNoteFile = async (vaultId, folder, title) => {
     }
     return "";
   } catch (error) {
-    console.error("❌ Failed to read note file:", error);
+    logger.error("❌ Failed to read note file:", error);
     return "";
   }
 };
@@ -108,7 +109,7 @@ export const deleteNoteFile = async (vaultId, folder, title) => {
     const fileInfo = await FileSystem.getInfoAsync(filePath);
     if (fileInfo.exists) {
       await FileSystem.deleteAsync(filePath);
-      console.log("🗑️ Deleted note file:", filePath);
+      logger.debug("🗑️ Deleted note file:", filePath);
     }
 
     // Clean up empty folder
@@ -118,12 +119,12 @@ export const deleteNoteFile = async (vaultId, folder, title) => {
       const files = await FileSystem.readDirectoryAsync(folderPath);
       if (files.length === 0 && sanitizedFolder !== "Uncategorized") {
         await FileSystem.deleteAsync(folderPath);
-        console.log("📂 Cleaned up empty folder:", folderPath);
+        logger.debug("📂 Cleaned up empty folder:", folderPath);
       }
     }
     return { success: true };
   } catch (error) {
-    console.error("❌ Failed to delete note file:", error);
+    logger.error("❌ Failed to delete note file:", error);
     return { success: false, error };
   }
 };
@@ -145,11 +146,11 @@ export const deleteFolderFile = async (vaultId, folder) => {
     const folderInfo = await FileSystem.getInfoAsync(folderPath);
     if (folderInfo.exists) {
       await FileSystem.deleteAsync(folderPath, { idempotent: true });
-      console.log("🗑️ Deleted folder from disk:", folderPath);
+      logger.debug("🗑️ Deleted folder from disk:", folderPath);
     }
     return { success: true };
   } catch (error) {
-    console.error("❌ Failed to delete folder:", error);
+    logger.error("❌ Failed to delete folder:", error);
     return { success: false, error };
   }
 };
@@ -224,7 +225,7 @@ export const getAllNotesFromFilesystem = async (vaultId) => {
 
     return notesList;
   } catch (error) {
-    console.error("❌ Failed to scan notes filesystem:", error);
+    logger.error("❌ Failed to scan notes filesystem:", error);
     return [];
   }
 };
@@ -240,12 +241,12 @@ export const wipeNotesFilesystem = async (vaultId) => {
     const dirInfo = await FileSystem.getInfoAsync(vaultPath);
     if (dirInfo.exists) {
       await FileSystem.deleteAsync(vaultPath, { idempotent: true });
-      console.log("🗑️ Wiped vault filesystem:", vaultPath);
+      logger.debug("🗑️ Wiped vault filesystem:", vaultPath);
     }
     // Re-create the empty vault directory
     await FileSystem.makeDirectoryAsync(vaultPath, { intermediates: true });
   } catch (error) {
-    console.error("❌ Failed to wipe vault filesystem:", error);
+    logger.error("❌ Failed to wipe vault filesystem:", error);
   }
 };
 

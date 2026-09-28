@@ -1,12 +1,24 @@
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { APP_VERSION } from "./storage";
+import { logger } from "./logger";
 
 export const DEBUG_MODE = false;
 
+// WR-03: dev-only guard shared by the diagnostic probes below. Release builds
+// must never phone third-party endpoints or pay probe latency at startup.
+const isDiagnosticsEnabled = () =>
+  typeof __DEV__ !== "undefined" ? Boolean(__DEV__) : process.env.NODE_ENV !== "production";
+
 // NETWORK DIAGNOSTICS
 export const runNetworkDiagnostics = async () => {
-  console.log("🌐 RUNNING NETWORK DIAGNOSTICS...");
+  // WR-03: skip the hardcoded httpbin probe outside dev — a privacy-first
+  // release build must not contact a third-party endpoint on every launch.
+  if (!isDiagnosticsEnabled()) {
+    logger.debug("🌐 Network diagnostics skipped (dev-only probe).");
+    return;
+  }
+  logger.debug("🌐 RUNNING NETWORK DIAGNOSTICS...");
 
   try {
     const response = await fetch("https://httpbin.org/json", {
@@ -19,13 +31,13 @@ export const runNetworkDiagnostics = async () => {
     });
 
     if (response.ok) {
-      console.log("✅ Network connectivity: OK");
-      console.log("📡 Response status:", response.status);
+      logger.debug("✅ Network connectivity: OK");
+      logger.debug("📡 Response status:", response.status);
     } else {
-      console.log("⚠️ Network response not OK:", response.status);
+      logger.debug("⚠️ Network response not OK:", response.status);
     }
   } catch (error) {
-    console.error("❌ Network connectivity failed:", error);
+    logger.error("❌ Network connectivity failed:", error);
   }
 };
 
@@ -48,7 +60,7 @@ const isNewerVersion = (current, latest) => {
 };
 
 export const checkForUpdates = async (onUpdateAvailable) => {
-  console.log("🔄 Checking for updates via GitHub releases...");
+  logger.debug("🔄 Checking for updates via GitHub releases...");
   try {
     const response = await fetch("https://api.github.com/repos/Omprakash-p06/KwestUpMobile/releases/latest", {
       method: "GET",
@@ -67,11 +79,11 @@ export const checkForUpdates = async (onUpdateAvailable) => {
       const apkAsset = data.assets?.find(asset => asset.name.endsWith('.apk'));
       const apkUrl = apkAsset ? apkAsset.browser_download_url : null;
 
-      console.log(`Latest release version found: ${latestVersion}`);
-      console.log(`Current app version: ${APP_VERSION}`);
+      logger.debug(`Latest release version found: ${latestVersion}`);
+      logger.debug(`Current app version: ${APP_VERSION}`);
 
       if (latestVersion && isNewerVersion(APP_VERSION, latestVersion)) {
-        console.log("✅ A new update is available!");
+        logger.info("✅ A new update is available!");
         if (onUpdateAvailable) {
           onUpdateAvailable({
             latestVersion,
@@ -82,28 +94,33 @@ export const checkForUpdates = async (onUpdateAvailable) => {
         }
         return { hasUpdate: true, latestVersion, releaseUrl, releaseNotes, apkUrl };
       } else {
-        console.log("ℹ️ App is up to date.");
+        logger.debug("ℹ️ App is up to date.");
       }
     } else {
-      console.warn("⚠️ Failed to check GitHub releases:", response.status);
+      logger.warn("⚠️ Failed to check GitHub releases:", response.status);
     }
   } catch (error) {
-    console.error("❌ Failed to fetch GitHub updates:", error);
+    logger.error("❌ Failed to fetch GitHub updates:", error);
   }
   return { hasUpdate: false };
 };
 
 // DEVICE DIAGNOSTICS
 export const runDeviceDiagnostics = () => {
-  console.log("📱 DEVICE DIAGNOSTICS:");
-  console.log("🤖 Platform:", Platform.OS);
-  console.log("📊 Platform Version:", Platform.Version);
-  console.log("🏗️ Development Mode:", DEBUG_MODE);
+  // WR-03: dev-only informational probe — never runs in release builds
+  // (callers in App.js also gate on __DEV__; belt and suspenders).
+  if (!isDiagnosticsEnabled()) {
+    return;
+  }
+  logger.debug("📱 DEVICE DIAGNOSTICS:");
+  logger.debug("🤖 Platform:", Platform.OS);
+  logger.debug("📊 Platform Version:", Platform.Version);
+  logger.debug("🏗️ Development Mode:", DEBUG_MODE);
 
   if (Platform.OS === "ios") {
-    console.log("🍎 iOS Platform Constants:", Platform.constants);
+    logger.debug("🍎 iOS Platform Constants:", Platform.constants);
   } else {
-    console.log("🤖 Android Platform Constants:", Platform.constants);
+    logger.debug("🤖 Android Platform Constants:", Platform.constants);
   }
 };
 
@@ -125,9 +142,9 @@ export const sendTelemetryEvent = async (event, payload = {}) => {
         ...payload,
       }),
     });
-    console.log("📊 Telemetry event sent:", event);
+    logger.debug("📊 Telemetry event sent:", event);
   } catch (err) {
-    console.log("⚠️ Telemetry send skipped (offline/disabled):", err.message);
+    logger.debug("⚠️ Telemetry send skipped (offline/disabled):", err.message);
   }
 };
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { Text, View, Share } from 'react-native';
 import renderer, { act } from 'react-test-renderer';
 import * as Clipboard from 'expo-clipboard';
 import { ErrorBoundary } from '../../src/components/ErrorBoundary';
@@ -114,8 +114,9 @@ describe('src/components/ErrorBoundary', () => {
   });
 
   test('TC-OBS-09: Copy Error Report formats and writes diagnostic report to clipboard', async () => {
-    // Add breadcrumb to logger
-    logger.info('User opened note #42');
+    // CR-01: breadcrumb carrying user content under a sensitive key must be
+    // redacted in the clipboard payload, never verbatim.
+    logger.info('Note opened', { title: 'Secret note #42' });
     logger.warn('Storage latency spike: 120ms');
 
     let tree;
@@ -137,7 +138,9 @@ describe('src/components/ErrorBoundary', () => {
 
     expect(copiedText).toContain('=== KwestUp Diagnostics & Crash Report ===');
     expect(copiedText).toContain('Fatal Parser Failure');
-    expect(copiedText).toContain('User opened note #42');
+    // CR-01: user content redacted, operational signal preserved
+    expect(copiedText).toContain('[Redacted]');
+    expect(copiedText).not.toContain('Secret note #42');
     expect(copiedText).toContain('Storage latency spike: 120ms');
 
     // Toast confirmation verification
@@ -203,5 +206,99 @@ describe('src/components/ErrorBoundary', () => {
 
     const root = tree.root;
     expect(root.findByProps({ testID: 'custom-fallback' })).toBeDefined();
+  });
+
+  test('WR-04: clipboard failure falls back to Share and still confirms copy', async () => {
+    Clipboard.setStringAsync.mockRejectedValueOnce(new Error('clipboard denied'));
+    Share.share = jest.fn().mockResolvedValue({ action: 'sharedAction' });
+
+    let tree;
+    act(() => {
+      tree = renderer.create(
+        <ErrorBoundary>
+          <ThrowingComponent shouldThrow={true} message="Share fallback test" />
+        </ErrorBoundary>
+      );
+    });
+
+    const instance = tree.root.instance;
+    await act(async () => {
+      await instance.handleCopyReport();
+    });
+
+    expect(Clipboard.setStringAsync).toHaveBeenCalledTimes(1);
+    expect(Share.share).toHaveBeenCalledTimes(1);
+    expect(instance.state.copiedToast).toBe(true);
+    expect(instance.state.copyFailed).toBe(false);
+  });
+
+  test('WR-04: double failure (clipboard + Share) shows failure UI, not success toast', async () => {
+    Clipboard.setStringAsync.mockRejectedValueOnce(new Error('clipboard denied'));
+    Share.share = jest.fn().mockRejectedValueOnce(new Error('share denied'));
+
+    let tree;
+    act(() => {
+      tree = renderer.create(
+        <ErrorBoundary>
+          <ThrowingComponent shouldThrow={true} message="Double failure test" />
+        </ErrorBoundary>
+      );
+    });
+
+    const instance = tree.root.instance;
+    await act(async () => {
+      await instance.handleCopyReport();
+    });
+
+    expect(instance.state.copiedToast).toBe(false);
+    expect(instance.state.copyFailed).toBe(true);
+    const textNodes = tree.root.findAllByType(Text);
+    const combinedText = textNodes.map((n) => n.props.children).flat().join(' ');
+    expect(combinedText).toContain('Copy failed — please screenshot this screen');
+  });
+
+  test('WR-05: Restart Application tertiary action shows manual-restart prompt', () => {
+    let tree;
+    act(() => {
+      tree = renderer.create(
+        <ErrorBoundary>
+          <ThrowingComponent shouldThrow={true} message="Restart prompt test" />
+        </ErrorBoundary>
+      );
+    });
+
+    const instance = tree.root.instance;
+    expect(instance.state.showRestartHint).toBe(false);
+
+    let combinedText = tree.root
+      .findAllByType(Text)
+      .map((n) => n.props.children)
+      .flat()
+      .join(' ');
+    expect(combinedText).toContain('Restart Application');
+
+    act(() => {
+      instance.handleRestartPrompt();
+    });
+    expect(instance.state.showRestartHint).toBe(true);
+
+    combinedText = tree.root
+      .findAllByType(Text)
+      .map((n) => n.props.children)
+      .flat()
+      .join(' ');
+    expect(combinedText).toContain('Please close and reopen KwestUp to restart the application.');
+  });
+
+  test('WR-06: explicit isDark prop renders without crashing', () => {
+    let tree;
+    act(() => {
+      tree = renderer.create(
+        <ErrorBoundary isDark={false} currentTheme={{ background: '#0F172A' }}>
+          <ThrowingComponent shouldThrow={true} message="Theme prop test" />
+        </ErrorBoundary>
+      );
+    });
+    expect(tree.root.instance.state.hasError).toBe(true);
   });
 });

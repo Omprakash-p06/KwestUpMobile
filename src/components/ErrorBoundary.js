@@ -24,6 +24,8 @@ export class ErrorBoundary extends Component {
       errorInfo: null,
       showDetails: false,
       copiedToast: false,
+      copyFailed: false,
+      showRestartHint: false,
     };
     this.toastTimeout = null;
   }
@@ -50,14 +52,26 @@ export class ErrorBoundary extends Component {
       errorInfo: null,
       showDetails: false,
       copiedToast: false,
+      copyFailed: false,
+      showRestartHint: false,
     });
   };
 
+  // WR-05: spec'd "Restart Application" tertiary action (19-UI-SPEC.md copy
+  // contract). expo-updates is not installed, so a true programmatic reload
+  // is unavailable — surface a documented manual-restart prompt instead.
+  handleRestartPrompt = () => {
+    this.setState((prev) => ({ showRestartHint: !prev.showRestartHint }));
+  };
+
+  // CR-01: cap the copy-pasteable report so a pathological breadcrumb buffer
+  // can never produce an unbounded clipboard/Share payload. Breadcrumb
+  // contents are already PII-redacted at record time in logger.serializeItem.
   handleCopyReport = async () => {
     const { error, errorInfo } = this.state;
     const recentLogs = logger.getRecentLogs();
 
-    const report = [
+    const fullReport = [
       "=== KwestUp Diagnostics & Crash Report ===",
       `Timestamp: ${new Date().toISOString()}`,
       `Platform: ${Platform.OS} (Version ${Platform.Version})`,
@@ -76,25 +90,41 @@ export class ErrorBoundary extends Component {
       JSON.stringify(recentLogs, null, 2),
     ].join("\n");
 
+    const MAX_REPORT_CHARS = 8000;
+    const report =
+      fullReport.length > MAX_REPORT_CHARS
+        ? `${fullReport.slice(0, MAX_REPORT_CHARS)}\n…[report truncated at ${MAX_REPORT_CHARS} chars]`
+        : fullReport;
+
+    // WR-04: track copy success across Clipboard → Share attempts; only show
+    // the confirmation toast when the report actually landed somewhere.
+    let copied = false;
     try {
       if (Clipboard && typeof Clipboard.setStringAsync === "function") {
         await Clipboard.setStringAsync(report);
+        copied = true;
       } else {
         await Share.share({ title: "KwestUp Error Report", message: report });
+        copied = true;
       }
     } catch {
       try {
         await Share.share({ title: "KwestUp Error Report", message: report });
+        copied = true;
       } catch {
-        // Fallback ignore
+        copied = false;
       }
     }
 
-    this.setState({ copiedToast: true });
-    if (this.toastTimeout) clearTimeout(this.toastTimeout);
-    this.toastTimeout = setTimeout(() => {
-      this.setState({ copiedToast: false });
-    }, 3000);
+    if (copied) {
+      this.setState({ copiedToast: true, copyFailed: false });
+      if (this.toastTimeout) clearTimeout(this.toastTimeout);
+      this.toastTimeout = setTimeout(() => {
+        this.setState({ copiedToast: false });
+      }, 3000);
+    } else {
+      this.setState({ copiedToast: false, copyFailed: true });
+    }
   };
 
   toggleDetails = () => {
@@ -102,8 +132,8 @@ export class ErrorBoundary extends Component {
   };
 
   render() {
-    const { hasError, error, errorInfo, showDetails, copiedToast } = this.state;
-    const { children, fallback, currentTheme } = this.props;
+    const { hasError, error, errorInfo, showDetails, copiedToast, copyFailed, showRestartHint } = this.state;
+    const { children, fallback, currentTheme, isDark: isDarkProp, themeMode } = this.props;
 
     if (!hasError) {
       return children;
@@ -113,7 +143,15 @@ export class ErrorBoundary extends Component {
       return typeof fallback === "function" ? fallback(this.handleRetry) : fallback;
     }
 
-    const isDark = !currentTheme || currentTheme.background !== "#FFFFFF" && currentTheme.background !== "#E4E2E1" && currentTheme.background !== "#F8FAFC";
+    // WR-06: prefer an explicit theme signal from the host (App.js passes
+    // isDark derived from its resolved theme mode); keep the legacy
+    // background-hex heuristic only as a fallback when no prop is present.
+    const isDark =
+      typeof isDarkProp === "boolean"
+        ? isDarkProp
+        : typeof themeMode === "string"
+          ? themeMode !== "light"
+          : !currentTheme || (currentTheme.background !== "#FFFFFF" && currentTheme.background !== "#E4E2E1" && currentTheme.background !== "#F8FAFC");
     const backdropColor = isDark ? "#0F172A" : "#F8FAFC";
     const cardBgColor = isDark ? "#1E293B" : "#FFFFFF";
     const textColor = isDark ? "#F8FAFC" : "#0F172A";
@@ -175,7 +213,24 @@ export class ErrorBoundary extends Component {
                 icon="content-copy"
                 style={styles.secondaryButton}
               />
+
+              <CustomButton
+                title="Restart Application"
+                onPress={this.handleRestartPrompt}
+                outline
+                color={textColor}
+                icon="restart"
+                style={styles.secondaryButton}
+              />
             </View>
+
+            {showRestartHint && (
+              <View style={[styles.hintBanner, { borderColor: borderColor }]}>
+                <Text style={[styles.hintText, { color: secondaryTextColor }]}>
+                  Please close and reopen KwestUp to restart the application.
+                </Text>
+              </View>
+            )}
 
             {/* Copied Toast Banner */}
             {copiedToast && (
@@ -183,6 +238,17 @@ export class ErrorBoundary extends Component {
                 <MaterialCommunityIcons name="check" size={16} color="#FFFFFF" style={styles.toastIcon} />
                 <Text style={styles.toastText}>
                   Error report copied to clipboard
+                </Text>
+              </View>
+            )}
+
+            {/* WR-04: explicit failure state so the user is never told a
+                report was copied when both Clipboard and Share failed. */}
+            {copyFailed && (
+              <View style={[styles.toastBanner, { backgroundColor: "#EF4444" }]}>
+                <MaterialCommunityIcons name="alert-outline" size={16} color="#FFFFFF" style={styles.toastIcon} />
+                <Text style={styles.toastText}>
+                  Copy failed — please screenshot this screen
                 </Text>
               </View>
             )}
@@ -284,6 +350,19 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
     marginBottom: 16,
+  },
+  hintBanner: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 16,
+    width: "100%",
+  },
+  hintText: {
+    fontSize: 12,
+    fontWeight: "500",
+    textAlign: "center",
   },
   toastIcon: {
     marginRight: 6,
