@@ -172,6 +172,36 @@ jest.mock('expo-camera', () => ({
   useCameraPermissions: jest.fn().mockReturnValue([{ granted: true }, jest.fn()]),
 }));
 
+jest.mock('expo-clipboard', () => ({
+  setStringAsync: jest.fn().mockResolvedValue(true),
+  getStringAsync: jest.fn().mockResolvedValue(''),
+  hasStringAsync: jest.fn().mockResolvedValue(true),
+  isAvailableAsync: jest.fn().mockResolvedValue(true),
+}));
+
+jest.mock('@expo/vector-icons', () => {
+  const React = require('react');
+  const { Text } = require('react-native');
+  const MockIcon = (props) => React.createElement(Text, props, props.name || '');
+  return {
+    __esModule: true,
+    default: {
+      MaterialCommunityIcons: MockIcon,
+      Ionicons: MockIcon,
+      Feather: MockIcon,
+      AntDesign: MockIcon,
+      FontAwesome: MockIcon,
+      MaterialIcons: MockIcon,
+    },
+    MaterialCommunityIcons: MockIcon,
+    Ionicons: MockIcon,
+    Feather: MockIcon,
+    AntDesign: MockIcon,
+    FontAwesome: MockIcon,
+    MaterialIcons: MockIcon,
+  };
+});
+
 // 6. React Native Reanimated Mock
 jest.mock('react-native-reanimated', () =>
   require('react-native-reanimated/mock')

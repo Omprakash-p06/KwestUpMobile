@@ -34,6 +34,8 @@ import { CustomButton } from "./src/components/CustomButton";
 import { CustomTextInput } from "./src/components/CustomTextInput";
 import { TimerLockoutOverlay } from "./src/components/TimerLockoutOverlay";
 import { LiquidGlassBackground } from "./src/components/LiquidGlassBackground";
+import { ErrorBoundary } from "./src/components/ErrorBoundary";
+import { logger } from "./src/utils/logger";
 
 // Theme and Navigation imports
 import { themes } from "./src/theme/colors";
@@ -837,7 +839,8 @@ const App = () => {
       <SafeAreaProvider>
         <PaperProvider theme={{ colors: currentTheme }}>
           <LiquidGlassBackground theme={currentTheme}>
-            <View style={[styles.container, { backgroundColor: "transparent" }]}>
+            <ErrorBoundary currentTheme={currentTheme}>
+              <View style={[styles.container, { backgroundColor: "transparent" }]}>
               <TaskProvider
                 initialTasks={tasks}
                 initialTaskLists={taskLists}
@@ -1030,7 +1033,7 @@ const App = () => {
                     setIsTimerRunning(false);
                     setShowTimerLockout(false);
                     setTimerRemaining(timerDuration);
-                    console.log("Focus session interrupted!");
+                    logger.info("Focus session interrupted!");
                   },
                   () => { },
                 )
@@ -1048,7 +1051,8 @@ const App = () => {
                 onAnimationEnd={() => setConfettiVisible(false)}
               />
             )}
-            </View>
+              </View>
+            </ErrorBoundary>
           </LiquidGlassBackground>
         </PaperProvider>
       </SafeAreaProvider>

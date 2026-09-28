@@ -1,0 +1,207 @@
+import React from 'react';
+import { Text, View } from 'react-native';
+import renderer, { act } from 'react-test-renderer';
+import * as Clipboard from 'expo-clipboard';
+import { ErrorBoundary } from '../../src/components/ErrorBoundary';
+import { logger } from '../../src/utils/logger';
+
+// Component that can throw during render
+const ThrowingComponent = ({ shouldThrow, message }) => {
+  if (shouldThrow) {
+    throw new Error(message || 'Simulated Render Failure');
+  }
+  return <Text testID="healthy-child">Healthy Component Content</Text>;
+};
+
+describe('src/components/ErrorBoundary', () => {
+  let originalConsoleError;
+  let loggerErrorSpy;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    logger.clearLogs();
+    originalConsoleError = console.error;
+    console.error = jest.fn(); // Suppress React error logging in tests
+    loggerErrorSpy = jest.spyOn(logger, 'error');
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    jest.useRealTimers();
+    console.error = originalConsoleError;
+    loggerErrorSpy.mockRestore();
+  });
+
+  test('TC-OBS-06: Renders children normally when no error occurs', () => {
+    let tree;
+    act(() => {
+      tree = renderer.create(
+        <ErrorBoundary>
+          <ThrowingComponent shouldThrow={false} />
+        </ErrorBoundary>
+      );
+    });
+
+    const root = tree.root;
+    expect(root.findByProps({ testID: 'healthy-child' })).toBeDefined();
+    expect(loggerErrorSpy).not.toHaveBeenCalled();
+  });
+
+  test('TC-OBS-06 & TC-OBS-07: Catches render exception and displays recovery UI conforming to 19-UI-SPEC.md', () => {
+    let tree;
+    act(() => {
+      tree = renderer.create(
+        <ErrorBoundary>
+          <ThrowingComponent shouldThrow={true} message="Corrupt Note Tree" />
+        </ErrorBoundary>
+      );
+    });
+
+    const root = tree.root;
+    const textNodes = root.findAllByType(Text);
+    const combinedText = textNodes.map((n) => n.props.children).flat().join(' ');
+
+    // 19-UI-SPEC.md copywriting contract verification
+    expect(combinedText).toContain('Something Went Wrong');
+    expect(combinedText).toContain(
+      'KwestUp encountered an unexpected error. Your notes, tasks, and data remain safe on your device.'
+    );
+    expect(combinedText).toContain('Try Again');
+    expect(combinedText).toContain('Copy Error Report');
+
+    // Logger integration verification
+    expect(loggerErrorSpy).toHaveBeenCalledWith(
+      'Unhandled React Error:',
+      'Corrupt Note Tree',
+      expect.any(String)
+    );
+  });
+
+  test('TC-OBS-08: Try Again action resets error state', () => {
+    let tree;
+    let shouldThrow = true;
+
+    act(() => {
+      tree = renderer.create(
+        <ErrorBoundary>
+          <ThrowingComponent shouldThrow={shouldThrow} message="Transient Fail" />
+        </ErrorBoundary>
+      );
+    });
+
+    const instance = tree.root.instance;
+    expect(instance.state.hasError).toBe(true);
+
+    // Update children prop to healthy and press "Try Again"
+    act(() => {
+      tree.update(
+        <ErrorBoundary>
+          <ThrowingComponent shouldThrow={false} message="Transient Fail" />
+        </ErrorBoundary>
+      );
+    });
+
+    act(() => {
+      instance.handleRetry();
+    });
+
+    expect(instance.state.hasError).toBe(false);
+    expect(instance.state.error).toBeNull();
+    expect(tree.root.findByProps({ testID: 'healthy-child' })).toBeDefined();
+  });
+
+  test('TC-OBS-09: Copy Error Report formats and writes diagnostic report to clipboard', async () => {
+    // Add breadcrumb to logger
+    logger.info('User opened note #42');
+    logger.warn('Storage latency spike: 120ms');
+
+    let tree;
+    act(() => {
+      tree = renderer.create(
+        <ErrorBoundary>
+          <ThrowingComponent shouldThrow={true} message="Fatal Parser Failure" />
+        </ErrorBoundary>
+      );
+    });
+
+    const instance = tree.root.instance;
+    await act(async () => {
+      await instance.handleCopyReport();
+    });
+
+    expect(Clipboard.setStringAsync).toHaveBeenCalledTimes(1);
+    const copiedText = Clipboard.setStringAsync.mock.calls[0][0];
+
+    expect(copiedText).toContain('=== KwestUp Diagnostics & Crash Report ===');
+    expect(copiedText).toContain('Fatal Parser Failure');
+    expect(copiedText).toContain('User opened note #42');
+    expect(copiedText).toContain('Storage latency spike: 120ms');
+
+    // Toast confirmation verification
+    expect(instance.state.copiedToast).toBe(true);
+    const root = tree.root;
+    const textNodes = root.findAllByType(Text);
+    const combinedText = textNodes.map((n) => n.props.children).flat().join(' ');
+    expect(combinedText).toContain('Error report copied to clipboard');
+
+    act(() => {
+      jest.advanceTimersByTime(3500);
+    });
+    expect(instance.state.copiedToast).toBe(false);
+  });
+
+  test('Toggles collapsible diagnostic details between hidden and visible', () => {
+    let tree;
+    act(() => {
+      tree = renderer.create(
+        <ErrorBoundary>
+          <ThrowingComponent shouldThrow={true} message="Trace inspection test" />
+        </ErrorBoundary>
+      );
+    });
+
+    const instance = tree.root.instance;
+    expect(instance.state.showDetails).toBe(false);
+
+    // Toggle open
+    act(() => {
+      instance.toggleDetails();
+    });
+    expect(instance.state.showDetails).toBe(true);
+
+    const root = tree.root;
+    const textNodes = root.findAllByType(Text);
+    const combinedText = textNodes.map((n) => n.props.children).flat().join(' ');
+    expect(combinedText).toContain('Hide Diagnostic Details');
+    expect(combinedText).toContain('Trace inspection test');
+
+    // Toggle closed
+    act(() => {
+      instance.toggleDetails();
+    });
+    expect(instance.state.showDetails).toBe(false);
+  });
+
+  test('Supports custom fallback render function if provided via props', () => {
+    let tree;
+    const customFallback = (retry) => (
+      <View testID="custom-fallback">
+        <Text>Custom Recovery UI</Text>
+      </View>
+    );
+
+    act(() => {
+      tree = renderer.create(
+        <ErrorBoundary fallback={customFallback}>
+          <ThrowingComponent shouldThrow={true} message="Custom fallback test" />
+        </ErrorBoundary>
+      );
+    });
+
+    const root = tree.root;
+    expect(root.findByProps({ testID: 'custom-fallback' })).toBeDefined();
+  });
+});
