@@ -28,24 +28,32 @@ Absolute privacy and local-first reliability: user data stays entirely on-device
 - ✓ [WIDG-02] Interactive Android home-screen widgets with task toggling and tab switching — Phase 12
 - ✓ [BILL-01] Personal finance, budget envelopes, and recurring bill tracking — Phase 13
 
+<!-- Shipped in Milestone 2 (Phases 14-19: Hardened Offline-First & Production Readiness) -->
+
+- ✓ [TEST-01..03] Automated Jest test runner, native mocks, unit test suites, and CI/CD pipeline — Phase 14
+- ✓ [DATE-01..02] Centralized local date engine eliminating UTC calendar bugs — Phase 15
+- ✓ [SEC-01..02, STORE-01] Backup encryption v2 (PBKDF2 100k+), LAN sync auth, and migration key hardening — Phase 16
+- ✓ [ARCH-01..02] Decoupled domain context providers and unified task mutation engine — Phase 17
+- ✓ [AI-01..02] Pinned model SHA-256 integrity verification, memory lifecycle, and heuristic fallback — Phase 18
+- ✓ [OBS-01..02] Production log stripping, structured logger ring-buffer, and root ErrorBoundary — Phase 19
+
 ### Active
 
-<!-- Milestone 2: Hardened Offline-First & Production Readiness -->
+<!-- Milestone 3: KwestUp 4.0 — Atomic Behavior Engine -->
 
-- [ ] **TEST-01**: Configure Jest test runner, Babel environment, and mock native modules (`llama.rn`, `react-native-android-widget`, `AsyncStorage`, `expo-file-system`).
-- [ ] **TEST-02**: Establish true unit and integration test suites importing production code for core utilities and state mutations.
-- [ ] **TEST-03**: Establish automated GitHub Actions CI pipeline running lint and test validation on push/PR.
-- [ ] **DATE-01**: Centralize device-local calendar date and timezone calculations in `src/utils/dateUtils.js`.
-- [ ] **DATE-02**: Eliminate all UTC `toISOString().slice(0, 10)` date bugs across `App.js`, `DailyTasksScreen`, `BillingScreen`, `SearchScreen`, and `widget-task-handler.tsx`.
-- [ ] **SEC-01**: Modernize backup encryption with per-archive cryptographically random salt and IV, PBKDF2 with ≥100,000 iterations, and legacy archive fallback.
-- [ ] **SEC-02**: Secure LAN synchronization transport and token authentication over local Wi-Fi.
-- [ ] **STORE-01**: Fix storage migration version key drift and prevent version change cache clear from wiping telemetry and AI download state.
-- [ ] **ARCH-01**: Decouple monolithic state and callbacks from `App.js` into dedicated domain stores/context providers.
-- [ ] **ARCH-02**: Unify task recurrence and completion mutations into a single authoritative data mutation layer shared between app and home-screen widgets.
-- [ ] **AI-01**: Secure and harden on-device AI pipeline with pinned model release and SHA-256 checksum verification before loading.
-- [ ] **AI-02**: Implement robust AI memory lifecycle management (auto-unloading context) and structured fallback handling.
-- [ ] **OBS-01**: Strip emoji-based debug console logging from production builds.
-- [ ] **OBS-02**: Set up structured crash and diagnostics boundaries for release builds.
+- [ ] **GOV-01**: Establish comprehensive Atomic Habits behavioral rulebook and policy contracts in `rulebook/`.
+- [ ] **GOV-02**: Set up TypeScript compilation foundation (`tsconfig.json`) and scaffold domain directory hierarchy (`src/behavior/`, `src/commands/`, `src/services/`, `src/domains/`).
+- [ ] **UPGD-01**: Upgrade to Expo SDK 57, React Native 0.86, React 19.2.3, and Node 22 while preserving native module stability (`llama.rn`, `react-native-android-widget`).
+- [ ] **NOTIF-01**: Consolidate distributed notification mechanics into `src/services/notificationService.ts` with dedicated Android channels, priority rules, and timeouts.
+- [ ] **NOTIF-02**: Enforce deterministic behavioral notification policies (quiet hours, max notifications per day, deduplication windows).
+- [ ] **EVT-01**: Implement type-safe in-memory domain event bus (`src/behavior/eventBus.ts`) instrumenting task, billing, birthday, and timer lifecycle events.
+- [ ] **BEH-01**: Implement deterministic behavior engines (habit, cue, 2-minute minimum action, never-miss-twice recovery, factual rewards).
+- [ ] **BEH-02**: Build `HabitContext` with isolated versioned storage (`kwestup_habits_v1`, `kwestup_behavior_events_v1`) and migration safeguards.
+- [ ] **INTV-01**: Implement `interventionEngine.ts` governing multi-surface delivery across Notifications, Widgets, and In-App surfaces.
+- [ ] **WIDG-03**: Upgrade Android home-screen widgets to render actionable behavioral cues (Today, Next, Don't Miss Twice recovery).
+- [ ] **CMD-01**: Implement finite type-safe command registry, schema validation, and safe execution sandbox isolating storage/OS APIs from direct AI writes.
+- [ ] **AI-03**: Implement on-device AI intent parser and habit compiler translating natural-language goals into structured behavioral contracts.
+- [ ] **AI-04**: Build adaptive review engine diagnosing friction and proposing habit adjustments from historical behavior evidence.
 
 ### Out of Scope
 

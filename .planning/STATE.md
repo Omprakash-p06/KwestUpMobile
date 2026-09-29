@@ -5,16 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** Absolute privacy and local-first reliability: user data stays entirely on-device and syncs directly over the local network without mandatory cloud accounts, remote servers, or third-party intermediaries.
-**Current focus:** Phase 19: Production Observability & Logging Cleanup
+**Current focus:** Phase 20: Repository Governance, Behavioral Rulebook & Architecture Foundation
 
 ## Current Position
 
-Phase: 19 of 19 (Production Observability & Logging Cleanup) — COMPLETE
-Plan: 2 of 2 executed in Phase 19 (19-01, 19-02 completed)
-Status: Milestone 2 Complete (All 19 Phases fully executed & verified)
-Last activity: 2026-09-28 — Phase 19 execution completed (19-01-SUMMARY.md, 19-02-SUMMARY.md)
-
-Progress: [████████████████████] 100%
+Phase: 20 of 28 (Repository Governance, Behavioral Rulebook & Architecture Foundation) — Ready to execute
+Plan: 0 of 2 executed in Phase 20
+Status: Ready to execute
+Last activity: 2026-09-30 — Phase 20 replanned with cross-AI review findings incorporated (2 plans ready)
 
 ## Performance Metrics
 

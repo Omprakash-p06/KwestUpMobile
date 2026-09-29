@@ -36,8 +36,39 @@ Requirements for the hardening and production readiness milestone.
 
 ### Observability & Polish
 
-- [ ] **OBS-01**: Strip emoji-based debug console logging from production builds.
-- [ ] **OBS-02**: Set up structured crash and diagnostics boundaries for release builds.
+- [x] **OBS-01**: Strip emoji-based debug console logging from production builds.
+- [x] **OBS-02**: Set up structured crash and diagnostics boundaries for release builds.
+
+## v3 Requirements (Milestone 3: KwestUp 4.0 — Atomic Behavior Engine)
+
+Requirements for the behavioral execution system, technology platform upgrade, and AI habit compiler.
+
+### Repository Governance & Architecture Foundation
+- [ ] **GOV-01**: Establish comprehensive Atomic Habits behavioral rulebook and policy contracts in `rulebook/`.
+- [ ] **GOV-02**: Set up TypeScript compilation foundation (`tsconfig.json`) and scaffold domain directory hierarchy (`src/behavior/`, `src/commands/`, `src/services/`, `src/domains/`).
+
+### Technology Platform Upgrade
+- [ ] **UPGD-01**: Upgrade to Expo SDK 57, React Native 0.86, React 19.2.3, and Node 22 while preserving native module stability (`llama.rn`, `react-native-android-widget`).
+
+### Notification Extraction & Policy Engine
+- [ ] **NOTIF-01**: Consolidate distributed notification mechanics into `src/services/notificationService.ts` with dedicated Android channels, priority rules, and timeouts.
+- [ ] **NOTIF-02**: Enforce deterministic behavioral notification policies (quiet hours, max notifications per day, deduplication windows).
+
+### Domain Events & Behavioral Telemetry
+- [ ] **EVT-01**: Implement type-safe in-memory domain event bus (`src/behavior/eventBus.ts`) instrumenting task, billing, birthday, and timer lifecycle events.
+
+### Core Behavior Engine & Habit Domain
+- [ ] **BEH-01**: Implement deterministic behavior engines (habit, cue, 2-minute minimum action, never-miss-twice recovery, factual rewards).
+- [ ] **BEH-02**: Build `HabitContext` with isolated versioned storage (`kwestup_habits_v1`, `kwestup_behavior_events_v1`) and migration safeguards.
+
+### Multi-Surface Intervention & Behavioral Widgets
+- [ ] **INTV-01**: Implement `interventionEngine.ts` governing multi-surface delivery across Notifications, Widgets, and In-App surfaces.
+- [ ] **WIDG-03**: Upgrade Android home-screen widgets to render actionable behavioral cues (Today, Next, Don't Miss Twice recovery).
+
+### Safe Command Layer & AI Habit Compiler
+- [ ] **CMD-01**: Implement finite type-safe command registry, schema validation, and safe execution sandbox isolating storage/OS APIs from direct AI writes.
+- [ ] **AI-03**: Implement on-device AI intent parser and habit compiler translating natural-language goals into structured behavioral contracts.
+- [ ] **AI-04**: Build adaptive review engine diagnosing friction and proposing habit adjustments from historical behavior evidence.
 
 ## Out of Scope
 
@@ -46,7 +77,8 @@ Requirements for the hardening and production readiness milestone.
 | Cloud user authentication (OAuth/Firebase) | Conflicts with core privacy-first local workspace principle |
 | Cloud database synchronization | Sync is strictly peer-to-peer / LAN |
 | Web application bundle | Focused on Android mobile and desktop companion |
-| Full codebase TypeScript rewrite | Incremental typing to prevent regression of high-risk screens |
+| Full codebase TypeScript rewrite | Incremental typing: new architecture code is TS-first, existing screens migrate progressively |
+| Unrestricted device automation / OS hijacking | KwestUp owns internal behavior and cues; does not block third-party apps or alter Android settings |
 
 ## Traceability
 
@@ -64,12 +96,26 @@ Requirements for the hardening and production readiness milestone.
 | ARCH-02 | Phase 17 | Complete |
 | AI-01   | Phase 18 | Complete |
 | AI-02   | Phase 18 | Complete |
-| OBS-01  | Phase 19 | Pending |
-| OBS-02  | Phase 19 | Pending |
+| OBS-01  | Phase 19 | Complete |
+| OBS-02  | Phase 19 | Complete |
+| GOV-01  | Phase 20 | Pending |
+| GOV-02  | Phase 20 | Pending |
+| UPGD-01 | Phase 21 | Pending |
+| NOTIF-01| Phase 22 | Pending |
+| NOTIF-02| Phase 22 | Pending |
+| EVT-01  | Phase 23 | Pending |
+| BEH-01  | Phase 24 | Pending |
+| BEH-02  | Phase 24 | Pending |
+| INTV-01 | Phase 25 | Pending |
+| WIDG-03 | Phase 25 | Pending |
+| CMD-01  | Phase 26 | Pending |
+| AI-03   | Phase 27 | Pending |
+| AI-04   | Phase 28 | Pending |
 
 **Coverage:**
-- Active requirements: 14 total
-- Mapped to phases: 14
+- Active requirements: 13 total (Milestone 3)
+- Completed requirements: 14 total (Milestone 2)
+- Mapped to phases: 27
 - Unmapped: 0 ✓
 
 ---
