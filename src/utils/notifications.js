@@ -203,7 +203,13 @@ export async function scheduleCustomBirthdayReminders(birthday) {
     for (const year of yearsToSchedule) {
       let targetBday = new Date(year, month - 1, day, hours, minutes, 0);
       if (targetBday.getMonth() !== month - 1) {
-        targetBday = new Date(year, month - 1, day + 1, hours, minutes, 0);
+        // Overflow (e.g. Feb 29 in a non-leap year). Policy: observe Feb 29
+        // birthdays on Feb 28 in non-leap years — never Mar 1/Mar 2 probing.
+        if (month === 2 && day === 29) {
+          targetBday = new Date(year, 1, 28, hours, minutes, 0);
+        } else {
+          continue; // invalid day for this month/year — skip, don't guess
+        }
       }
       
       // Skip past dates (only schedule future notifications)
@@ -227,6 +233,10 @@ export async function scheduleCustomBirthdayReminders(birthday) {
 
         const advanceTarget = new Date(targetBday);
         advanceTarget.setDate(targetBday.getDate() - daysPrior);
+        // Wall-clock anchoring per rulebook/rules/reminders.md DST rule:
+        // re-assert the original wall-clock time so a spring-forward/fall-back
+        // transition cannot shift the reminder by an hour into quiet hours.
+        advanceTarget.setHours(hours, minutes, 0, 0);
 
         if (advanceTarget > today) {
           const advanceNotifyId = await Notifications.scheduleNotificationAsync({
