@@ -1,6 +1,7 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 import { createVault } from "./vaultService";
+import { logger } from "./logger";
 
 /**
  * Opens the system file picker, allows the user to select one or more
@@ -19,13 +20,13 @@ export const importMDFilesAsVault = async (vaultName) => {
       copyToCacheDirectory: true,
     });
   } catch (err) {
-    console.error("❌ DocumentPicker error:", err);
+    logger.error("DocumentPicker: picker failed to open", { error: err });
     return null;
   }
 
   // User cancelled or no files selected
   if (result.canceled || !result.assets || result.assets.length === 0) {
-    console.log("📄 Import cancelled or no files selected");
+    logger.debug("DocumentPicker: import cancelled by user");
     return null;
   }
 
@@ -36,7 +37,9 @@ export const importMDFilesAsVault = async (vaultName) => {
   });
 
   if (mdFiles.length === 0) {
-    console.warn("⚠️ No .md or .txt files found in selection");
+    logger.warn("DocumentPicker: no markdown files in selection", {
+      assetCount: result.assets?.length ?? 0,
+    });
     return null;
   }
 
@@ -59,12 +62,12 @@ export const importMDFilesAsVault = async (vaultName) => {
         encoding: FileSystem.EncodingType.UTF8,
       });
 
-      console.log("📥 Imported file:", safeName, "→", destPath);
+      logger.debug("DocumentPicker: file written to vault");
     } catch (fileErr) {
-      console.error("❌ Failed to import file:", file.name, fileErr);
+      logger.error("DocumentPicker: failed to write file to vault", { error: fileErr });
     }
   }
 
-  console.log(`✅ Import complete — ${mdFiles.length} file(s) imported into vault "${vault.name}"`);
+  logger.info("DocumentPicker: import complete", { fileCount: mdFiles.length });
   return vault;
 };

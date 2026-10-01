@@ -1,5 +1,6 @@
 import { Platform, Alert } from "react-native";
 import * as Notifications from "expo-notifications";
+import { logger } from "./logger";
 
 // Configure Expo Notifications
 Notifications.setNotificationHandler({
@@ -57,7 +58,7 @@ export async function scheduleDailyTaskNotification(task) {
       return notificationId;
     }
   } catch (e) {
-    console.error("Failed to schedule daily task notification:", e);
+    logger.error("Failed to schedule daily task notification", { error: e });
   }
   return null;
 }
@@ -75,7 +76,7 @@ export async function schedulePushNotification({ title, body }) {
     });
     return notificationId;
   } catch (e) {
-    console.error("Failed to schedule push notification:", e);
+    logger.error("Failed to schedule push notification", { error: e });
   }
   return null;
 }
@@ -97,7 +98,7 @@ export async function scheduleDueDateNotification(task) {
       return notificationId;
     }
   } catch (e) {
-    console.error("Failed to schedule due date notification:", e);
+    logger.error("Failed to schedule due date notification", { error: e });
   }
   return null;
 }
@@ -108,7 +109,7 @@ export async function cancelDueDateNotification(notificationId) {
     try {
       await Notifications.cancelScheduledNotificationAsync(notificationId);
     } catch (e) {
-      console.error("Failed to cancel notification:", e);
+      logger.error("Failed to cancel notification", { error: e });
     }
   }
 }
@@ -175,7 +176,7 @@ export async function scheduleCustomBirthdayReminders(birthday) {
       }
     }
   } catch (error) {
-    console.error("Failed to schedule reminders:", error);
+    logger.error("Failed to schedule birthday reminders", { error });
   }
 
   return notificationIds;
@@ -189,7 +190,7 @@ export async function cancelCustomBirthdayReminders(notificationIds) {
         try {
           await Notifications.cancelScheduledNotificationAsync(id);
         } catch (e) {
-          console.error("Failed to cancel scheduled notification:", e);
+          logger.error("Failed to cancel scheduled birthday notification", { error: e });
         }
       }
     }

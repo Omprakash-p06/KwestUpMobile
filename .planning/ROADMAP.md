@@ -33,7 +33,7 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 
 ### Milestone 3: KwestUp 4.0 — Atomic Behavior Engine
 
-- [ ] **Phase 20: Repository Governance, Behavioral Rulebook & Architecture Foundation** - Establish Atomic Habits rulebook, governance contracts, and domain scaffolding.
+- [x] **Phase 20: Repository Governance, Behavioral Rulebook & Architecture Foundation** - Establish Atomic Habits rulebook, governance contracts, and domain scaffolding. ✅ COMPLETE
 - [ ] **Phase 21: Technology Platform Upgrade (Expo SDK 57, RN 0.86, Node 22)** - Upgrade runtime framework and verify native dependencies (`llama.rn`, `android-widget`).
 - [ ] **Phase 22: Unified Notification Service & Dispatch Engine** - Consolidate distributed notification mechanics and implement strict policy gates (rate limits, quiet hours).
 - [ ] **Phase 23: Domain Event Bus & Behavioral Telemetry** - Type-safe internal event bus instrumenting domain state transitions.
@@ -370,11 +370,11 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 **Plans**:
 **Wave 1**
 
-- [ ] 20-01-PLAN.md — Rulebook Creation & Behavioral Governance Contracts
+- [x] 20-01-PLAN.md — Rulebook Creation & Behavioral Governance Contracts ✅
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 20-02-PLAN.md — Architectural Scaffolding, TypeScript Foundation & Codebase Map Alignment
+- [x] 20-02-PLAN.md — Architectural Scaffolding, TypeScript Foundation & Codebase Map Alignment ✅
 
 ---
 

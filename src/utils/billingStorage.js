@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { STORAGE_VERSION } from "./storage";
+import { logger } from "./logger";
 
 const BILLING_KEY = `kwestup_billing_${STORAGE_VERSION}`;
 
@@ -21,7 +22,7 @@ export const loadBillingData = async () => {
     const parsed = JSON.parse(raw);
     return { ...DEFAULT_BILLING, ...parsed };
   } catch (err) {
-    console.error("billingStorage: loadBillingData failed:", err);
+    logger.error("billingStorage: loadBillingData failed", { error: err });
     return { ...DEFAULT_BILLING };
   }
 };
@@ -30,7 +31,7 @@ export const saveBillingData = async (billingState) => {
   try {
     await AsyncStorage.setItem(BILLING_KEY, JSON.stringify(billingState));
   } catch (err) {
-    console.error("billingStorage: saveBillingData failed:", err);
+    logger.error("billingStorage: saveBillingData failed", { error: err });
   }
 };
 
