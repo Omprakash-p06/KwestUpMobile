@@ -143,24 +143,6 @@ const App = () => {
     birthdaysRef.current = birthdays;
   }, [birthdays]);
 
-  // AppState monitoring to prevent background Binder flooding and reload widget-changed data
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (nextAppState) => {
-      if (appState.current.match(/inactive|background/) && nextAppState === "active") {
-        logger.debug("[App] Came to foreground, reloading state from AsyncStorage...");
-        loadData();
-      }
-      appState.current = nextAppState;
-    });
-    // Managed AI lifecycle subscription (deduped inside aiService; auto-register
-    // at module load remains the fallback for non-root importers).
-    subscribeAppState();
-    return () => {
-      subscription.remove();
-      unsubscribeAppState();
-    };
-  }, [loadData]);
-
   // Define currentTheme with fallback to prevent undefined errors
   const resolvedThemeName = resolveThemeName(selectedThemeName);
   const resolvedThemeMode = resolveThemeMode(themeMode);
@@ -417,6 +399,28 @@ const App = () => {
       setIsDataLoaded(true);
     }
   }, [isInitialized, activeVaultId]);
+
+  // AppState monitoring to prevent background Binder flooding and reload widget-changed data
+  // NOTE (CR-01): this effect MUST stay below the loadData declaration — its deps
+  // array ([loadData]) reads the binding eagerly, so placing it above the
+  // `const loadData = useCallback(...)` declaration throws a TDZ ReferenceError
+  // on first render and prevents the app from mounting.
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      if (appState.current.match(/inactive|background/) && nextAppState === "active") {
+        logger.debug("[App] Came to foreground, reloading state from AsyncStorage...");
+        loadData();
+      }
+      appState.current = nextAppState;
+    });
+    // Managed AI lifecycle subscription (deduped inside aiService; auto-register
+    // at module load remains the fallback for non-root importers).
+    subscribeAppState();
+    return () => {
+      subscription.remove();
+      unsubscribeAppState();
+    };
+  }, [loadData]);
 
   const saveData = useCallback(async () => {
     if (!isInitialized) return;
