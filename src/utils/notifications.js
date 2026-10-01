@@ -37,7 +37,51 @@ export async function requestNotificationPermissions() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Grandfather notice (rulebook/README.md §3): legacy schedulers below bypass
+// BehavioralNotificationPolicy until Phase 22 consolidation. Do NOT add new
+// schedule call sites against expo-notifications directly — route all
+// behavior/task scheduling through canDispatchBehavioralNotification() and
+// the single constant DEFAULT_BEHAVIORAL_NOTIFICATION_POLICY in
+// src/services/types.ts (3/day, 90-min gap, 22:00-08:00 quiet, 30-min dedup).
+// Phase 22 will replace these three functions with the guarded dispatcher.
+// ---------------------------------------------------------------------------
+
+/**
+ * Pure policy guard — single enforcement point for Phase 22.
+ * Checks quietHours + maxPerDay + minGapMinutes + dedup window.
+ * @param {Date} now
+ * @param {Date[]} history - prior dispatch timestamps (same day)
+ * @param {{payloadKey?: string, recentKeys?: {key:string, at:Date}[]}} [opts]
+ * @param {{maxPerDay:number,minGapMinutes:number,quietHoursStart:string,quietHoursEnd:string,deduplicationWindowMinutes:number}} [policy]
+ */
+export function canDispatchBehavioralNotification(now, history = [], opts = {}, policy = { maxPerDay: 3, minGapMinutes: 90, quietHoursStart: '22:00', quietHoursEnd: '08:00', deduplicationWindowMinutes: 30 }) {
+  const toMin = (s) => {
+    const [h, m] = String(s).split(':').map(Number);
+    return h * 60 + m;
+  };
+  const cur = now.getHours() * 60 + now.getMinutes();
+  const start = toMin(policy.quietHoursStart);
+  const end = toMin(policy.quietHoursEnd);
+  const inQuiet = start < end ? cur >= start && cur < end : cur >= start || cur < end;
+  if (inQuiet) return { allowed: false, deferUntil: policy.quietHoursEnd, reason: 'quiet-hours' };
+  const today = history.filter((d) => d.toDateString() === now.toDateString());
+  if (today.length >= policy.maxPerDay) return { allowed: false, reason: 'daily-cap' };
+  if (today.length > 0) {
+    const last = new Date(Math.max(...today.map((d) => d.getTime())));
+    if ((now - last) / 60000 < policy.minGapMinutes) return { allowed: false, reason: 'min-gap' };
+  }
+  if (opts.payloadKey && Array.isArray(opts.recentKeys)) {
+    const dup = opts.recentKeys.find(
+      (r) => r.key === opts.payloadKey && (now - new Date(r.at)) / 60000 < policy.deduplicationWindowMinutes,
+    );
+    if (dup) return { allowed: false, reason: 'dedup' };
+  }
+  return { allowed: true, reason: 'ok' };
+}
+
 // Helper to schedule a repeating daily notification for a daily task
+// @deprecated Grandfathered until Phase 22 — use the guarded dispatcher.
 export async function scheduleDailyTaskNotification(task) {
   if (!task.time) return null;
   try {
@@ -64,6 +108,7 @@ export async function scheduleDailyTaskNotification(task) {
 }
 
 // Helper to schedule a push notification immediately
+// @deprecated Grandfathered until Phase 22 — use the guarded dispatcher.
 export async function schedulePushNotification({ title, body }) {
   try {
     const notificationId = await Notifications.scheduleNotificationAsync({
@@ -82,6 +127,7 @@ export async function schedulePushNotification({ title, body }) {
 }
 
 // Helper to schedule a push notification for a due date
+// @deprecated Grandfathered until Phase 22 — use the guarded dispatcher.
 export async function scheduleDueDateNotification(task) {
   if (!task.dueDate) return null;
   try {
