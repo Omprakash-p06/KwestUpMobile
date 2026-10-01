@@ -16,7 +16,7 @@ To ensure sustainable behavioral adoption and prevent initial burnout, all newly
 2. **Mandatory Minimum Action (2-Minute Rule):**
    Every habit must define a `minimumAction` that takes under 120 seconds to execute. Registrations with blank or identical targets (e.g., `normalTarget: "50 pushups"`, `minimumAction: "50 pushups"`) are rejected.
 3. **Mandatory Cue Specification:**
-   Every habit must specify an unambiguous, actionable cue trigger (`type: 'time' | 'after-habit' | 'task-completion' | 'morning' | 'evening'`). Unscheduled or triggerless habits are rejected.
+   Every habit must specify an unambiguous, actionable cue trigger (`type: 'time' | 'after-habit' | 'task-completion' | 'manual' | 'morning' | 'evening'`). `manual` means user-initiated with no time trigger — an explicitly allowed triggerless-but-intentional cue, not a rejection case. Vague/ambiguous cues ("when free", "soon") are rejected. `frequency: 'custom'` requires `customSchedule.weekdays`.
 
 ## Rationale
 Behavioral research demonstrates that attempting too many lifestyle changes simultaneously depletes executive function and leads to total system collapse. Focusing on a maximum of 3 habits allows automaticity to form before taking on additional cognitive load.

@@ -13,6 +13,10 @@ export interface Identity {
 
 export type HabitFrequency = 'daily' | 'weekdays' | 'weekends' | 'weekly' | 'custom';
 
+export interface CustomSchedule {
+  weekdays: number[]; // 0=Sunday..6=Saturday; required when frequency === 'custom'
+}
+
 export type HabitStatus = 'active' | 'paused' | 'archived' | 'recovery';
 
 export interface Habit {
@@ -28,11 +32,14 @@ export interface Habit {
   streakCount: number;
   bestStreak: number;
   totalEvidenceVotes: number; // cumulative lifetime completions; never reset on miss
+  customSchedule?: CustomSchedule; // required when frequency === 'custom'
   lastCompletedDate?: string;
   createdAt: string;
   updatedAt: string;
 }
 
+// 'manual' = user-initiated, no time trigger — explicitly allowed as a
+// triggerless-but-intentional cue; validators must accept it.
 export type CueType = 'time' | 'after-habit' | 'task-completion' | 'manual' | 'morning' | 'evening';
 
 export interface Cue {
