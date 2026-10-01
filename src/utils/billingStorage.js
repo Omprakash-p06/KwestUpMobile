@@ -84,6 +84,11 @@ export const deleteBudget = async (id) => {
 
 // ─── Analytics Helpers ────────────────────────────────────────────────────────
 
+const toAmount = (v) => {
+  const n = typeof v === 'string' ? Number(v) : v;
+  return Number.isFinite(n) ? n : 0;
+};
+
 /**
  * Returns { category: totalSpent } map for expense transactions in a given month.
  * @param {Array} transactions
@@ -94,7 +99,8 @@ export const getSpendingByCategory = (transactions, month) => {
   for (const tx of transactions) {
     if (tx.type !== "expense") continue;
     if (!tx.date || !tx.date.startsWith(month)) continue;
-    result[tx.category] = (result[tx.category] || 0) + tx.amount;
+    const cat = typeof tx.category === 'string' && tx.category ? tx.category : 'uncategorized';
+    result[cat] = (result[cat] || 0) + toAmount(tx.amount);
   }
   return result;
 };
@@ -109,8 +115,8 @@ export const getMonthlyTotals = (transactions, month) => {
   let expenses = 0;
   for (const tx of transactions) {
     if (!tx.date || !tx.date.startsWith(month)) continue;
-    if (tx.type === "income") income += tx.amount;
-    if (tx.type === "expense") expenses += tx.amount;
+    if (tx.type === "income") income += toAmount(tx.amount);
+    if (tx.type === "expense") expenses += toAmount(tx.amount);
   }
   return { income, expenses, net: income - expenses };
 };
