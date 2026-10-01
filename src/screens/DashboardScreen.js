@@ -5,12 +5,22 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
 import { LiquidGlassCard } from "../components/LiquidGlassCard";
 import { injectFontFamily } from "../theme/styles";
-import { isSameLocalDay } from "../utils/dateUtils";
+import { isSameLocalDay, parseLocalDate } from "../utils/dateUtils";
 
 const DAYS = 7;
 const dayLabels = ["S", "M", "T", "W", "T", "F", "S"];
 
-const getDailyCompletions = (tasks) => {
+const formatDueDateLabel = (dueDate) => {
+  if (!dueDate) return "LOGGED IN QUEUE";
+  // WR-01: YYYY-MM-DD calendar strings must parse via the centralized local-date
+  // engine — `new Date('2026-05-15')` is UTC midnight and renders the previous
+  // day in negative-offset timezones. Full ISO instants keep native parsing.
+  const due = /^\d{4}-\d{2}-\d{2}$/.test(dueDate)
+    ? parseLocalDate(dueDate)
+    : new Date(dueDate);
+  if (isNaN(due.getTime())) return "LOGGED IN QUEUE";
+  return `DUE: ${due.toLocaleDateString([], { month: "short", day: "numeric" })}`;
+};
   const now = new Date();
   const buckets = Array.from({ length: DAYS }, (_, i) => {
     const d = new Date(now);
@@ -156,7 +166,7 @@ export const DashboardScreen = ({
                     </Text>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 2 }}>
                       <Text style={[styles.taskItemMeta, { color: currentTheme.secondaryText, marginTop: 0 }]}>
-                        {task.dueDate ? `DUE: ${new Date(task.dueDate).toLocaleDateString([], { month: "short", day: "numeric" })}` : "LOGGED IN QUEUE"}
+                        {formatDueDateLabel(task.dueDate)}
                       </Text>
                       {task.recurrence && task.recurrence !== "none" && (
                         <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: currentTheme.primary + "15", paddingHorizontal: 5, paddingVertical: 1, borderWidth: 1, borderColor: currentTheme.primary + "20" }}>
