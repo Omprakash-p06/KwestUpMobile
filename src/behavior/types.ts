@@ -27,6 +27,7 @@ export interface Habit {
   stretchTarget?: string;
   streakCount: number;
   bestStreak: number;
+  totalEvidenceVotes: number; // cumulative lifetime completions; never reset on miss
   lastCompletedDate?: string;
   createdAt: string;
   updatedAt: string;
