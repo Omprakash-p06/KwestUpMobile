@@ -947,7 +947,7 @@ export const assistWriting = async (noteContent, commandType, onToken) => {
   // Budget: 2048 total - 512 reserved for response - ~250 for system+user template = ~1286 tokens for input
   // At ~4 chars/token, that's ~5144 chars. Clamp at 5000 to remain robust against memory issues.
   const MAX_INPUT_CHARS = 5000;
-  const clampedContent = noteContent.slice(0, MAX_INPUT_CHARS);
+  const clampedContent = (typeof noteContent === "string" ? noteContent : "").slice(0, MAX_INPUT_CHARS);
 
   const prompt = `<|im_start|>system
 ${systemPrompt}
@@ -1020,7 +1020,7 @@ CRITICAL DESIGN & INTERACTIVE GUIDELINES:
 
   // Budget: 2048 total - 512 reserved for response - ~250 for system+user template = ~1286 tokens for input
   const MAX_INPUT_CHARS = 5000;
-  const clampedContent = noteContent.slice(0, MAX_INPUT_CHARS);
+  const clampedContent = (typeof noteContent === "string" ? noteContent : "").slice(0, MAX_INPUT_CHARS);
 
   const prompt = `<|im_start|>system
 ${systemPrompt}
