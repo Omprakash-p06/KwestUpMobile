@@ -1,82 +1,173 @@
-# Concerns
+# Codebase Concerns
 
-**Analysis Date:** 2026-09-28
-**Lens:** Milestone 2 complete (19/19 phases, 171 tests passing) — release-readiness review.
+**Analysis Date:** 2026-10-01
 
-## Tech Debt (ranked)
+## Tech Debt
 
-1. **Per-task `updatedAt` merge absent in `refreshTasksFromStorage` (Phase 17 deferral, still open)**
-   - Whole-array overwrite: storage snapshot replaces in-memory tasks if JSON differs.
-   - Files: `src/context/TaskContext.js:129-171` (refresh), `src/context/TaskContext.js:69-71` (documented residual micro-window: in-app mutation <500ms before foreground refresh can be overwritten).
-   - Impact: low-probability task-edit loss on foreground resume. Per-task `updatedAt` fields already exist (`src/utils/taskMutations.js:61,98,131,159,175,226`) — merge key is available, merge logic is not.
+**Type gate scope exclusions (`checkJs:false`, `widgets/` excluded):**
+- Issue: `npm run typecheck` (`tsc --noEmit`) passes exit 0 (verified 2026-10-01), but the gate does not check the highest-risk files. `allowJs:true, checkJs:false` leaves all of `src/utils/*.js` (`src/utils/billingStorage.js`, `src/utils/notifications.js`, `src/utils/vaultImport.js`, `src/utils/aiService.js`, `src/utils/exportService.js`, `src/utils/storage.js`) unchecked. `include` covers `src/**/*`, `__tests__/**/*`, and root config scripts, but `App.js` / `index.js` are out of scope because they import `./widgets/*`, and `exclude` drops `widgets/**/*` entirely. A clean typecheck does not mean the shipped JS is type-safe.
+- Files: `tsconfig.json`, `src/utils/*.js`, `App.js` (1067 lines), `index.js`, `widgets/TasksListWidget.tsx`, `widgets/widget-task-handler.tsx`
+- Impact: Type errors in billing, notification, vault-import, and widget-handler code reach production undetected; any executor trusting "typecheck green" as full safety is mistaken.
+- Fix approach: Phased `checkJs` enablement before Phase 22 (1152 pre-existing JS errors already triaged per the `tsconfig.json` comment — fix file-by-file starting with `src/utils/billingStorage.js`, `src/utils/notifications.js`, `src/utils/vaultImport.js` which already carry runtime validation); fix the 2 `flex` excess-prop style-type errors in `widgets/TasksListWidget.tsx` so the `widgets/**/*` exclusion can be lifted during Phase 25 widget-engine hardening.
 
-2. **Double-confirm on task delete (screen + context both confirm)**
-   - `src/screens/TaskListScreen.js:249-254` and `:343-348` call `showConfirmation(...)` then `deleteTask(task.id)`; `src/context/TaskContext.js:228-249` runs `confirmFn` (customConfirm || showConfirmationDialog) again before executing.
-   - Impact: user must confirm twice per delete (UX bug, not data loss). Fix: screen should pass title/message through `deleteTask(id, customConfirm)` or context should skip confirm when caller already confirmed.
+**ESLint warnings bank (429 warnings, 0 errors):**
+- Issue: `npm run lint` exits 0 with **429 warnings** (verified 2026-10-01) — predominantly `no-console` (raw `console.*` in `src/context/BillingContext.js`, `src/context/VaultContext.js`, `src/utils/billingNotifications.js`, `src/screens/*`, `src/navigation/AppNavigator.js`), plus `no-unused-vars` and `react-native/*` style warnings. CI runs plain `npm run lint` without `--max-warnings=0`, so the warning count can grow unboundedly without failing anything.
+- Files: `eslint.config.js`, `.github/workflows/ci.yml`, `src/context/BillingContext.js`, `src/context/VaultContext.js`, `src/utils/billingNotifications.js`, `babel.config.js`
+- Impact: Real new violations hide in the noise; `babel-plugin-transform-remove-console` strips `console.*` in production bundles, masking rule violations instead of failing lint.
+- Fix approach: Triage the ~429 warnings, then escalate `no-console` from `warn` to `error` and add `--max-warnings=0` to the CI lint step before Phase 22 (both steps are already annotated as phased enforcement in `eslint.config.js` and `.github/workflows/ci.yml`).
 
-3. **Raw `console.*` bypassing `logger` (Phase 19 incomplete coverage)**
-   - `src/utils/vaultImport.js:22,28,39,62,64,68` — 6 raw calls (error/log/warn), including filename + destPath logging.
-   - `src/navigation/AppNavigator.js:118,380` — raw `console.warn`.
-   - `src/context/BillingContext.js:40,51,61,71,81,91,101`, `src/utils/billingStorage.js:24,33`, `src/utils/notifications.js:60,78,100,111,178,192`, `src/screens/BirthdaysScreen.js:72`, `src/screens/NotesScreen.js:743` — raw `console.error`.
-   - `widgets/widget-task-handler.tsx:80,84,132+` — raw `console.log`/`console.warn` in headless widget context (no logger import).
-   - `src/utils/logger.js:145,151,156,161` — the 4 intentional passthroughs (by design, gated: debug/info dev-only via `babel.config.js` `transform-remove-console` + `isDevelopment()`).
-   - Impact: unredacted, unbuffered output; `babel.config.js` strips log/info/debug in prod but keeps `warn`/`error`, so raw error calls with user data survive to release logs.
+**`postinstall` native patch script runs unverified on every install:**
+- Issue: `postinstall: node patch-llama-gradle.js` rewrites `node_modules/llama.rn/android/build.gradle` (old-architecture plugin force-apply) and `node_modules/react-native-android-widget/.../RNWidgetUtil.java` (widget sizing fallbacks) via regex replacement on every `npm install`/`npm ci`, with no checksum assertion, no idempotency guard beyond string matching, and no CI step verifying it ran. A `llama.rn` (pinned `0.12.4` exact) or `react-native-android-widget` upgrade that changes those upstream files silently breaks or double-applies the regex patch.
+- Files: `package.json`, `patch-llama-gradle.js`
+- Impact: Supply-chain surface plus fragile native builds — a routine dep bump can produce unbuildable Android output or silently unpatched widget sizing with no signal.
+- Fix approach: Add a checksum/idempotency assertion plus a CI step asserting the patch applied (or migrate the patches into a `patches/` directory applied by `patch-package` with committed patch files); re-verify explicitly after every native upgrade per Master Plan §25.
 
-4. **Oversized screen/component files (complexity / review risk)**
-   - `src/screens/NotesScreen.js` (2013 lines), `src/screens/SettingsScreen.js` (1101), `src/utils/aiService.js` (1064), `src/screens/BillingScreen.js` (815), `src/screens/TaskListScreen.js` (803), `src/screens/DailyTasksScreen.js` (691). No TODO/FIXME/HACK markers in `src/` (only match is the `TODO:`-tag parser regex in `src/utils/aiService.js:516-517`, not a debt marker).
+**Local test script masks zero-test runs:**
+- Issue: `package.json` keeps `"test": "jest --passWithNoTests"`, so a local `npm test` with zero collected tests exits green. CI correctly invokes `npx jest --ci --maxWorkers=2 --coverage` (no passthrough flag), but any contributor running the documented `npm test` gets false confidence.
+- Files: `package.json`, `.github/workflows/ci.yml`
+- Impact: Deleted/misconfigured test globs pass silently locally.
+- Fix approach: Remove `--passWithNoTests` from the `test` script (keep it only for explicitly empty watch invocations, if at all).
 
-5. **Legacy backup v1 fallback kept indefinitely**
-   - `src/utils/exportService.js:84-92` — static salt `4b77657374557053616c745f7632`, 1000 PBKDF2 iterations, salt reused as IV. Correctly isolated as decrypt-only fallback (new archives always v2: `src/utils/exportService.js:21-47`, 128-bit random salt/IV, 100k iterations, SHA-256), but weak archives remain restorable forever. Consider a warn-and-migrate prompt on v1 import.
+**God files (`App.js`, `aiService.js`):**
+- Issue: `App.js` (1067 lines) mixes providers, navigation wiring, font loading, and startup sequencing; `src/utils/aiService.js` (1064 lines) mixes model download, resumable-download state, SHA-256 verification, intent parsing, and TODO extraction. Both are hard to review, hard to test in isolation, and high-blast-radius for merge conflicts.
+- Files: `App.js`, `src/utils/aiService.js`, `src/utils/exportService.js` (381 lines), `src/context/TaskContext.js` (366 lines)
+- Impact: Every Phase 22–28 engine integration touching startup, AI, or tasks risks collateral breakage in these files.
+- Fix approach: Split `App.js` into a composition root plus `src/startup/*` initializers; extract intent-parsing/TODO-extraction from `aiService.js` into `src/ai/*` pure modules with unit tests (no new behavior, pure moves).
 
-6. **Destructive import with no rollback**
-   - `src/utils/exportService.js:309-324` — `importArchive` clears all user AsyncStorage keys (`multiRemove`) before `multiSet` restore; a crash between the two leaves empty state. No pre-import snapshot/rollback. Vault file restore (`:329-363`) also overwrites in place.
+## Known Bugs
 
-7. **Hardcoded remote texture URLs (privacy + offline fragility)**
-   - `src/screens/NotesScreen.js:503,505,785,788`, `src/components/LiquidGlassCard.js:32,35`, `src/components/LiquidGlassBackground.js:12,35` — `transparenttextures.com` / `unsplash.com` image fetches. Every render path with these contacts a third party (IP leak vs. local-first promise) and fails offline. Bundle locally or drop.
+**Legacy notification schedulers bypass `BehavioralNotificationPolicy` (grandfathered, unenforced):**
+- Symptoms: `scheduleDailyTaskNotification`, `schedulePushNotification`, and `scheduleDueDateNotification` schedule directly via `expo-notifications` with no quiet-hours check (22:00–08:00), no 3/day cap, no 90-min gap, no 30-min dedup. `DEFAULT_BEHAVIORAL_NOTIFICATION_POLICY` in `src/services/types.ts` is imported by nothing at runtime. The pure guard `canDispatchBehavioralNotification()` exists and is unit-covered, but no caller routes through it.
+- Files: `src/utils/notifications.js`, `src/services/types.ts`, `src/context/TaskContext.js`, `src/screens/DailyTasksScreen.js`
+- Trigger: Any behavior/task reminder scheduled overnight or more than 3×/day fires unthrottled on a real device.
+- Workaround: Grandfather notices + `@deprecated` tags mark the three legacy schedulers; do not add new call sites against `expo-notifications` directly. Full consolidation into the guarded dispatcher is the defined Phase 22 scope.
 
-## Security & Privacy Notes
+**`scheduleDueDateNotification` accepts invalid/ambiguous input silently:**
+- Symptoms: Returns bare `null` for missing `dueDate`, past dates, and OS rejections alike — callers cannot distinguish the three. `trigger` is passed a raw `Date` object with no wall-clock normalization note.
+- Files: `src/utils/notifications.js`
+- Trigger: Schedule a task with a malformed or past `dueDate`.
+- Workaround: `scheduleDailyTaskNotification` already validates `HH:MM` with a regex plus `logger.error`; apply the same typed-result pattern here in Phase 22.
 
-- **Backup encryption v2 — verified present** (`src/utils/exportService.js:21-47` encrypt / `:58-97` decrypt): per-archive 16-byte random salt + IV, PBKDF2-HMAC-SHA256 100k iterations, AES-256, envelope `{v:2, kdf, hasher, iterations, salt, iv, ciphertext}` with auto-detect + v1 fallback. Residual: passphrase lives only in call-stack memory (no SecureStore/AsyncStorage persistence found — good), but wrong-passphrase errors are generic by design (`:299-300`).
-- **LAN sync validation — verified present** (`src/utils/syncService.js:34-72` config, `:82-102` payload): strict IPv4 octet check, hostname/IPv6 regexes, port 1–65535 integer, token min 6 chars trimmed; payload requires `notes`/`tasks`/`birthdays` arrays (prevents note-wipe). Transport is plaintext `http://` (`:110`, `:137`) — acceptable for LAN-only but token travels as `Bearer` over unencrypted Wi-Fi; document "trusted-network only" in release notes. `pingSyncServer` (`:107-129`) uses a dummy `ping-token-check` token — never against internet, LAN host only.
-- **Storage keys/versioning — verified present** (`src/utils/storage.js:4-22`): dynamic `STORAGE_VERSION = "v7.0"`, `isUserDataKey` allowlist (`kwestup_data/userName/theme/vaults/billing/widget/telemetry/ai_model`) preserved across `clearAllCaches` (`:25-66`) and migrated highest-version-wins (`:69-187`). No secrets stored in AsyncStorage (unencrypted store holds only user data — consistent with local-first model, but worth stating in privacy copy).
-- **Model integrity — verified present** (`src/utils/aiService.js:135-192`): chunked streaming SHA-256 (`MODEL_HASH_CHUNK_BYTES` 8 MB, base64 windows via `expo-file-system ~18.1.11`), pinned commit `9217f5d…` + expected SHA-256 `74a4da8c…` + exact size 491,400,032 bytes; fail-closed validator, corrupt file deleted (`:206-239`), post-download gate (`:336-341`). Fast size-only path (`customValidator === null`) skips hashing on routine entry — by design, hash runs at download time.
-- **Crash-report PII redaction — verified present**: key-based redaction before buffering in `src/utils/logger.js:37-81` (`SENSITIVE_KEYS` covers content/body/note/title/text/message/passphrase/token/key/secret/password; 1000-char cap; WeakSet cycle guard; Error cause recursion; deep-freeze at `:116-134`); report capped at 8000 chars in `src/components/ErrorBoundary.js:93-97`; `componentDidCatch` funnels through `logger.error` (`:37-40`).
-- **Known residual — positional string args NOT key-redacted**: `sanitizeEntry` (`src/utils/logger.js:86-107`) passes a string `message` through verbatim; only `details` objects go through `serializeItem`. Any `logger.error("…", userTitle)`-style call with user content in the message position lands unredacted in the ring buffer and the copy-pasteable crash report. Convention going forward: never interpolate user content into the message string — always pass as `details` objects.
-- **`ErrorBoundary` report exfiltration surface**: report contains full `error.stack` + `componentStack` unredacted (`src/components/ErrorBoundary.js:74-91`) — stacks can embed file URIs/note titles. Copy/Share is user-initiated (acceptable), but there is no redact pass over the stack strings.
-- **Vault import filename sanitization — adequate but narrow**: `src/utils/vaultImport.js:54-55` strips `/\?%*:|"<>` but allows `..` segments and overlong names; `destPath = vault.path + safeName` (`:57`) with no length cap or `..` rejection. Add `..`/leading-dot rejection and a length clamp.
-- **No third-party network probes in release except update check**: `runNetworkDiagnostics` (httpbin) and `runDeviceDiagnostics` are dev-gated (`src/utils/diagnostics.js:10-20,109-114`, callers in `App.js:226-229` check `__DEV__`). Exceptions below.
+**Billing analytics silently coerce bad amounts to 0:**
+- Symptoms: `toAmount()` in `src/utils/billingStorage.js` maps any non-finite amount (strings that don't parse, `undefined`, objects) to `0`, so `getSpendingByCategory`/`getMonthlyTotals` under-report instead of surfacing corrupt transactions. This is the safe-partial residue of CR-03 (raw `+` concatenation was fixed; silent-zero coercion remains).
+- Files: `src/utils/billingStorage.js`
+- Trigger: A transaction persisted with `amount: "abc"` or a missing amount disappears from totals without warning.
+- Workaround: None at runtime; consider logging/skipping corrupt rows with a count so the UI can flag data-quality issues.
 
-## Reliability / Offline Risks
+## Security Considerations
 
-- **GitHub update check phones home on every launch in production** — `App.js:537-556` fires `checkForUpdates` (GET `https://api.github.com/repos/Omprakash-p06/KwestUpMobile/releases/latest`, `src/utils/diagnostics.js:62-106`) 2s after init with no `__DEV__` guard and no user opt-out. Privacy contradiction for a local-first app + startup latency/failure surface. Gate behind explicit Settings action or telemetry opt-in.
-- **Telemetry endpoint is a placeholder domain**: `sendTelemetryEvent` POSTs to `https://api.kwestup.com/telemetry` (`src/utils/diagnostics.js:127-149`), opt-in gated (`kwestup_telemetry_optin`), fire-and-forget from `App.js:205,1005`. If the domain is unregistered, opt-in users leak version/platform/timestamp + payload to whoever owns it or fail silently. Verify domain ownership before release or remove.
-- **Home-widget stale reads / split-brain writes**: widget handler reads/writes `kwestup_data_${STORAGE_VERSION}` directly (`widgets/widget-task-handler.tsx:89-132`) bypassing TaskContext debounce; in-app `refreshTasksFromStorage` whole-overwrites on AppState active (`src/context/TaskContext.js:173-191`). Widget toggle racing an in-app edit can lose one side (same root cause as Tech Debt #1). Widget also has its own 600ms ticking-animation delay write path.
-- **Import-while-dirty**: `importArchive` clear-then-restore has no confirmation of successful decrypt-to-restore atomicity (see Tech Debt #6); interrupted import = data loss. Recommend pre-import auto-export prompt.
-- **APK self-update flow is manual and error-prone**: `src/screens/SettingsScreen.js:102-134` downloads APK then `Alert`s user to install manually from Downloads; no integrity check on downloaded APK (contrast with GGUF SHA-256 gating).
+**All at-rest data is AsyncStorage plaintext:**
+- Risk: Billing transactions/budgets, task lists, vault indexes, timer state, and user names persist via unencrypted `AsyncStorage`. Only exported backup archives get AES-256 (`src/utils/exportService.js` v2 envelope: PBKDF2-HMAC-SHA256 100k iterations, random salt/IV). A rooted device, backup extraction, or companion-app read exposes financial and behavioral data in the clear.
+- Files: `src/utils/storage.js`, `src/utils/billingStorage.js`, `src/utils/vaultService.js`, `src/context/TaskContext.js`, `src/utils/exportService.js`
+- Current mitigation: Encrypted export path with legacy-v1 fallback decrypt; no telemetry egress (offline-first posture); logger redaction before buffering.
+- Recommendations: Evaluate `expo-secure-store` for billing data + vault index keys at the Phase 22/24 boundary; document the plaintext-at-rest posture in `rulebook/rules/privacy.md` so it is an explicit decision, not an accident.
 
-## Test Gaps
+**Legacy v1 backup decrypt path weakens passphrase KDF:**
+- Risk: `decryptBackup` in `src/utils/exportService.js` transparently falls back to legacy v1 decryption (static salt, 1,000 PBKDF2 iterations) for old archives. Any v1 archive in the wild remains brute-forceable at ~100× lower cost, and the auto-fallback means a downgraded envelope is accepted silently.
+- Files: `src/utils/exportService.js`
+- Current mitigation: New archives always write v2 (100k iterations, random salt/IV).
+- Recommendations: On successful v1 decrypt, force immediate v2 re-encrypt and warn the user to delete old archives; add an `iterations` floor check that rejects envelopes below a minimum.
 
-- Coverage: 11 suites in `__tests__/unit/` (`aiService`, `aiAssistant-smoke`, `dateUtils`, `errorBoundary`, `exportImportService`, `logger`, `storageMigration`, `syncService`, `taskContext`, `taskMutations`, `vaultAndFileStorage`) + `phase12-widget-logic.test.js` at root. No suites for: `src/utils/billingStorage.js` / `billingNotifications.js` / `BillingContext.js`, `src/utils/notifications.js` scheduling/cancel paths, `src/utils/diagnostics.js` (update-compare, telemetry opt-in), `src/utils/vaultImport.js` (filename sanitization, `..` traversal), `widgets/widget-task-handler.tsx` toggle/merge logic, any screen-level UI (delete double-confirm, import/export flows), `src/utils/fileStorage.js` error paths beyond vault tests.
-- `__tests__/unit/exportImportService.test.js:129` references legacy `kwestup_tasks_v5.0` key — passes only if migration handles it; fine, but no test asserts v1-weak-archive warning or import-rollback behavior.
-- No test pins the logger residual (string-message PII passthrough) or the 8000-char report cap against pathological buffers.
+**Logger redaction regex missing Phase 22 behavioral keys:**
+- Risk: `SENSITIVE_KEYS` in `src/utils/logger.js` covers `content|body|note|title|text|message|passphrase|token|key|secret|password` but not `habitTitle`/`cueText`. Notification bodies, habit titles, and cue labels can land verbatim in the 50-entry forensic ring-buffer and therefore in the copy-pasteable crash report from `src/components/ErrorBoundary.js`.
+- Files: `src/utils/logger.js`, `src/components/ErrorBoundary.js`, `rulebook/rules/privacy.md`
+- Current mitigation: Key-based redaction before buffering, string length caps, cycle guard; `debug`/`info` fully gated out of production.
+- Recommendations: Apply the mandated Phase 22 extension (`habitTitle|cueText` in the regex) when the Unified Notification Service lands; add a regression test asserting behavioral keys redact (extends `__tests__/unit/logger.test.js` CR-01 coverage).
 
-## Release-Readiness Gaps
+**Semgrep scan is non-blocking; CI actions float on major tags:**
+- Risk: The `semgrep` job runs with `continue-on-error: true`, so high-severity findings never red the gate. `actions/checkout@v4`, `actions/setup-node@v4`, `actions/upload-artifact@v4`, and `returntocorp/semgrep-action@v1` float on mutable major tags rather than SHAs.
+- Files: `.github/workflows/ci.yml`
+- Current mitigation: `permissions: contents: read`, `concurrency` cancel-in-progress, Node 22, `npm ci` — all already fixed in the Phase 20 review-fix.
+- Recommendations: Enforce the Semgrep gate (remove `continue-on-error` after triaging the baseline) and pin actions to SHAs before Phase 22.
 
-1. Decide on GitHub update-check behavior (remove auto-check, keep manual in Settings, or gate on opt-in) — privacy promise at stake.
-2. Resolve `api.kwestup.com` telemetry ownership or strip `sendTelemetryEvent` before store submission.
-3. Fix or explicitly accept: double-confirm delete, per-task merge deferral, raw-console leftovers (`vaultImport.js`, billing, notifications, widget handler).
-4. Bundle remote textures locally or remove (offline + tracker-free requirement).
-5. Add import safety: pre-import snapshot/rollback or at minimum a blocking "import replaces everything" confirm with auto-backup offer.
-6. Large-file review: `NotesScreen.js` (2013) and `SettingsScreen.js` (1101) unreviewed at this granularity — recommend focused review pass before release branch cut.
+## Performance Bottlenecks
 
-## Recommended Next Investigations
+**Sequential vault import with per-file round-trips:**
+- Problem: `importMDFilesAsVault` in `src/utils/vaultImport.js` reads and writes each file sequentially (`readAsStringAsync` → `getInfoAsync` → `writeAsStringAsync`, plus a collision-probing `getInfoAsync` loop). Collision suffix probing is linear per file.
+- Files: `src/utils/vaultImport.js`
+- Cause: No batching or concurrency; each file costs 2–4 serialized native-bridge round-trips.
+- Improvement path: Acceptable at the enforced caps (≤50 files, ≤1 MB each); if caps ever rise, batch `getInfoAsync` probes and parallelize reads with a small concurrency limit, keeping per-file try/catch isolation.
 
-- Trace every `logger.*` call with a non-literal first argument; confirm no user content sits in message position (codemod to `details`-object form).
-- Fuzz `validateSyncConfig` with IPv6/hostname edge cases and `validateSyncPayload` with oversized arrays (DoS via giant LAN payload — no size cap in `performSync`).
-- Soak-test widget ↔ app concurrent toggles with 500ms–2s timing to quantify the merge-loss window.
-- Audit `AsyncStorage` total size growth (vault + billing + timer keys) against Android Binder limits; `App.js:421-459` split already mitigates, verify with production-size vault.
-- Confirm `transform-remove-console` actually strips in the EAS release profile (check `eas.json` build type sets `NODE_ENV=production`) and that retained `warn`/`error` calls carry no PII.
+**On-device model download state in AsyncStorage:**
+- Problem: Resumable-download bookkeeping (`RESUMABLE_DOWNLOAD_KEY`) in `src/utils/aiService.js` does JSON parse/stringify of download state through AsyncStorage on progress ticks — AsyncStorage is slow and shared with UI-critical reads.
+- Files: `src/utils/aiService.js`
+- Cause: Progress persistence coupled to the same storage lane as tasks/billing/vaults.
+- Improvement path: Throttle progress writes (e.g., every N percent or M seconds) and move transient download state to memory, persisting only resume checkpoints.
+
+## Fragile Areas
+
+**Headless widget surface (`widgets/`):**
+- Files: `widgets/TasksListWidget.tsx`, `widgets/widget-task-handler.tsx`, `widgets/DailyTasksWidget.tsx`, `widgets/ImportantTasksWidget.tsx`, `widgets/FocusTimerWidget.tsx`
+- Why fragile: Behavior-critical per Master Plan §9, yet excluded from typecheck (2 pre-existing `flex` excess-prop style-type errors in `TasksListWidget.tsx`); depends on `react-native-android-widget` whose native sizing code is regex-patched at install time by `patch-llama-gradle.js`; headless handler runs outside the React tree so errors surface as silent widget staleness, not crash reports.
+- Safe modification: Change one widget at a time, verify with `__tests__/unit/phase12-widget-logic.test.js`, and never widen the `widgets/**/*` exclusion to cover new files.
+- Test coverage: Only widget *logic* is unit-tested; no rendering/integration coverage for the headless handler path.
+
+**Notification scheduling matrix:**
+- Files: `src/utils/notifications.js`, `src/utils/billingNotifications.js`, `src/context/TaskContext.js`, `src/screens/DailyTasksScreen.js`, `src/services/types.ts`
+- Why fragile: Four scheduling call-site families (daily tasks, push, due dates, birthdays, plus billing reminders in `src/utils/billingNotifications.js` which still uses raw `console.error`) with overlapping but inconsistent validation; policy constants duplicated between the guard default args and `DEFAULT_BEHAVIORAL_NOTIFICATION_POLICY`.
+- Safe modification: Route every new schedule through `canDispatchBehavioralNotification()`; keep `DEFAULT_BEHAVIORAL_NOTIFICATION_POLICY` as the single numeric source (guard default args should reference it, not restate `3/90/30`).
+- Test coverage: Guard pure-function coverage exists; no integration test asserts end-to-end quiet-hours/cap behavior on device.
+
+**Storage migration chain:**
+- Files: `src/utils/storage.js`, `src/utils/billingStorage.js`, `src/utils/vaultService.js`
+- Why fragile: Version-keyed migration (`STORAGE_VERSION`) walks multiple legacy key namespaces with best-effort fallbacks; a wrong version bump orphans user data silently (loaders return defaults, not errors).
+- Safe modification: Any `STORAGE_VERSION` bump requires a migration-path test in `__tests__/unit/storageMigration.test.js` covering every legacy key touched.
+- Test coverage: `storageMigration.test.js`, `vaultAndFileStorage.test.js`, and `exportImportService.test.js` cover the known paths; unknown-legacy-shape fuzzing does not exist.
+
+**`FactualReward` dual-vocabulary aliases:**
+- Files: `src/behavior/types.ts`, `src/commands/types.ts`
+- Why fragile: `milestoneType` accepts both the 7 canonical Master Plan §10 categories and 4 legacy aliases (`first_completion`, `consistency_streak`, `recovery_success`, `fast_activation`) until the Phase 24 migration renames stored rewards. Every consumer must handle both vocabularies; a strict-equality check on one vocabulary silently misses the other.
+- Safe modification: Normalize at the read boundary (map legacy → canonical on load) and never persist new legacy values; remove the alias union in Phase 24.
+- Test coverage: No exhaustiveness test forces handler updates when a variant is added (flagged in review WR-06 lineage).
+
+## Scaling Limits
+
+**Forensic log buffer (50 entries):**
+- Current capacity: 50-entry in-memory FIFO (`MAX_LOG_BUFFER_SIZE` in `src/utils/logger.js`).
+- Limit: High-frequency warn/error loops evict the causal breadcrumb before the crash report is built.
+- Scaling path: Keep the cap (memory-bounded by design); add loop-suppression/dedup counting instead of raising the limit.
+
+**Vault import caps:**
+- Current capacity: 50 files, 1 MB per file (`MAX_FILES`/`MAX_FILE_BYTES` in `src/utils/vaultImport.js`).
+- Limit: Power users with large vaults hit a hard reject with only a `logger.warn`.
+- Scaling path: Surface a user-facing message with counts, and consider chunked background import if the cap is ever raised.
+
+## Dependencies at Risk
+
+**`llama.rn@0.12.4` native patch coupling:**
+- Risk: Exact-pinned (good), but its Android `build.gradle` is regex-rewritten by `patch-llama-gradle.js` on every install. Any 0.12.x → 0.13 upgrade can invalidate the regex with zero diagnostics.
+- Impact: Android build breaks or silently builds against the wrong architecture block; on-device AI (Phase 18 pipeline) stops working.
+- Migration plan: Verify the patch explicitly after every native upgrade (Master Plan §25); long-term, upstream the old-architecture support or fork-pin the Gradle file.
+
+**`react-native-android-widget@^0.16.1` caret range + native patch:**
+- Risk: Caret range permits minor bumps while `RNWidgetUtil.java` is regex-patched for sizing fallbacks; upstream changes to `getWidgetWidth`/`getWidgetHeight` break the patch match or duplicate `getFallbackSize`.
+- Impact: Widget sizing regressions on specific launchers/orientations.
+- Migration plan: Exact-pin alongside `llama.rn`, or move the sizing fix into a `patch-package` patch with a CI verification step.
+
+## Missing Critical Features
+
+**No notification enforcement layer (Phase 22 scope):**
+- Problem: Quiet hours, daily cap, gap, dedup, `maximumRepeatedReminderCount` suppression, `priorityRules` arbitration, and `userOptOut` kill-switch exist as types/constants/grandfathered guard only — nothing enforces them at dispatch time.
+- Blocks: Any behavioral intervention work (Phase 25) that assumes throttled delivery; store-review risk from notification spam.
+
+**No coverage gate (thresholds undefined):**
+- Problem: `jest.config.js` deliberately defines no `coverageThreshold` (current ~28% lines / ~17% functions per the config comment); CI collects `--coverage` as a tracking artifact only. Master Plan §24 targets (70/90/95) are unenforced.
+- Blocks: Confidence in Phase 22/24 engine work landing without regression protection.
+
+## Test Coverage Gaps
+
+**Untested areas (no suites exist):**
+- What's not tested: `widgets/widget-task-handler.tsx` headless dispatch path; `src/utils/billingNotifications.js`; `src/context/BillingContext.js` / `src/context/VaultContext.js` / `src/context/BirthdayContext.js`; `App.js` startup sequencing; `src/navigation/*`; `src/screens/*`; `patch-llama-gradle.js` patch-idempotency.
+- Files: `widgets/**/*`, `src/utils/billingNotifications.js`, `src/context/*.js`, `App.js`, `src/navigation/AppNavigator.js`, `patch-llama-gradle.js`
+- Risk: Widget-tap double-fire (no idempotency-executor test despite `idempotencyKey` being required by `src/commands/types.ts`), billing-reminder scheduling regressions, and startup-order breakage all ship silently.
+- Priority: High — widget idempotency + billing notifications before Phase 25; startup smoke (`__tests__/unit/aiAssistant-smoke.test.js` pattern extended) before Phase 21 upgrade.
+
+**Thin existing coverage:**
+- What's not tested: Integration paths (scheduler → Expo → cancellation round-trip), storage-migration unknown shapes, export encrypt/decrypt round-trip at scale, DST transition weekends for advance reminders.
+- Files: `src/utils/notifications.js`, `src/utils/storage.js`, `src/utils/exportService.js`, `__tests__/unit/*`
+- Risk: Medium — pure-function guards are covered, but the seams between modules (where the Phase 20 review found every CR) have no tests.
+- Priority: Medium — add as Phase 22/24 engine suites land, raising thresholds toward §24 targets.
 
 ---
 
-*Concerns audit: 2026-09-28*
+*Concerns audit: 2026-10-01*

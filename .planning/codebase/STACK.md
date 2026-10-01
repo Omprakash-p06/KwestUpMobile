@@ -1,101 +1,98 @@
 # Technology Stack
 
-**Analysis Date:** 2026-09-28
+**Analysis Date:** 2026-10-01
 
-## Languages & Runtimes
+## Languages
 
-- **JavaScript (ES2021)** — Primary language for app code. `src/**/*.js`, `App.js`, `index.js`, `widgets/*.tsx` (TS only in widgets). ESLint `ecmaVersion: 2021`, `sourceType: module` (`eslint.config.js`).
-- **TypeScript (incremental, widgets-only)** — `widgets/*.tsx` (`DailyTasksWidget.tsx`, `FocusTimerWidget.tsx`, `ImportantTasksWidget.tsx`, `TasksListWidget.tsx`, `widget-task-handler.tsx`). Full TS conversion of legacy JS explicitly out of scope (`.planning/PROJECT.md`).
-- **TypeScript ~5.8.3** (devDependency) — Type support; base config extends `expo/tsconfig.base` (`tsconfig.json` is a 4-line shim).
-- **Node.js 20** — CI runtime (`actions/setup-node@v4`, `node-version: 20` in `.github/workflows/ci.yml`). Local dev via Expo CLI / Metro.
-- **React 19.0.0 / React Native 0.79.5** — UI runtime (`package.json`).
-- **Hermes (via Expo SDK 53 / RN 0.79 default)** — Production JS engine on Android (standard for this SDK; no custom `hermes` config in repo).
+**Primary:**
+- JavaScript (ES2021) - All runtime code in `src/`, `App.js`, `index.js`, `widgets/`, `__tests__/`
+- TypeScript 5.8 (`~5.8.3`) - Type contracts only: `src/behavior/types.ts`, `src/commands/types.ts`, `src/services/types.ts`; config/tooling files `jest.config.js`, `babel.config.js`, `metro.config.js`, `eslint.config.js`, `patch-llama-gradle.js` are typechecked via `tsconfig.json` include (JS still `allowJs: true`, `checkJs: false`)
+
+**Secondary:**
+- JSON - `app.json`, `eas.json`, `package.json`, `rulebook/manifest.json`
+- Gradle/Groovy + Kotlin/Java - Native Android shell in `android/` (`android/build.gradle`, `android/app/`, `android/settings.gradle`)
+- Markdown - Governance docs in `rulebook/`, `src/domains/README.md`, `4.0/`
+
+## Runtime
+
+**Environment:**
+- React Native `0.79.5` + React `19.0.0` via Expo SDK `53.0.0` (`sdkVersion: "53.0.0"` in `app.json`)
+- Hermes (Expo default) on device; Metro bundler in dev via `metro.config.js`
+- Node `>=22.13` required (`engines` in `package.json`); CI pins Node 22 in `.github/workflows/ci.yml`
+
+**Package Manager:**
+- npm
+- Lockfile: present (`package-lock.json`, installed with `npm ci` in CI)
 
 ## Frameworks
 
-- **Expo SDK ~53.0.20 (`expo": "~53.0.20"`)** — Managed workflow core: `expo/metro-config`, `babel-preset-expo`, `jest-expo`. Entry via `registerRootComponent(App)` (`index.js`).
-- **Expo Router: NOT used** — Navigation is React Navigation drawer stack: `@react-navigation/native ^6.1.9`, `@react-navigation/drawer ^6.6.6`, wired in `src/navigation/AppNavigator.js`, drawer UI in `src/navigation/CustomDrawerContent.js`.
-- **UI kits:** `react-native-paper ^5.10.5` (theming, e.g. `useTheme` in `src/components/TaskCard.js`), `@expo/vector-icons ^14.0.0` (MaterialCommunityIcons throughout), `expo-linear-gradient ~14.1.5`, `react-native-modal ^14.0.0-rc.1`, `react-native-confetti-cannon ^1.5.2`, `react-native-reanimated ~3.17.4` (Babel plugin must be listed last in `babel.config.js`), `react-native-gesture-handler ~2.24.0`, `react-native-screens ~4.11.1`, `react-native-safe-area-context 5.4.0`, `@react-native-community/datetimepicker 8.4.1`.
-- **State:** No Redux/MobX/Zustand. Four domain React Context providers in `src/context/` (`TaskContext.js`, `VaultContext.js`, `BillingContext.js`, `BirthdayContext.js`) composed in `App.js`; pure shared logic in `src/utils/taskMutations.js` (shared by app + headless widget handler).
-- **Fonts:** `@expo-google-fonts/hanken-grotesk`, `@expo-google-fonts/inter`, `@expo-google-fonts/jetbrains-mono` loaded via `expo-font ~13.3.2`.
+**Core:**
+- Expo `~53.0.20` - Managed workflow, native-module bridge, EAS builds (`app.json`, `eas.json`)
+- React Navigation `^6.1.9` (`@react-navigation/native`) + Drawer `^6.6.6` (`@react-navigation/drawer`) - Navigation in `src/navigation/AppNavigator.js`, `src/navigation/CustomDrawerContent.js`
+- React Native Paper `^5.10.5` - Material UI components across `src/screens/`, `src/components/`
+- React Native Reanimated `~3.17.4` - Animations (Babel plugin must stay last in `babel.config.js`)
+- React Native Gesture Handler `~2.24.0` + Screens `~4.11.1` + Safe Area Context `5.4.0` - Navigation prerequisites
 
-## Data & Storage (storage versioning, encryption details if found)
+**Testing:**
+- Jest `^29.7.0` + `jest-expo ~53.0.0` (preset `jest-expo/android` in `jest.config.js`) - 26 suites / 358 tests
+- `babel-jest ^29.7.0`, `@types/jest ^29.5.14` - Transform + typings
+- Setup: `__tests__/setup/jest.setup.js` (wired via `setupFiles` in `jest.config.js`)
 
-- **Structured state → `@react-native-async-storage/async-storage 2.1.2`** (async key-value). Single JSON blob `kwestup_data_<STORAGE_VERSION>` plus decoupled keys (timer, theme, userName, vaults, billing, widget, telemetry, AI download). All key construction uses the dynamic `STORAGE_VERSION` constant — never hardcode version suffixes.
-  - Constants: `APP_VERSION = "v3.5.0"`, `STORAGE_VERSION = "v7.0"` in `src/utils/storage.js`.
-  - `isUserDataKey()` allowlist in `src/utils/storage.js` protects `kwestup_data_`, `kwestup_userName_`, `kwestup_theme_mode_/_name_`, `kwestup_timer_state_`, `kwestup_activeVault_`, `kwestup_vaults_`, `kwestup_billing_`, `kwestup_widget_`, `kwestup_telemetry_`, `kwestup_ai_model_` prefixes from `clearAllCaches()` wipes.
-  - `migrateUserDataIfNeeded()` in `src/utils/storage.js` promotes the highest-version legacy `kwestup_data_v*` blob plus vault/billing/timer keys; stamps `kwestup_last_version` / `kwestup_last_clear`.
-  - Domain stores: `src/utils/billingStorage.js` (`kwestup_billing_*`), `src/utils/vaultService.js` (`kwestup_vaults_*/activeVault_*`), telemetry opt-in key `kwestup_telemetry_optin`, resume key `kwestup_ai_model_download_resumable` (`src/utils/aiService.js`).
-- **Notes/vault files → `expo-file-system ~18.1.11`** (`.md` files on device). `src/utils/fileStorage.js`, `src/utils/vaultService.js`, `src/utils/vaultImport.js` (directory import via `expo-document-picker ~13.1.6`).
-- **Backup encryption → `crypto-js ^4.2.0` (pure JS, no native linking).** `src/utils/exportService.js`:
-  - **v2 envelope (current):** AES-256-CBC, per-archive 128-bit random salt + 128-bit random IV (`CryptoJS.lib.WordArray.random(16)`), PBKDF2-HMAC-SHA256 with **100,000 iterations**, `keySize: 256/32`. Envelope JSON: `{ v: 2, kdf: "PBKDF2", hasher: "SHA256", iterations, salt(hex), iv(hex), ciphertext }`. Same plaintext + passphrase yields distinct ciphertexts (CPA security).
-  - **v1 fallback (legacy read-only):** static salt `"4b77657374557053616c745f7632"`, 1,000 iterations, salt-as-IV. `decryptBackup()` auto-detects v2 vs v1; tampered/wrong-passphrase throws `"Unable to decrypt archive. Please verify the passphrase."`.
-  - Export pipeline: collect → pack → encrypt → write cache file → `expo-sharing ~13.1.5` share sheet → cleanup.
-- **AI model integrity → `crypto-js` SHA-256 (chunked).** `src/utils/aiService.js`: `hashFileSha256()` streams the ~468 MB GGUF via `FileSystem.readAsStringAsync` Base64 windows of `MODEL_HASH_CHUNK_BYTES = 8 MB`, incremental `CryptoJS.algo.SHA256`; `verifyModelIntegrity()` enforces exact byte size (`MODEL_EXPECTED_SIZE = 491400032`) + digest match against pinned `MODEL_EXPECTED_SHA256`, fail-closed (delete corrupt file).
-- **No cloud database / ORM.** No Firebase, Supabase, SQLite, WatermelonDB, or Realm detected in `package.json` — consistent with local-first constraint.
+**Build/Dev:**
+- `babel-preset-expo` + `react-native-reanimated/plugin` + prod-only `babel-plugin-transform-remove-console ^6.9.4` (strips `log/info/debug`, keeps `error/warn`) - see `babel.config.js`
+- TypeScript `~5.8.3` with `strict: true`, `noEmit: true` - `tsconfig.json` extends `expo/tsconfig.base`; `npm run typecheck` = `tsc --noEmit`; CI runs it as a gate (`.github/workflows/ci.yml`)
+- ESLint `^9.39.4` (flat config in `eslint.config.js`) + `eslint-plugin-react ^7.37.5`, `eslint-plugin-react-hooks ^7.1.1`, `eslint-plugin-react-native ^5.0.0`, `@babel/eslint-parser ^7.29.7`
+- EAS CLI `>= 3.10.0` (`eas.json`) - `development` / `preview` / `production` profiles (APK for Android)
+- `patch-llama-gradle.js` (run as `postinstall`) - Patches `node_modules/llama.rn/android/build.gradle` for old-architecture support
 
-## Observability (logger, error boundary, babel console strip)
+## Key Dependencies
 
-- **Structured logger — `src/utils/logger.js` (Phase 19, OBS-01):**
-  - Levels `debug/info/warn/error` + 50-entry FIFO deep-frozen ring buffer (`MAX_LOG_BUFFER_SIZE = 50`, `getRecentLogs()`, `clearLogs()`).
-  - Environment-aware: `debug`/`info` gated on `isDevelopment()` (`__DEV__` else `NODE_ENV !== 'production'`) — neither console-emit nor buffer in production. `warn`/`error` always buffer + passthrough.
-  - PII redaction at record time: key regex `/(content|body|note|title|text|message|passphrase|token|key|secret|password)/i` → `[Redacted]`; strings capped at 1000 chars, arrays at 50 items, depth cap 4 + `WeakSet` cycle guard; entries deep-frozen (WR-02).
-  - ESLint `no-console: warn` pushes all product code to `logger`; `src/utils/logger.js` itself carries `/* eslint-disable no-console */`.
-- **Error boundary — `src/components/ErrorBoundary.js` (Phase 19, OBS-02):** class component wrapping the tree (mounted in `App.js`). `componentDidCatch` → `logger.error`. Fallback card (Try Again / Copy Error Report / Restart Application): report includes timestamp, platform, `APP_VERSION`, `STORAGE_VERSION`, error + component stack, and PII-redacted breadcrumbs, capped at 8000 chars; copy via `expo-clipboard ~7.0.1` with `Share` fallback and explicit copy-failed state. No `expo-updates` — restart is a manual-reopen prompt (documented limitation).
-- **Babel console strip (Phase 19, OBS-01) — `babel.config.js`:** `babel-plugin-transform-remove-console ^6.9.4` in production only (`NODE_ENV === 'production'`, `exclude: ['error','warn']`); cache keyed on `NODE_ENV` via `api.cache.using()` (WR-01); `react-native-reanimated/plugin` always last.
-- **Diagnostics probes — `src/utils/diagnostics.js`:** `runDeviceDiagnostics`, `runNetworkDiagnostics`, `checkForUpdates`, `sendTelemetryEvent`. All console/noise probes dev-gated in Phase 19 (see INTEGRATIONS.md). Crash reporting is local-only (copy-paste report); no Sentry/Crashlytics.
+**Critical:**
+- `llama.rn 0.12.4` - On-device LLM inference, used in `src/utils/aiService.js` (`initLlama`, `releaseAllLlama`); Expo plugin entry in `app.json`; model `qwen2.5-0.5b-instruct-q4_k_m.gguf` (~468 MB)
+- `@react-native-async-storage/async-storage 2.1.2` - Primary key-value store, used in `src/utils/storage.js`, `src/utils/billingStorage.js`, `src/utils/vaultService.js`, `src/utils/exportService.js`, `src/utils/aiService.js`, `src/context/TaskContext.js`, `src/screens/SettingsScreen.js`
+- `expo-file-system ~18.1.11` - Vault files, model download, backup import/export; used in `src/utils/vaultService.js`, `src/utils/fileStorage.js`, `src/utils/vaultImport.js`, `src/utils/exportService.js`, `src/utils/aiService.js`, `src/screens/SettingsScreen.js`
+- `expo-notifications ~0.31.4` - Local reminders; used in `src/utils/notifications.js`, `src/utils/billingNotifications.js`, `src/context/BirthdayContext.js`
+- `crypto-js ^4.2.0` - AES-256 + PBKDF2 backup encryption + SHA-256 helpers; used in `src/utils/exportService.js`, `src/utils/aiService.js`
 
-## Testing (framework, presets)
+**Infrastructure:**
+- `expo-camera ~16.1.11` - QR sync-code scanning in `src/components/QRScannerModal.js` (`CameraView`, `useCameraPermissions`)
+- `expo-document-picker ~13.1.6` + `expo-sharing ~13.1.5` - Backup import/export in `src/utils/vaultImport.js`, `src/screens/SettingsScreen.js`, `src/utils/exportService.js`
+- `expo-clipboard ~7.0.1` - Error copy in `src/components/ErrorBoundary.js`
+- `expo-haptics ~14.1.4` - Tactile feedback across `src/screens/*`, `src/components/CustomButton.js`, `src/components/AIAssistant.js`, `src/context/TaskContext.js`
+- `expo-font ~13.3.2` + `@expo-google-fonts/inter`, `@expo-google-fonts/hanken-grotesk`, `@expo-google-fonts/jetbrains-mono` - Bundled fonts
+- `expo-dev-client ~5.2.4` + `expo-status-bar ~2.2.3` + `expo-linear-gradient ~14.1.5` - Dev builds, chrome, gradients
+- `react-native-android-widget ^0.16.1` - 4 home-screen widgets (`FocusTimer`, `DailyTasks`, `ImportantTasks`, `TasksList` in `app.json`); handler in `widgets/widget-task-handler.js`, registered in `index.js`
+- `@react-native-community/datetimepicker 8.4.1`, `react-native-modal ^13.0.1`, `react-native-confetti-cannon ^1.5.2`, `@expo/vector-icons ^14.0.0`, `use-latest-callback ^0.2.4` - UI utilities
 
-- **Runner: Jest `^29.7.0` + `jest-expo ~53.0.0`, preset `jest-expo/android`** (`jest.config.js`). Commands: `npm test` (`jest --passWithNoTests`), `npm run test:watch`, `npm run test:coverage`; CI runs `npm test -- --ci --maxWorkers=2 --coverage` (`.github/workflows/ci.yml`).
-- **Transform:** `babel-jest ^29.7.0` with `babel-preset-expo`; `transformIgnorePatterns` whitelists RN/Expo/llama.rn/widget libs. `moduleFileExtensions` prioritizes `.android.*`. `testMatch: **/__tests__/**/*.test.[jt]s?(x)`; coverage collects `src/**/*.{js,jsx,ts,tsx}` excluding `*.styles.js`.
-- **Native mocks harness — `__tests__/setup/jest.setup.js`** (loaded via `setupFiles`): AsyncStorage (official mock), in-memory virtual FS for `expo-file-system` (`documentDirectory file:///mock-docs/`, `cacheDirectory file:///mock-cache/`), `llama.rn` (`initLlama`/`releaseAllLlama`), `react-native-android-widget`, `expo-notifications`, `expo-haptics`, `expo-sharing`, `expo-document-picker`, `expo-camera`, `expo-clipboard`, `@expo/vector-icons`, `react-native-reanimated/mock`.
-- **Suites (13 files):** `__tests__/unit/` — `aiService`, `aiAssistant-smoke`, `dateUtils`, `errorBoundary`, `exportImportService`, `logger`, `storageMigration`, `syncService`, `taskContext`, `taskMutations`, `vaultAndFileStorage`, plus `__tests__/setup/jest.setup.test.js` and `__tests__/phase12-widget-logic.test.js`. STATE.md reports 171 tests passing, 0 ESLint errors at Milestone 2 close.
+## Configuration
 
-## Tooling & CI/CD
+**Environment:**
+- No `.env` file convention detected; no `react-native-dotenv` / `expo-constants` env reads. App is offline-first with zero required secrets.
+- EAS project link in `app.json` (`extra.eas.projectId: 9b029b06-5b07-4a1d-9999-a543a3ef1614`, `owner: omprakash-p06`).
+- `.env*` / secrets files: not present (do not create one for normal dev; passphrase-based backup encryption takes user input at runtime in `src/utils/exportService.js`).
 
-- **Package manager:** npm (lockfile present: `package-lock.json`). `postinstall: node patch-llama-gradle.js` patches the `llama.rn` Android Gradle binding.
-- **Metro:** stock `expo/metro-config` (`metro.config.js`, 5 lines, no custom resolver).
-- **Lint:** ESLint `^9.39.4` flat config (`eslint.config.js`): `@babel/eslint-parser`, `eslint-plugin-react`, `eslint-plugin-react-native`, `eslint-plugin-react-hooks`; `no-console: warn`, `react/prop-types: off`, RN rules (`no-unused-styles`, `no-inline-styles`, `no-color-literals` as warn). Ignores `node_modules`, `.expo`, `dist`, `web-build`, `android`, `ios`, `assets`, `KwestUpPC`. `npm run lint`, `npm run lint:report` (JSON report).
-- **CI — `.github/workflows/ci.yml`:** `CI Pipeline (Lint & Test)` on push/PR to `main` + `development`: checkout → Node 20 → `npm install` → `npm run lint` → `npm test -- --ci --maxWorkers=2 --coverage`. Quality gate: all lint + tests green. Companion `.github/workflows/semgrep.yml` for static security scan.
-- **Build:** EAS (`eas.json`: `development` internal APK + dev-client, `preview` internal, `production` APK with `NODE_OPTIONS=--max-old-space-size=4096`; `cli >= 3.10.0`). No `expo-updates`/OTA configured. Local builds via `expo run:android` / `expo run:ios` / `expo start`.
+**Build:**
+- `app.json` - App identity (`KwestUp`, `com.omprakashp06.kwestupmobile`, `version 3.5.0`, `versionCode 7`), icons/splash, `expo-camera` permission string, `expo-build-properties` (iOS `useFrameworks: static`), widget declarations
+- `eas.json` - Build profiles; `production` sets `NODE_OPTIONS=--max-old-space-size=4096`
+- `tsconfig.json` - `strict: true`, `allowJs: true`, `checkJs: false` (1152 pre-existing JS errors tracked pre-Phase 22); `include: src/**`, `__tests__/**`, tooling configs; `exclude: node_modules`, `widgets/**` (2 pre-existing style-type errors tracked for Phase 25)
+- `babel.config.js` - Env-keyed cache (`api.cache.using(() => process.env.NODE_ENV)`), prod console stripping
+- `metro.config.js` - Default `expo/metro-config`
+- `jest.config.js` - Android preset, `transformIgnorePatterns` allowlist for RN/Expo/llama.rn/widget libs, `testMatch: **/__tests__/**/*.test.[jt]s?(x)`, coverage from `src/**` (no global thresholds yet)
+- `eslint.config.js` - Flat config; `no-console: warn`, `react-native/no-inline-styles: warn`; ignores `android/`, `ios/`, `assets/`, `coverage/`
+- `android/gradle.properties`, `android/build.gradle`, `android/settings.gradle` - Native Android build settings
 
-## Key Dependencies (table: package | version | purpose)
+## Platform Requirements
 
-| Package | Version | Purpose |
-|---|---|---|
-| `expo` | `~53.0.20` | Managed workflow core, Metro/Babel presets, `registerRootComponent` |
-| `react` | `19.0.0` | UI runtime |
-| `react-native` | `0.79.5` | UI runtime (Android target) |
-| `llama.rn` | `^0.12.4` | On-device LLM native binding (`initLlama`/`releaseAllLlama`); Qwen2.5-0.5B Q4_K_M GGUF, CPU-only `n_ctx 2048`, `n_threads 2` |
-| `crypto-js` | `^4.2.0` | AES-256 backup crypto (PBKDF2-SHA256 100k), SHA-256 model hashing — pure JS |
-| `@react-native-async-storage/async-storage` | `2.1.2` | Structured state persistence (versioned keys) |
-| `expo-file-system` | `~18.1.11` | Vault `.md` files, model download (resumable), archive staging |
-| `expo-notifications` | `~0.31.4` | Birthday/daily-task/billing reminders (handler in `src/utils/notifications.js`) |
-| `expo-camera` | `~16.1.11` | QR sync-code scanning (`src/components/QRScannerModal.js`) |
-| `expo-clipboard` | `~7.0.1` | Copy error report (`ErrorBoundary`) |
-| `expo-sharing` | `~13.1.5` | Export `.kwestup` archive via native share sheet |
-| `expo-document-picker` | `~13.1.6` | Vault directory import + archive import picker |
-| `expo-haptics` | `~14.1.4` | Tactile feedback on interactions |
-| `expo-font` + `@expo-google-fonts/{hanken-grotesk,inter,jetbrains-mono}` | `~13.3.2` / `^0.4.x` | Brand typography |
-| `react-native-android-widget` | `^0.16.1` | 4 home-screen widgets + headless `widgetTaskHandler` (`index.js`, `widgets/`) |
-| `@react-navigation/native` / `drawer` | `^6.1.9` / `^6.6.6` | Drawer navigation (`src/navigation/`) |
-| `react-native-paper` | `^5.10.5` | Material theming components |
-| `react-native-reanimated` | `~3.17.4` | Animations (Babel plugin last) |
-| `react-native-gesture-handler` / `screens` / `safe-area-context` | `~2.24.0` / `~4.11.1` / `5.4.0` | Navigation prerequisites |
-| `expo-dev-client` | `~5.2.4` | Development builds |
-| `expo-build-properties` | `~0.14.8` | Native build config (iOS `useFrameworks: static`) |
-| `expo-status-bar` / `expo-linear-gradient` | `~2.2.3` / `~14.1.5` | Chrome + styling |
-| `@react-native-community/datetimepicker` | `8.4.1` | Date/time pickers |
-| `@expo/vector-icons` | `^14.0.0` | Icon set (MaterialCommunityIcons) |
-| `react-native-modal` | `^14.0.0-rc.1` | Modals (task edit, QR, AI assistant) |
-| `react-native-confetti-cannon` | `^1.5.2` | Celebration effects |
-| `use-latest-callback` | `^0.2.4` | Stable callback helper |
-| `jest` / `jest-expo` / `babel-jest` / `@types/jest` | `^29.7.0` / `~53.0.0` / `^29.7.0` / `^29.5.14` | Test runner + Expo preset + transform + types |
-| `eslint` + `eslint-plugin-react(-native,-hooks)` + `@babel/eslint-parser` | `^9.39.4` et al | Flat-config lint |
-| `babel-plugin-transform-remove-console` | `^6.9.4` | Prod console strip (log/info/debug) |
-| `typescript` | `~5.8.3` | Widget TS + type checking |
+**Development:**
+- Node `>=22.13`, npm, Expo CLI / EAS CLI `>= 3.10.0`
+- Android Studio + SDK for `expo run:android` / local `android/` builds; `npm run start` for Metro
+- Scripts in `package.json`: `start` (`expo start`), `android` / `ios` (`expo run:android|ios`), `web` (`expo start --web`), `lint`, `lint:report`, `typecheck`, `test`, `test:watch`, `test:coverage`
+
+**Production:**
+- Android APK via EAS (`eas.json` `production` profile, `buildType: apk`); `versionCode 7` in `app.json`
+- iOS config present (`supportsTablet: true`, `useFrameworks: static`) but primary target is Android
+- Offline-capable: no server required; on-device LLM model downloads on first AI use (~468 MB into `FileSystem.documentDirectory`)
 
 ---
 
-*Stack analysis: 2026-09-28*
+*Stack analysis: 2026-10-01*

@@ -1,58 +1,103 @@
-# Integrations
+# External Integrations
 
-**Analysis Date:** 2026-09-28
+**Analysis Date:** 2026-10-01
 
-> Local-first stance: this app has **no cloud backend, no auth provider, no remote database, and no crash/monitoring SaaS**. The only internet egress in product code is (a) one-time GGUF model download from Hugging Face, (b) optional GitHub release check, (c) opt-in telemetry POST, and (d) a dev-only httpbin connectivity probe that is skipped in release builds. Everything else is on-device or LAN.
+## APIs & External Services
 
-## Internal Modules / Cross-cutting integrations
+**On-device AI model download:**
+- Hugging Face (`huggingface.co`) - One-time GGUF model fetch for offline inference
+  - SDK/Client: `llama.rn 0.12.4` (`initLlama`) + `expo-file-system` resumable download in `src/utils/aiService.js`
+  - URL: `https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/<pinned-commit>/qwen2.5-0.5b-instruct-q4_k_m.gguf` (`MODEL_DOWNLOAD_URL`, `MODEL_PINNED_COMMIT`, `MODEL_EXPECTED_SHA256`, `MODEL_EXPECTED_SIZE` in `src/utils/aiService.js`)
+  - Auth: none (public repo, pinned commit `9217f5db79a29953eb74d5343926648285ec7e67`, SHA-256 verified)
 
-All cross-cutting logic lives in `src/utils/` and is consumed by screens, contexts, and widgets — no external SDK involved:
+**LAN companion sync (user's own PC, not a SaaS backend):**
+- User-hosted KwestUp PC endpoint over local network - Ping + REST sync handshake with QR-provisioned config
+  - SDK/Client: raw `fetch` with `AbortController` timeout in `src/utils/syncService.js` (`fetchWithTimeout`, `validateSyncConfig`)
+  - Base URL: `http://<ip>:<port>` built from QR code scanned in `src/components/QRScannerModal.js` (hint text references `http://localhost:5001/` PC screen)
+  - Auth: pre-shared `token` from QR config (`{ ip, port, token }`), validated strictly (IPv4/hostname/IPv6 checks)
 
-- **Central date engine — `src/utils/dateUtils.js`:** sole authority for calendar dates (`getLocalDateString`, `parseLocalDate`, `getTomorrowLocalDateString`, `getLocalMonthDayString`). Consumed by `App.js`, `DailyTasksScreen`, `BillingScreen`, `SearchScreen`, `widgets/widget-task-handler.tsx`, and `src/utils/aiService.js` (LLM prompt "today" + keyword-fallback due dates). Rule: never use UTC `toISOString().slice(0,10)` for calendar days.
-- **Pure task mutation layer — `src/utils/taskMutations.js`:** framework-agnostic recurrence/subtask/list transforms (`calculateNextRecurrence`, subtask + list helpers). Shared by `src/context/TaskContext.js` (React provider with notification/haptic side-effects) and headless `widgets/widget-task-handler.tsx`. Rule: new task logic goes here first, thin wrappers in consumers.
-- **Domain contexts — `src/context/`:** `TaskContext.js`, `VaultContext.js`, `BillingContext.js`, `BirthdayContext.js` composed in `App.js`; `src/navigation/AppNavigator.js` injects them with backward-compatible prop fallbacks (`taskCtx?.x ?? props`).
-- **Structured logging — `src/utils/logger.js`:** sole logging facade; `ErrorBoundary` crash path reads `logger.getRecentLogs()`. All product code logs via `logger`, never raw `console`.
-- **Crash boundary — `src/components/ErrorBoundary.js`:** wraps the tree in `App.js`; copy-paste diagnostics report (clipboard → Share fallback), no network upload.
-- **Notifications hub — `src/utils/notifications.js` (+ `billingNotifications.js`, `BirthdayContext.js`):** `setNotificationHandler` configured at import; schedulers for daily tasks, birthdays (morning reminders), and recurring bills. Triggered from `TaskContext` mutations and billing flows.
-- **Vault/filesystem — `src/utils/vaultService.js`, `src/utils/fileStorage.js`, `src/utils/vaultImport.js`:** multi-vault `.md` storage on `expo-file-system`, directory import via `expo-document-picker`.
-- **Backup pipeline — `src/utils/exportService.js`:** `encryptBackup` / `decryptBackup` / `packVaults` / `exportArchive` (+ import side); consumes `storage.js` key allowlist, `vaultService`, `billingStorage`, `billingNotifications` (re-schedule on restore), and `expo-sharing` for the export sheet. Covered by `__tests__/unit/exportImportService.test.js`.
+**Release / diagnostics probes:**
+- GitHub Releases API - Update check in `src/utils/diagnostics.js` (`checkForUpdates` fetches `https://api.github.com/repos/Omprakash-p06/KwestUpMobile/releases/latest`)
+  - SDK/Client: raw `fetch`
+  - Auth: none
+- httpbin (`https://httpbin.org/json`) - Dev-only network probe in `src/utils/diagnostics.js` (`runNetworkDiagnostics`); skipped in release builds via `isDiagnosticsEnabled()` (`__DEV__` guard)
+  - SDK/Client: raw `fetch`
+  - Auth: none
 
-## External Services (note local-first — absence of cloud deps if true; note httpbin probe gating if found)
+**Remote static assets (no SDK, plain image URIs):**
+- `transparenttextures.com` + `images.unsplash.com` - Card/grain textures in `src/components/LiquidGlassCard.js`, `src/components/LiquidGlassBackground.js`, `src/screens/NotesScreen.js`
+  - SDK/Client: `expo-image` / React Native `Image` `uri` source
+  - Auth: none
 
-**Cloud backends / auth / databases / analytics: NONE.** Verified: no `firebase`, `supabase`, `aws`, `auth0`, `sentry`, `amplitude`, `mixpanel` in `package.json` or `src/` imports; `.planning/PROJECT.md` out-of-scope explicitly forbids remote accounts and centralized cloud DBs.
+**Dead / stub endpoint (never called in production):**
+- `https://api.kwestup.com/telemetry` - Exists only inside a commented/disabled stub in `src/utils/diagnostics.js`; no telemetry is sent
+  - Auth: n/a
 
-| Service | Use | Code | Notes |
-|---|---|---|---|
-| **Hugging Face (model CDN)** | One-time download of pinned GGUF model | `src/utils/aiService.js` — `MODEL_DOWNLOAD_URL = https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/<pinned-commit>/qwen2.5-0.5b-instruct-q4_k_m.gguf` | Commit pinned (`MODEL_PINNED_COMMIT = 9217f5db…`); resumable `DownloadResumable` with `AsyncStorage` resume state (stale URL/fileUri discarded); 10 retries, exponential backoff + jitter; post-download SHA-256 + size gate. Only network transfer the app *requires*; inference itself is fully offline via `llama.rn`. |
-| **GitHub Releases (update check)** | Optional "new version available" prompt | `src/utils/diagnostics.js` — `checkForUpdates()` → `GET https://api.github.com/repos/Omprakash-p06/KwestUpMobile/releases/latest` | Compares `tag_name` semver vs `APP_VERSION`; surfaces APK asset URL. Best-effort, fail-silent (`{ hasUpdate: false }`). |
-| **httpbin (connectivity probe)** | Dev-only network diagnostic | `src/utils/diagnostics.js` — `runNetworkDiagnostics()` → `GET https://httpbin.org/json` | **Gated dev-only (Phase 19, WR-03):** `isDiagnosticsEnabled()` (`__DEV__`, else `NODE_ENV !== production`) returns early in release — a production build never contacts httpbin and never pays probe latency at startup. Same gate covers `runDeviceDiagnostics`. Callers in `App.js` additionally gate on `__DEV__`. |
-| **Self-hosted telemetry endpoint** | Opt-in usage telemetry | `src/utils/diagnostics.js` — `sendTelemetryEvent()` → `POST https://api.kwestup.com/telemetry` | **Opt-in only:** no-ops unless `AsyncStorage("kwestup_telemetry_optin") === "true"`. Payload `{ event, version, platform, timestamp, ...payload }`. Fail-silent offline. Key survives cache wipes via `isUserDataKey` allowlist. |
+## Data Storage
 
-## LAN / Device-to-device (sync protocol, validation rules if found)
+**Databases:**
+- None (no SQLite/WatermelonDB/Realm/Supabase/Firebase). All persistence is key-value + files:
+  - Connection: n/a
+  - Client: `@react-native-async-storage/async-storage 2.1.2` via `src/utils/storage.js` (`APP_VERSION`, `STORAGE_VERSION`, `isUserDataKey`), `src/utils/billingStorage.js`, `src/context/TaskContext.js`, `src/utils/diagnostics.js`, `src/utils/aiService.js` (resumable-download key `kwestup_ai_model_download_resumable`)
 
-PC-companion sync over local Wi-Fi — plain HTTP to a user-supplied LAN host, no cloud relay. Implementation: `src/utils/syncService.js`; UI/scan: `src/components/QRScannerModal.js` (`expo-camera`) + sync screens; tests: `__tests__/unit/syncService.test.js`.
+**File Storage:**
+- On-device filesystem only (`expo-file-system ~18.1.11`)
+  - Vault JSON files via `src/utils/vaultService.js` (`getVaultPath`, `ensureVaultsDir`, `getVaults`)
+  - Generic read/write via `src/utils/fileStorage.js`
+  - Backup import via `expo-document-picker` in `src/utils/vaultImport.js` and `src/screens/SettingsScreen.js`
+  - Backup export + share via `expo-sharing` in `src/utils/exportService.js` and `src/screens/SettingsScreen.js`
+  - LLM model at `${FileSystem.documentDirectory}models/qwen2.5-0.5b-instruct-q4_k_m.gguf` (`MODEL_DIR`, `MODEL_PATH` in `src/utils/aiService.js`)
 
-- **Protocol:** `GET http://<ip>:<port>/ping` (connectivity, 3 s timeout, placeholder token `ping-token-check`) → `POST` sync handshake with Bearer token + local payload; `fetchWithTimeout` (default 4 s, `AbortController`) throughout.
-- **Config validation — `validateSyncConfig({ ip, port, token })`:** strict IPv4 octet check (dotted-numeric input must pass full IPv4 regex — rejects `999.999.1.1`), else hostname (`hostnameRegex`) or IPv6 accepted; path-injection rejected via hostname/IP shape; port coerced to integer, must be 1–65535; token trimmed, minimum 6 chars. Returns normalized `{ ip, port, token }`.
-- **Payload validation — `validateSyncPayload(data)`:** requires top-level object with `notes[]`, `tasks[]`, `birthdays[]` (missing array throws — prevents accidental note wipes); `taskLists` defaulted to `[]` when absent.
-- **Transport note:** plain `http://` LAN (no TLS) with token auth — accepted LAN-sync trade-off per Phase 16 (`SEC-02`); QR scan provisions `{ ip, port, token }` so secrets never typed manually.
+**Caching:**
+- None (no React Query/SWR/Redis). In-memory module singletons only (e.g. `_llamaContext` + `_initPromise` in `src/utils/aiService.js`, idle-unload timer `IDLE_UNLOAD_TIMEOUT_MS`)
 
-## Build & Platform integrations (Expo, EAS, Android native)
+## Authentication & Identity
 
-- **Expo managed + config plugins (`app.json`):** slug `kwestupmobile`, SDK `53.0.0`, package `com.omprakashp06.kwestupmobile`, `versionCode 7`. Plugins: `llama.rn` (native LLM), `expo-camera` (QR permission string), `expo-build-properties` (iOS `useFrameworks: static`), `react-native-android-widget` declaring 4 widgets (FocusTimer, DailyTasks, ImportantTasks, TasksList; `updatePeriodMillis 1800000`, preview images in `assets/widget-preview/`). `extra.eas.projectId 9b029b06-…`, owner `omprakash-p06`.
-- **EAS (`eas.json`):** `development` (dev-client, internal APK), `preview` (internal), `production` (APK, `NODE_OPTIONS=--max-old-space-size=4096`); CLI `>= 3.10.0`. No OTA/`expo-updates` — updates ship as new APKs via GitHub Releases.
-- **Android native (`android/`):** standard RN Gradle project (`build.gradle`, `gradle.properties`, `settings.gradle`, `gradlew`); `postinstall: node patch-llama-gradle.js` patches the `llama.rn` C++ binding build. `android/` ignored by ESLint.
-- **Widget bridge:** `index.js` registers both the app root and the headless handler (`registerWidgetTaskHandler(widgetTaskHandler)` from `react-native-android-widget`); `widgets/widget-task-handler.tsx` performs storage-direct task toggles via `taskMutations.js` (no React tree). `KwestUpPC/` desktop companion directory exists in repo but is ESLint-ignored (separate surface).
-- **OS services via Expo SDK:** notifications (`expo-notifications` — Android permission flow in `src/utils/notifications.js`), haptics (`expo-haptics`), fonts (`expo-font`), clipboard/share/document-picker/file-system as listed in STACK.md.
+**Auth Provider:**
+- None (local-only app, no login/signup/OAuth)
+  - Implementation: user data stays on device; encrypted backup archives use a user-supplied passphrase with AES-256 + PBKDF2-HMAC-SHA256 (100k iterations, v2 envelope) in `src/utils/exportService.js` (`encryptBackup` / `decryptBackup`); LAN sync uses QR-provisioned pre-shared token in `src/utils/syncService.js`
 
-## Environment & Config
+## Monitoring & Observability
 
-- **Env files / secrets: none required.** No `.env` reads detected; no API keys, auth tokens, or cloud credentials — nothing to provision. (`ls .env*` → not present; never commit secrets per repo policy.)
-- **Version sources of truth:** `package.json` (`3.5.0`) + `app.json` (`version`/`versionCode`) + `src/utils/storage.js` (`APP_VERSION`, `STORAGE_VERSION`). Bump all three together; storage migration handles the data-key rollover.
-- **Build-time env:** only `NODE_ENV` (Babel prod console strip + logger/diag dev gates) and EAS `NODE_OPTIONS` for production memory. `__DEV__` is the runtime dev flag.
-- **Persisted config keys (AsyncStorage):** theme (`kwestup_theme_mode_*/name_*`), userName, timer state (decoupled low-overhead key to avoid Binder `-22`), vault registry/active vault, billing blob, `kwestup_widget_active_tab`, `kwestup_telemetry_optin`, `kwestup_ai_model_download_resumable`, `kwestup_last_version`/`kwestup_last_clear`. All survive `clearAllCaches()` by allowlist.
-- **CI environment:** GitHub Actions `ubuntu-latest`, Node 20, `npm install` → lint → Jest with coverage (`.github/workflows/ci.yml`); Semgrep scan (`.github/workflows/semgrep.yml`).
+**Error Tracking:**
+- None (no Sentry/Crashlytics). Local handling only:
+  - `src/components/ErrorBoundary.js` (copy-to-clipboard via `expo-clipboard`)
+  - Central `logger` in `src/utils/logger.js` (imported by `src/utils/aiService.js`, `src/utils/notifications.js`, `src/utils/exportService.js`, `src/utils/syncService.js`, `src/utils/diagnostics.js`)
+  - `npm run lint:report` writes `eslint-report.json`; CI uploads it as an artifact (`.github/workflows/ci.yml`)
+
+**Logs:**
+- Console via `logger` wrapper (`debug/info/warn/error`); Babel strips `log/info/debug` from production bundles, preserves `error/warn` (`babel.config.js` + `babel-plugin-transform-remove-console`)
+
+## CI/CD & Deployment
+
+**Hosting:**
+- No backend hosting. Mobile binary distributed via EAS (`eas.json`): `development` (dev-client APK, internal), `preview` (internal), `production` (APK + `NODE_OPTIONS=--max-old-space-size=4096`); EAS project `9b029b06-5b07-4a1d-9999-a543a3ef1614` (`app.json` `extra.eas`)
+
+**CI Pipeline:**
+- GitHub Actions (`.github/workflows/ci.yml` on `main` + `development`): setup Node 22 → `npm ci` → `npm run lint` → `npm run typecheck` (`tsc --noEmit`, strict mode per `tsconfig.json`) → `npx jest --ci --maxWorkers=2 --coverage` → upload `eslint-report.json` + `coverage/` artifacts
+- Semgrep security scan (`.github/workflows/semgrep.yml`, `continue-on-error: true`, `.semgrepignore` at repo root)
+
+## Environment Configuration
+
+**Required env vars:**
+- None. There is no `.env` convention and no code reads `process.env.*` / `expo-constants` for secrets (only `NODE_ENV` for Babel/dev guards in `babel.config.js` and `src/utils/diagnostics.js`).
+
+**Secrets location:**
+- No secrets stored. Sensitive inputs are runtime-only: backup passphrase (typed by user, never persisted — see `src/utils/exportService.js`) and LAN sync token (QR-provisioned, validated in `src/utils/syncService.js`). Do not commit `.env` / credential files if introduced later.
+
+## Webhooks & Callbacks
+
+**Incoming:**
+- None (no server, no push provider like FCM/APNs configured; `expo-notifications` used for local scheduling only in `src/utils/notifications.js`, `src/utils/billingNotifications.js`, `src/context/BirthdayContext.js`)
+- OS callbacks only: `AppState` background/unload hook for the LLM context (`subscribeAppState` in `src/utils/aiService.js`), headless widget task handler (`registerWidgetTaskHandler(widgetTaskHandler)` in `index.js` → `widgets/widget-task-handler.js`)
+
+**Outgoing:**
+- Hugging Face model download (one-time, `src/utils/aiService.js`)
+- GitHub Releases version check (`src/utils/diagnostics.js`)
+- httpbin dev-only probe (`src/utils/diagnostics.js`, dev builds only)
+- LAN sync REST calls to the user's PC (`src/utils/syncService.js`)
+- No analytics/telemetry webhooks; the `api.kwestup.com/telemetry` stub in `src/utils/diagnostics.js` is disabled
 
 ---
 
-*Integration audit: 2026-09-28*
+*Integration audit: 2026-10-01*
