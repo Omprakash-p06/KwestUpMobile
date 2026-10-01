@@ -3,18 +3,16 @@
   "compilerOptions": {
     "strict": true,
     "allowJs": true,
-    "checkJs": false,
+    "checkJs": true,
     "noEmit": true
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "App.js",
+    "__tests__/**/*",
+    "*.js"
   ],
   "exclude": [
-    "node_modules",
-    "babel.config.js",
-    "metro.config.js",
-    "jest.config.js",
-    "patch-llama-gradle.js",
-    "widgets/**/*"
+    "node_modules"
   ]
 }
