@@ -14,13 +14,20 @@ Notifications.setNotificationHandler({
 // Request notification permissions
 export async function requestNotificationPermissions() {
   if (Platform.OS === "android") {
-    await Notifications.requestPermissionsAsync({
+    const { status } = await Notifications.requestPermissionsAsync({
       android: {
         allowAlert: true,
         allowBadge: true,
         allowSound: true,
       },
     });
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission required",
+        "Please enable notification permissions in your device settings to receive reminders.",
+      );
+    }
+    return status;
   } else {
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
@@ -34,6 +41,7 @@ export async function requestNotificationPermissions() {
         "Please enable notification permissions in your device settings to receive reminders.",
       );
     }
+    return finalStatus;
   }
 }
 
