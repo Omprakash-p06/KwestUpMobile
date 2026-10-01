@@ -115,18 +115,28 @@ export async function cancelDueDateNotification(notificationId) {
 }
 
 // Upgraded custom birthday push reminders scheduler
+// Grandfathered v3.5.0 scheduler — see BehavioralNotificationPolicy grandfather
+// notice in rulebook/README.md §3. Do NOT add new call sites against
+// expo-notifications directly. Phase 22 consolidates all behavior/task
+// scheduling through canDispatchBehavioralNotification() + policy constants.
 export async function scheduleCustomBirthdayReminders(birthday) {
-  const { name, birthDate, remindAtTime, advanceReminder } = birthday;
-  const parts = birthDate.split("-");
-  
-  // Extract month and day safely depending on whether year is present
-  const month = parseInt(parts[parts.length === 3 ? 1 : 0], 10);
-  const day = parseInt(parts[parts.length === 3 ? 2 : 1], 10);
-  const [hours, minutes] = (remindAtTime || "00:00").split(":").map(Number);
-
   const notificationIds = [];
-
   try {
+    const { name, birthDate, remindAtTime, advanceReminder } = birthday ?? {};
+    if (typeof birthDate !== 'string' || typeof name !== 'string' || !name.trim()) return [];
+    const parts = birthDate.split('-');
+    if (parts.length < 2 || parts.length > 3) return [];
+
+    // Extract month and day safely depending on whether year is present
+    const month = parseInt(parts[parts.length === 3 ? 1 : 0], 10);
+    const day = parseInt(parts[parts.length === 3 ? 2 : 1], 10);
+    if (!Number.isInteger(month) || !Number.isInteger(day)) return [];
+    if (month < 1 || month > 12 || day < 1 || day > 31) return [];
+    const timeParts = (remindAtTime || '00:00').split(':').map(Number);
+    const hours = timeParts[0];
+    const minutes = timeParts[1];
+    if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return [];
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return [];
     const today = new Date();
     const currentYear = today.getFullYear();
     
@@ -177,6 +187,16 @@ export async function scheduleCustomBirthdayReminders(birthday) {
     }
   } catch (error) {
     logger.error("Failed to schedule birthday reminders", { error });
+    // Never return partial IDs — cancel anything already scheduled so the
+    // caller does not persist orphaned schedules that can't be cancelled.
+    for (const id of notificationIds) {
+      try {
+        if (id) await Notifications.cancelScheduledNotificationAsync(id);
+      } catch {
+        // best-effort cleanup
+      }
+    }
+    return [];
   }
 
   return notificationIds;
