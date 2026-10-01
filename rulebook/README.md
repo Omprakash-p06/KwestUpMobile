@@ -61,69 +61,69 @@ Every business policy document in `rulebook/rules/` maps directly to an executab
 
 | Rulebook Specification | Target Test Suite | Key Asserted Invariants |
 | :--- | :--- | :--- |
-| [`rulebook/rules/habit-creation.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/rules/habit-creation.md) | `__tests__/unit/habitEngine.test.ts` (Phase 24) | Maximum 3 active concurrent habits; mandatory 2-minute minimum action; mandatory cue definition. |
-| [`rulebook/rules/habit-modification.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/rules/habit-modification.md) | `__tests__/unit/habitEngine.test.ts` (Phase 24) | Requires ≥80% consistency across 14 days before difficulty upgrade can be proposed. |
-| [`rulebook/rules/missed-habit.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/rules/missed-habit.md) | `__tests__/unit/recoveryEngine.test.ts` (Phase 24) | Single miss transitions habit to recovery state; next scheduled action automatically scaled down to 2-minute version. |
-| [`rulebook/rules/rewards.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/rules/rewards.md) | `__tests__/unit/rewardEngine.test.ts` (Phase 24) | Rejection of arbitrary gamified XP/points; factual milestone rewards only (first completion, consistency milestones). |
-| [`rulebook/rules/reminders.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/rules/reminders.md) | `__tests__/unit/notificationPolicy.test.ts` (Phase 22) | Quiet hours enforced (22:00–08:00 wall-clock); daily reminder cap (≤3/day); minimum gap between reminders (≥90 min). |
-| [`rulebook/rules/widgets.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/rules/widgets.md) | `__tests__/unit/widgetEngine.test.ts` (Phase 25) | Priority hierarchy: Today Habit -> Next Action -> Don't Miss Twice Recovery action. |
-| [`rulebook/rules/overload.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/rules/overload.md) | `__tests__/unit/overloadEngine.test.ts` (Phase 24) | Overload alert tripped if active-or-recovery load ≥3 AND 7-day miss rate >40% persisting for ≥3 consecutive days. Proposes pausing lowest-streak habit. |
-| [`rulebook/rules/privacy.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/rules/privacy.md) | `__tests__/unit/logger.test.js` & `__tests__/unit/privacyGuard.test.ts` | Zero network telemetry; habit titles, reminder times, cue text, and vault paths strictly excluded from logger details and forensic ring-buffer. |
+| [`rulebook/rules/habit-creation.md`](rulebook/rules/habit-creation.md) | `__tests__/unit/habitEngine.test.ts` (Phase 24) | Maximum 3 active concurrent habits; mandatory 2-minute minimum action; mandatory cue definition. |
+| [`rulebook/rules/habit-modification.md`](rulebook/rules/habit-modification.md) | `__tests__/unit/habitEngine.test.ts` (Phase 24) | Requires ≥80% consistency across 14 days before difficulty upgrade can be proposed. |
+| [`rulebook/rules/missed-habit.md`](rulebook/rules/missed-habit.md) | `__tests__/unit/recoveryEngine.test.ts` (Phase 24) | Single miss transitions habit to recovery state; next scheduled action automatically scaled down to 2-minute version. |
+| [`rulebook/rules/rewards.md`](rulebook/rules/rewards.md) | `__tests__/unit/rewardEngine.test.ts` (Phase 24) | Rejection of arbitrary gamified XP/points; factual milestone rewards only (first completion, consistency milestones). |
+| [`rulebook/rules/reminders.md`](rulebook/rules/reminders.md) | `__tests__/unit/notificationPolicy.test.ts` (Phase 22) | Quiet hours enforced (22:00–08:00 wall-clock); daily reminder cap (≤3/day); minimum gap between reminders (≥90 min). |
+| [`rulebook/rules/widgets.md`](rulebook/rules/widgets.md) | `__tests__/unit/widgetEngine.test.ts` (Phase 25) | Priority hierarchy: Today Habit -> Next Action -> Don't Miss Twice Recovery action. |
+| [`rulebook/rules/overload.md`](rulebook/rules/overload.md) | `__tests__/unit/overloadEngine.test.ts` (Phase 24) | Overload alert tripped if active-or-recovery load ≥3 AND 7-day miss rate >40% persisting for ≥3 consecutive days. Proposes pausing lowest-streak habit. |
+| [`rulebook/rules/privacy.md`](rulebook/rules/privacy.md) | `__tests__/unit/logger.test.js` & `__tests__/unit/privacyGuard.test.ts` | Zero network telemetry; habit titles, reminder times, cue text, and vault paths strictly excluded from logger details and forensic ring-buffer. |
 
 ---
 
 ## 6. Table of Contents & Document Index
 
-The rulebook consists of 44 authoritative markdown specifications indexed in [`rulebook/manifest.json`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/manifest.json):
+The rulebook consists of 44 authoritative markdown specifications indexed in [`rulebook/manifest.json`](rulebook/manifest.json):
 
 ### Part I: Atomic Habits Principle Specifications (`rulebook/atomic-habits/`)
-- [`identity.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/atomic-habits/identity.md) — Identity-based habit loops and voting with actions
-- [`habit-loop.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/atomic-habits/habit-loop.md) — The 4-stage neurological feedback loop (Cue, Craving, Response, Reward)
-- [`law-1-obvious.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/atomic-habits/law-1-obvious.md) — 1st Law: Make it Obvious (Implementation intentions & cue saliency)
-- [`law-2-attractive.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/atomic-habits/law-2-attractive.md) — 2nd Law: Make it Attractive (Dopamine anticipation & temptation bundling)
-- [`law-3-easy.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/atomic-habits/law-3-easy.md) — 3rd Law: Make it Easy (Law of least effort & activation energy)
-- [`law-4-satisfying.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/atomic-habits/law-4-satisfying.md) — 4th Law: Make it Satisfying (Immediate reinforcement & identity confirmation)
-- [`inversion-invisible.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/atomic-habits/inversion-invisible.md) — 1st Inversion: Make it Invisible (Cue elimination)
-- [`inversion-unattractive.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/atomic-habits/inversion-unattractive.md) — 2nd Inversion: Make it Unattractive (Downside reframing)
-- [`inversion-difficult.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/atomic-habits/inversion-difficult.md) — 3rd Inversion: Make it Difficult (Friction addition & commitment devices)
-- [`inversion-unsatisfying.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/atomic-habits/inversion-unsatisfying.md) — 4th Inversion: Make it Unsatisfying (Accountability & immediate cost)
-- [`implementation-intentions.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/atomic-habits/implementation-intentions.md) — Formula: "I will [BEHAVIOR] at [TIME] in [LOCATION]"
-- [`habit-stacking.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/atomic-habits/habit-stacking.md) — Formula: "After [CURRENT HABIT], I will [NEW HABIT]"
-- [`environment-design.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/atomic-habits/environment-design.md) — Priming digital environments & widgets
-- [`temptation-bundling.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/atomic-habits/temptation-bundling.md) — Pairing obligations with desires
-- [`two-minute-rule.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/atomic-habits/two-minute-rule.md) — Scaling down to 2-minute gateway actions
-- [`friction.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/atomic-habits/friction.md) — Friction taxonomy (effort, time, setup, mental, emotional, location)
-- [`habit-tracking.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/atomic-habits/habit-tracking.md) — Visual evidence accumulation and tracking mechanics
-- [`never-miss-twice.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/atomic-habits/never-miss-twice.md) — The fundamental recovery rule and state transition
-- [`accountability.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/atomic-habits/accountability.md) — Self-consistency vs peer sync boundaries
-- [`commitment-devices.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/atomic-habits/commitment-devices.md) — Locking in future choices today
-- [`plateau.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/atomic-habits/plateau.md) — Plateau of Latent Potential & enduring the lag phase
-- [`goldilocks-zone.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/atomic-habits/goldilocks-zone.md) — The 4% challenge rule and maintaining flow
-- [`deliberate-practice.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/atomic-habits/deliberate-practice.md) — Habits + Deliberate Practice = Mastery
-- [`review-system.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/atomic-habits/review-system.md) — Weekly review and self-reflection protocols
+- [`identity.md`](rulebook/atomic-habits/identity.md) — Identity-based habit loops and voting with actions
+- [`habit-loop.md`](rulebook/atomic-habits/habit-loop.md) — The 4-stage neurological feedback loop (Cue, Craving, Response, Reward)
+- [`law-1-obvious.md`](rulebook/atomic-habits/law-1-obvious.md) — 1st Law: Make it Obvious (Implementation intentions & cue saliency)
+- [`law-2-attractive.md`](rulebook/atomic-habits/law-2-attractive.md) — 2nd Law: Make it Attractive (Dopamine anticipation & temptation bundling)
+- [`law-3-easy.md`](rulebook/atomic-habits/law-3-easy.md) — 3rd Law: Make it Easy (Law of least effort & activation energy)
+- [`law-4-satisfying.md`](rulebook/atomic-habits/law-4-satisfying.md) — 4th Law: Make it Satisfying (Immediate reinforcement & identity confirmation)
+- [`inversion-invisible.md`](rulebook/atomic-habits/inversion-invisible.md) — 1st Inversion: Make it Invisible (Cue elimination)
+- [`inversion-unattractive.md`](rulebook/atomic-habits/inversion-unattractive.md) — 2nd Inversion: Make it Unattractive (Downside reframing)
+- [`inversion-difficult.md`](rulebook/atomic-habits/inversion-difficult.md) — 3rd Inversion: Make it Difficult (Friction addition & commitment devices)
+- [`inversion-unsatisfying.md`](rulebook/atomic-habits/inversion-unsatisfying.md) — 4th Inversion: Make it Unsatisfying (Accountability & immediate cost)
+- [`implementation-intentions.md`](rulebook/atomic-habits/implementation-intentions.md) — Formula: "I will [BEHAVIOR] at [TIME] in [LOCATION]"
+- [`habit-stacking.md`](rulebook/atomic-habits/habit-stacking.md) — Formula: "After [CURRENT HABIT], I will [NEW HABIT]"
+- [`environment-design.md`](rulebook/atomic-habits/environment-design.md) — Priming digital environments & widgets
+- [`temptation-bundling.md`](rulebook/atomic-habits/temptation-bundling.md) — Pairing obligations with desires
+- [`two-minute-rule.md`](rulebook/atomic-habits/two-minute-rule.md) — Scaling down to 2-minute gateway actions
+- [`friction.md`](rulebook/atomic-habits/friction.md) — Friction taxonomy (effort, time, setup, mental, emotional, location)
+- [`habit-tracking.md`](rulebook/atomic-habits/habit-tracking.md) — Visual evidence accumulation and tracking mechanics
+- [`never-miss-twice.md`](rulebook/atomic-habits/never-miss-twice.md) — The fundamental recovery rule and state transition
+- [`accountability.md`](rulebook/atomic-habits/accountability.md) — Self-consistency vs peer sync boundaries
+- [`commitment-devices.md`](rulebook/atomic-habits/commitment-devices.md) — Locking in future choices today
+- [`plateau.md`](rulebook/atomic-habits/plateau.md) — Plateau of Latent Potential & enduring the lag phase
+- [`goldilocks-zone.md`](rulebook/atomic-habits/goldilocks-zone.md) — The 4% challenge rule and maintaining flow
+- [`deliberate-practice.md`](rulebook/atomic-habits/deliberate-practice.md) — Habits + Deliberate Practice = Mastery
+- [`review-system.md`](rulebook/atomic-habits/review-system.md) — Weekly review and self-reflection protocols
 
 ### Part II: AI Behavioral Interaction Policies (`rulebook/ai/`)
-- [`intent-parser.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/ai/intent-parser.md) — Natural language intent parameter extraction
-- [`habit-compiler.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/ai/habit-compiler.md) — Compiling intent into identity, habit, cue, minimum action, and target
-- [`intervention-planner.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/ai/intervention-planner.md) — Touchpoint surface arbitration without nagware
-- [`check-in-engine.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/ai/check-in-engine.md) — Finite 5-question structured check-in bank
-- [`adaptation-engine.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/ai/adaptation-engine.md) — Evidence-based habit tuning and activation energy reduction
+- [`intent-parser.md`](rulebook/ai/intent-parser.md) — Natural language intent parameter extraction
+- [`habit-compiler.md`](rulebook/ai/habit-compiler.md) — Compiling intent into identity, habit, cue, minimum action, and target
+- [`intervention-planner.md`](rulebook/ai/intervention-planner.md) — Touchpoint surface arbitration without nagware
+- [`check-in-engine.md`](rulebook/ai/check-in-engine.md) — Finite 5-question structured check-in bank
+- [`adaptation-engine.md`](rulebook/ai/adaptation-engine.md) — Evidence-based habit tuning and activation energy reduction
 
 ### Part III: Deterministic Business Rules (`rulebook/rules/`)
-- [`habit-creation.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/rules/habit-creation.md) — Creation bounds, concurrent limits, mandatory 2-minute action
-- [`habit-modification.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/rules/habit-modification.md) — 80% consistency over 14 days qualification rule
-- [`missed-habit.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/rules/missed-habit.md) — Instant trigger of Never Miss Twice recovery mode
-- [`rewards.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/rules/rewards.md) — Real-world factual rewards vs gamified XP points
-- [`reminders.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/rules/reminders.md) — Quiet hours (22:00–08:00), daily cap (3/day), min gap (90 min)
-- [`widgets.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/rules/widgets.md) — Home-screen widget surface display prioritization
-- [`overload.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/rules/overload.md) — Concrete anti-burnout overload trigger criteria
-- [`privacy.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/rules/privacy.md) — Zero telemetry & forensic redaction guarantees
+- [`habit-creation.md`](rulebook/rules/habit-creation.md) — Creation bounds, concurrent limits, mandatory 2-minute action
+- [`habit-modification.md`](rulebook/rules/habit-modification.md) — 80% consistency over 14 days qualification rule
+- [`missed-habit.md`](rulebook/rules/missed-habit.md) — Instant trigger of Never Miss Twice recovery mode
+- [`rewards.md`](rulebook/rules/rewards.md) — Real-world factual rewards vs gamified XP points
+- [`reminders.md`](rulebook/rules/reminders.md) — Quiet hours (22:00–08:00), daily cap (3/day), min gap (90 min)
+- [`widgets.md`](rulebook/rules/widgets.md) — Home-screen widget surface display prioritization
+- [`overload.md`](rulebook/rules/overload.md) — Concrete anti-burnout overload trigger criteria
+- [`privacy.md`](rulebook/rules/privacy.md) — Zero telemetry & forensic redaction guarantees
 
 ### Part IV: Domain Workflow Examples (`rulebook/examples/`)
-- [`study.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/examples/study.md) — Study DSA every evening
-- [`exercise.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/examples/exercise.md) — Daily physical workout
-- [`reading.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/examples/reading.md) — Consistent book reading
-- [`sleep.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/examples/sleep.md) — Healthy sleep schedule & wind-down routine
-- [`phone-use.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/examples/phone-use.md) — Reducing mindless evening smartphone scrolling
-- [`work.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/examples/work.md) — Deep work and deliberate focus
-- [`personal-projects.md`](file:///c:/Users/OM%20Prakash/Documents/KwestUpMobile/rulebook/examples/personal-projects.md) — Side project building and momentum maintenance
+- [`study.md`](rulebook/examples/study.md) — Study DSA every evening
+- [`exercise.md`](rulebook/examples/exercise.md) — Daily physical workout
+- [`reading.md`](rulebook/examples/reading.md) — Consistent book reading
+- [`sleep.md`](rulebook/examples/sleep.md) — Healthy sleep schedule & wind-down routine
+- [`phone-use.md`](rulebook/examples/phone-use.md) — Reducing mindless evening smartphone scrolling
+- [`work.md`](rulebook/examples/work.md) — Deep work and deliberate focus
+- [`personal-projects.md`](rulebook/examples/personal-projects.md) — Side project building and momentum maintenance

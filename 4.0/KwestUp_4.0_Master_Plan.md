@@ -94,6 +94,8 @@ Create:
 ```text
 rulebook/
 ├── README.md
+├── manifest.json
+├── CHANGELOG.md
 ├── atomic-habits/
 │   ├── identity.md
 │   ├── habit-loop.md
