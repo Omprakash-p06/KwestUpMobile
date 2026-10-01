@@ -91,24 +91,26 @@ export function canDispatchBehavioralNotification(now, history = [], opts = {}, 
 // Helper to schedule a repeating daily notification for a daily task
 // @deprecated Grandfathered until Phase 22 — use the guarded dispatcher.
 export async function scheduleDailyTaskNotification(task) {
-  if (!task.time) return null;
+  if (!task?.time || typeof task.time !== 'string') return null;
+  if (!/^([01]?\d|2[0-3]):([0-5]\d)$/.test(task.time)) {
+    logger.error("Invalid daily task time format, expected HH:MM", { time: task.time });
+    return null;
+  }
   try {
     const [hours, minutes] = task.time.split(":").map(Number);
-    if (!isNaN(hours) && !isNaN(minutes)) {
-      const notificationId = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: `Daily Task: ${task.name}`,
-          body: 'Time for your daily task!',
-          sound: true,
-        },
-        trigger: {
-          hour: hours,
-          minute: minutes,
-          repeats: true,
-        },
-      });
-      return notificationId;
-    }
+    const notificationId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: `Daily Task: ${task.name}`,
+        body: 'Time for your daily task!',
+        sound: true,
+      },
+      trigger: {
+        hour: hours,
+        minute: minutes,
+        repeats: true,
+      },
+    });
+    return notificationId;
   } catch (e) {
     logger.error("Failed to schedule daily task notification", { error: e });
   }
