@@ -3,36 +3,34 @@
  * ==========================================
  * These tests validate the core task sorting, slicing, filtering,
  * and tab switching logic used by the widget system.
+ *
+ * WR-07: toggle assertions run against the PRODUCTION `toggleTask`
+ * (`src/utils/taskMutations.js`) — the same unit the headless widget
+ * handler delegates to — instead of a local re-implementation, so a
+ * production regression in toggle semantics fails this suite. The tab
+ * vocabulary matches the production handler contract
+ * (`widgets/widget-task-handler.tsx` accepts tasks/daily/timer/all/persistent).
+ * Sort/filter helpers below pin the handler's inline render-path contract
+ * (important-unfinished filter, cap 5 — see widget-task-handler render block);
+ * production keeps them inline, so they are documented as contract mirrors.
  */
 
 import { getLocalDateString } from '../src/utils/dateUtils';
+import { toggleTask } from '../src/utils/taskMutations';
 
 // ---------------------------------------------------------------------------
-// Helpers — extracted pure-function equivalents of handler logic
+// Tab guard — mirrors the production accepted-tab contract
+// (widget-task-handler.tsx: clickActionData.tab + stored-tab render path)
 // ---------------------------------------------------------------------------
-
-function toggleTaskInList(tasks, taskId) {
-  const now = new Date().toISOString();
-  let isToggled = false;
-  const updated = tasks.map((task) => {
-    if (task.id === taskId) {
-      isToggled = true;
-      const nextCompletedState = !task.completed;
-      return {
-        ...task,
-        completed: nextCompletedState,
-        completedDate: nextCompletedState ? getLocalDateString() : undefined,
-        completedAt: nextCompletedState ? now : undefined,
-      };
-    }
-    return task;
-  });
-  return { updated, isToggled };
-}
 
 function isValidTab(tab) {
-  return tab === 'tasks' || tab === 'daily' || tab === 'timer';
+  return ['tasks', 'daily', 'timer', 'all', 'persistent'].includes(tab);
 }
+
+// ---------------------------------------------------------------------------
+// Render-path contract mirrors (production keeps these inline in the
+// widget-task-handler render block / TasksListWidget)
+// ---------------------------------------------------------------------------
 
 function sortAndSliceTasks(tasks, limit = 8) {
   return [...tasks]
@@ -51,15 +49,19 @@ function filterImportantTasks(tasks, limit = 5) {
 describe('Phase 12 Widget Logic Tests', () => {
   it('[12-P1] TOGGLE_TASK: completing an active task sets completed=true and metadata', () => {
     const tasks = [{ id: 'a1', title: 'Test task', important: false, completed: false }];
-    const { updated, isToggled } = toggleTaskInList(tasks, 'a1');
-    expect(isToggled).toBe(true);
-    expect(updated[0].completed).toBe(true);
-    expect(typeof updated[0].completedAt).toBe('string');
-    expect(typeof updated[0].completedDate).toBe('string');
-    expect(/^\d{4}-\d{2}-\d{2}$/.test(updated[0].completedDate)).toBe(true);
+    const { updatedTasks, toggledTask } = toggleTask(tasks, 'a1', {
+      now: '2026-06-28T10:00:00.000Z',
+      todayDate: '2026-06-28',
+    });
+    expect(toggledTask).not.toBeNull();
+    expect(toggledTask.completed).toBe(true);
+    expect(typeof toggledTask.completedAt).toBe('string');
+    expect(typeof toggledTask.completedDate).toBe('string');
+    expect(/^\d{4}-\d{2}-\d{2}$/.test(toggledTask.completedDate)).toBe(true);
+    expect(updatedTasks[0].completed).toBe(true);
   });
 
-  it('[12-P2] TOGGLE_TASK: un-completing a task clears completedAt and completedDate', () => {
+  it('[12-P2] TOGGLE_TASK: un-completing a task clears completedAt and completedDate to null', () => {
     const tasks = [
       {
         id: 'a2',
@@ -70,24 +72,35 @@ describe('Phase 12 Widget Logic Tests', () => {
         completedDate: '2026-06-28',
       },
     ];
-    const { updated, isToggled } = toggleTaskInList(tasks, 'a2');
-    expect(isToggled).toBe(true);
-    expect(updated[0].completed).toBe(false);
-    expect(updated[0].completedAt).toBeUndefined();
-    expect(updated[0].completedDate).toBeUndefined();
+    const { updatedTasks, toggledTask } = toggleTask(tasks, 'a2', {
+      now: '2026-06-28T11:00:00.000Z',
+      todayDate: '2026-06-28',
+    });
+    expect(toggledTask).not.toBeNull();
+    expect(toggledTask.completed).toBe(false);
+    // Production contract (taskMutations.js) clears with null, not undefined
+    expect(toggledTask.completedAt).toBeNull();
+    expect(toggledTask.completedDate).toBeNull();
+    expect(updatedTasks[0].completed).toBe(false);
   });
 
-  it('[12-P3] TOGGLE_TASK: non-existent taskId -> isToggled=false, list unchanged', () => {
+  it('[12-P3] TOGGLE_TASK: non-existent taskId -> toggledTask=null, list unchanged', () => {
     const tasks = [{ id: 'a3', title: 'Untouched', important: false, completed: false }];
-    const { updated, isToggled } = toggleTaskInList(tasks, 'DOES_NOT_EXIST');
-    expect(isToggled).toBe(false);
-    expect(updated[0].completed).toBe(false);
+    const { updatedTasks, toggledTask } = toggleTask(tasks, 'DOES_NOT_EXIST', {
+      now: '2026-06-28T10:00:00.000Z',
+      todayDate: '2026-06-28',
+    });
+    expect(toggledTask).toBeNull();
+    expect(updatedTasks).toEqual(tasks);
   });
 
-  it('[12-P4] TOGGLE_TASK: empty task list -> no crash, isToggled false', () => {
-    const { updated, isToggled } = toggleTaskInList([], 'any-id');
-    expect(isToggled).toBe(false);
-    expect(updated.length).toBe(0);
+  it('[12-P4] TOGGLE_TASK: empty task list -> no crash, toggledTask null', () => {
+    const { updatedTasks, toggledTask } = toggleTask([], 'any-id', {
+      now: '2026-06-28T10:00:00.000Z',
+      todayDate: '2026-06-28',
+    });
+    expect(toggledTask).toBeNull();
+    expect(updatedTasks.length).toBe(0);
   });
 
   it('[12-P5] TOGGLE_TASK: null storage raw -> graceful no-op', () => {
@@ -99,10 +112,12 @@ describe('Phase 12 Widget Logic Tests', () => {
     expect(didWrite).toBe(false);
   });
 
-  it('[12-P6] SWITCH_TAB: tasks / daily / timer are all valid tab values', () => {
+  it('[12-P6] SWITCH_TAB: tasks / daily / timer / all / persistent are all valid tab values', () => {
     expect(isValidTab('tasks')).toBe(true);
     expect(isValidTab('daily')).toBe(true);
     expect(isValidTab('timer')).toBe(true);
+    expect(isValidTab('all')).toBe(true);
+    expect(isValidTab('persistent')).toBe(true);
   });
 
   it('[12-P7] SWITCH_TAB: invalid tab value is rejected by guard', () => {
@@ -147,5 +162,14 @@ describe('Phase 12 Widget Logic Tests', () => {
     const filtered = filterImportantTasks(tasks, 5);
     expect(filtered.length).toBe(5);
     expect(filtered.every((t) => t.important && !t.completed)).toBe(true);
+  });
+
+  it('[12-P11] PROD-PARITY: production toggle stamps today via date engine by default', () => {
+    const today = getLocalDateString();
+    const { toggledTask } = toggleTask(
+      [{ id: 'p1', title: 'Parity', important: false, completed: false }],
+      'p1'
+    );
+    expect(toggledTask.completedDate).toBe(today);
   });
 });
