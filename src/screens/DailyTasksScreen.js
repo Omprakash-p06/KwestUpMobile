@@ -9,6 +9,7 @@ import { LiquidGlassCard } from "../components/LiquidGlassCard";
 import { scheduleDailyTaskNotification, cancelDueDateNotification } from "../utils/notifications";
 import { CustomTextInput } from "../components/CustomTextInput";
 import { injectFontFamily } from "../theme/styles";
+import { logger } from "../utils/logger";
 import { getLocalDateString, getYesterdayLocalDateString } from "../utils/dateUtils";
 
 export const DailyTasksScreen = ({
@@ -43,9 +44,15 @@ export const DailyTasksScreen = ({
       };
 
       if (newDailyTask.time) {
-        scheduleDailyTaskNotification(newDailyTask).then(notificationId => {
-          setDailyTasks(prev => [...prev, { ...newDailyTask, notificationId }]);
-        });
+        scheduleDailyTaskNotification(newDailyTask).then(
+          (notificationId) => setDailyTasks((prev) => [...prev, { ...newDailyTask, notificationId }]),
+          (err) => {
+            // WR-04: scheduling failure must degrade to an unscheduled task,
+            // not a lost task — the .then() above has no rejection path otherwise.
+            logger.warn("Daily reminder scheduling failed; adding task without reminder:", err?.message);
+            setDailyTasks((prev) => [...prev, newDailyTask]);
+          }
+        );
       } else {
         setDailyTasks(prev => [...prev, newDailyTask]);
       }
