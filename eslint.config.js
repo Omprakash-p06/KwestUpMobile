@@ -40,7 +40,7 @@ module.exports = [
       'react-hooks/exhaustive-deps': 'warn',
       'react/prop-types': 'off',
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
-      'no-console': 'warn',
+      'no-console': 'error',
     },
   },
   {
