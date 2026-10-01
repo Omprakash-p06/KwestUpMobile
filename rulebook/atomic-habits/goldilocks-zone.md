@@ -23,7 +23,7 @@ The greatest threat to success is not failure, but **boredom**.
 ### 1. Incremental Difficulty Upgrades (`rulebook/rules/habit-modification.md`)
 - A user should not prematurely inflate habit difficulty.
 - KwestUp enforces a prerequisite gate: **≥80% consistency over 14 days** is required before the app or AI compiler suggests increasing the normal target.
-- When an upgrade is approved, the increment is capped at a modest 5–10% bump (e.g., from 20 pushups to 22 pushups, or 25 minutes of reading to 28 minutes), keeping the difficulty firmly inside the Goldilocks zone.
+- When an upgrade is approved, the increment is capped at a modest 5–10% bump (e.g., from 20 pushups to 22 pushups, or 25 minutes of reading to 27 minutes), keeping the difficulty firmly inside the Goldilocks zone.
 
 ### 2. Difficulty Calibration Check-In
 - The structured 5-question check-in bank (`rulebook/ai/check-in-engine.md`) includes:
