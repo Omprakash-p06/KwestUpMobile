@@ -77,16 +77,16 @@ export const SearchScreen = ({
             streak = 1; // new streak started
           }
         } else {
-          // untoggled
+          // untoggled — preserve streak/lastCompletedDate so an accidental
+          // untoggle + re-toggle restores state instead of collapsing to 1
           totalCompleted = Math.max(0, totalCompleted - 1);
-          streak = Math.max(0, streak - 1);
         }
 
         return {
           ...task,
           completed: newCompletedStatus,
           completedDate: newCompletedStatus ? today : null,
-          lastCompletedDate: newCompletedStatus ? today : null,
+          lastCompletedDate: newCompletedStatus ? today : task.lastCompletedDate,
           streak,
           totalCompleted,
         };
