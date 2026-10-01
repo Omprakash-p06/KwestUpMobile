@@ -258,6 +258,10 @@ const App = () => {
 
       // Resolve active vault for this load cycle
       const activeId = activeVaultId || (await getActiveVaultId()) || "default";
+      // WR-08: birthdays loaded this cycle — the `birthdays` state captured in
+      // this closure is the stale initial [] on cold start, so the reschedule
+      // block below must iterate what was actually loaded, not state.
+      let loadedBirthdays = [];
 
       if (storedWidgetTab) {
         setWidgetActiveTab(storedWidgetTab);
@@ -294,7 +298,8 @@ const App = () => {
         });
 
         setDailyTasks(resetDailyTasks);
-        setBirthdays(parsedData.birthdays || []);
+        loadedBirthdays = parsedData.birthdays || [];
+        setBirthdays(loadedBirthdays);
         setTasks(parsedData.tasks || []);
         setTaskLists(parsedData.taskLists || [
           { id: "default_inbox", name: "My Tasks", createdAt: new Date().toISOString() }
@@ -338,6 +343,7 @@ const App = () => {
         }
       } else {
         setDailyTasks([]);
+        loadedBirthdays = [];
         setBirthdays([]);
         setTasks([]);
         setTaskLists([
@@ -364,13 +370,14 @@ const App = () => {
 
       // Reschedule birthday notifications on app start so they cover
       // both this year AND next year's dates (since absolute Date triggers fire once)
-      if (birthdays.length > 0) {
+      if (loadedBirthdays.length > 0) {
         const todayKey = getLocalDateString();
         if (lastBirthdayRescheduleRef.current !== todayKey) {
           lastBirthdayRescheduleRef.current = todayKey;
+          const birthdaysToReschedule = loadedBirthdays;
           setTimeout(async () => {
             try {
-              for (const bday of birthdays) {
+              for (const bday of birthdaysToReschedule) {
                 if (bday.notificationIds && bday.notificationIds.length > 0) {
                   await cancelCustomBirthdayReminders(bday.notificationIds);
                 }
