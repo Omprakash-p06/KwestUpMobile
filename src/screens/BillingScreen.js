@@ -196,7 +196,7 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
     const amt = parseFloat(billAmount);
     const dueDay = parseInt(billDueDay, 10);
     const notifyDays = parseInt(billNotifyDays, 10);
-    if (!billName.trim() || isNaN(amt) || amt <= 0 || isNaN(dueDay)) return;
+    if (!billName.trim() || isNaN(amt) || amt <= 0 || isNaN(dueDay) || dueDay < 1 || dueDay > 31) return;
     const newBill = {
       id: Date.now().toString(),
       name: billName.trim(),
