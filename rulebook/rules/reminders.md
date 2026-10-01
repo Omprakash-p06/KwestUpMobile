@@ -12,7 +12,7 @@ review_date: 2026-10-01
 To protect the user's attention, prevent device fatigue, and preserve sleep hygiene, all scheduled push notifications are governed by the `BehavioralNotificationPolicy` (`src/services/types.ts`):
 
 1. **Quiet Hours (Default: `22:00` – `08:00`):**
-   No non-critical notifications may fire between 22:00 at night and 08:00 in the morning. Any cue scheduled inside this window is automatically deferred to the end of quiet hours (`08:01`).
+   No non-critical notifications may fire between 22:00 at night and 08:00 in the morning. The window is `[22:00, 08:00)` wall-clock — `08:00:30` is still quiet. Any cue scheduled inside this window is automatically deferred to the end of quiet hours (`08:01`).
 2. **Daily Notification Cap (Max 3/Day):**
    The application will dispatch a maximum of **3 push notifications per calendar day** across all active habits and task reminders combined.
 3. **Minimum Notification Gap (Minimum 90 Minutes):**
