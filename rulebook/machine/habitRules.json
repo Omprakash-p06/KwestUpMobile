@@ -1,0 +1,83 @@
+{
+  "version": "1.0.0",
+  "description": "Deterministic habit creation, scaling, and stacking rules enforcing Atomic Habits principles",
+  "rules": [
+    {
+      "id": "HABIT_CONCURRENT_CAP_001",
+      "description": "Prevent cognitive overload: maximum 3 active concurrent habits.",
+      "when": {
+        "action": "CREATE_HABIT",
+        "activeHabitCount": ">=3"
+      },
+      "then": {
+        "action": "REJECT_HABIT_CREATION",
+        "reason": "Maximum 3 concurrent habits reached. Master or archive an existing habit first."
+      },
+      "priority": 100
+    },
+    {
+      "id": "MINIMUM_ACTION_001",
+      "description": "Law 3 (Make it Easy): Every habit must have an achievable minimum action taking <120 seconds.",
+      "when": {
+        "action": "COMPILE_HABIT",
+        "minimumAction": null
+      },
+      "then": {
+        "action": "GENERATE_MINIMUM_ACTION",
+        "fallbackDurationSeconds": 120
+      },
+      "priority": 90
+    },
+    {
+      "id": "CUE_MANDATORY_001",
+      "description": "Law 1 (Make it Obvious): Every habit must have an unambiguous cue anchor (time, habit stack, or trigger).",
+      "when": {
+        "action": "COMPILE_HABIT",
+        "cue": null
+      },
+      "then": {
+        "action": "PROMPT_CUE_SELECTION"
+      },
+      "priority": 85
+    },
+    {
+      "id": "CUE_STACK_002",
+      "description": "Law 1: When habit stack anchor is specified, bind target habit execution immediately after anchor habit.",
+      "when": {
+        "action": "COMPILE_HABIT",
+        "cue.type": "habit_stack"
+      },
+      "then": {
+        "action": "REGISTER_HABIT_STACK",
+        "relationship": "immediately-after"
+      },
+      "priority": 80
+    },
+    {
+      "id": "HABIT_IDENTITY_001",
+      "description": "Identity-Based Habits: Associate habit with an identity statement representing the type of person who exhibits this behavior.",
+      "when": {
+        "action": "COMPILE_HABIT",
+        "identityStatement": null
+      },
+      "then": {
+        "action": "GENERATE_IDENTITY_STATEMENT"
+      },
+      "priority": 75
+    },
+    {
+      "id": "HABIT_PROGRESSION_001",
+      "description": "Difficulty Upgrade Gate: Requires ≥80% consistency across 14 consecutive days before difficulty increase.",
+      "when": {
+        "action": "ADJUST_DIFFICULTY",
+        "direction": "harder",
+        "rolling14DayConsistency": "<0.80"
+      },
+      "then": {
+        "action": "REJECT_DIFFICULTY_UPGRADE",
+        "reason": "Habit consistency is below 80% over the last 14 days. Consolidate before progressing."
+      },
+      "priority": 90
+    }
+  ]
+}

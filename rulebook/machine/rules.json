@@ -1,0 +1,56 @@
+{
+  "version": "1.0.0",
+  "description": "Core behavioral system rules, invariants, and validation gates for KwestUp Mobile",
+  "rules": [
+    {
+      "id": "SYS_ZERO_CLOUD_001",
+      "description": "Strict local-first privacy: forbid cloud network transmission of user behavioral data.",
+      "when": {
+        "event": "DATA_TRANSMISSION",
+        "destination": "cloud"
+      },
+      "then": {
+        "action": "BLOCK_TRANSMISSION",
+        "reason": "Local-first invariant"
+      },
+      "priority": 1000
+    },
+    {
+      "id": "SYS_PII_LOG_REDACT_001",
+      "description": "PII and sensitive habit contents must be redacted from system logs and diagnostics.",
+      "when": {
+        "logEvent": "RECORD_BREADCRUMB",
+        "hasSensitiveFields": true
+      },
+      "then": {
+        "action": "REDACT_SENSITIVE_FIELDS"
+      },
+      "priority": 999
+    },
+    {
+      "id": "SYS_IDEMPOTENT_COMMAND_001",
+      "description": "Reject duplicate commands dispatched with existing idempotencyKey.",
+      "when": {
+        "command": "DISPATCH",
+        "isDuplicateKey": true
+      },
+      "then": {
+        "action": "RETURN_CACHED_RESULT"
+      },
+      "priority": 950
+    },
+    {
+      "id": "SYS_COMMAND_CAPABILITY_CHECK_001",
+      "description": "Command Gateway verifies that requested capability exists before execution.",
+      "when": {
+        "command": "VALIDATE",
+        "capabilitySupported": false
+      },
+      "then": {
+        "action": "REJECT_COMMAND",
+        "error": "UNSUPPORTED_CAPABILITY"
+      },
+      "priority": 900
+    }
+  ]
+}

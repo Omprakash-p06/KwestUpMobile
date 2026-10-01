@@ -6,36 +6,74 @@ This repository section establishes the philosophical and operational foundation
 
 ---
 
-## 1. Architectural Invariants
+## 1. Two-Layer Rulebook Architecture
+
+The rulebook is organized into two complementary layers:
+
+1. **Human Layer (Markdown):** Explains the psychological philosophy, principles, and policy rationale across `atomic-habits/`, `ai/`, `rules/`, and `examples/`.
+2. **Machine Layer (`rulebook/machine/*.json`):** Defines machine-executable rule sets with explicit triggers (`when`), actions (`then`), and priorities, executed deterministically by the KwestUp Behavior Engine.
+
+### Rule IDs & Debuggable Execution Traces
+Every machine rule carries a unique **Rule ID** (e.g., `HABIT_CONCURRENT_CAP_001`, `MINIMUM_ACTION_001`, `CUE_STACK_002`, `RECOVERY_001`, `REMINDER_ANTI_SPAM_001`, `REWARD_FIRST_ACTION_001`).
+
+Whenever an action or compilation occurs, the engine logs an **Execution Trace**:
+```json
+{
+  "command": "CREATE_HABIT",
+  "rulesApplied": [
+    "HABIT_CONCURRENT_CAP_001",
+    "MINIMUM_ACTION_001",
+    "CUE_STACK_002",
+    "RECOVERY_001"
+  ]
+}
+```
+This guarantees complete debuggability: when an intervention fires or is suppressed, developers and users can inspect the exact rule condition that triggered it, eliminating reliance on black-box LLM reasoning.
+
+---
+
+## 2. Three-Layer Intelligence Architecture
+
+```text
+Layer 1 — LLM Intelligence:       "What does the human mean?" (Semantic intent parser, friction extractor)
+Layer 2 — Rule Intelligence:      "What does KwestUp believe should happen?" (Deterministic machine rules)
+Layer 3 — Execution Intelligence: "What can KwestUp actually execute right now?" (Command Gateway & Executor)
+```
+
+The on-device Qwen model (~400 MB) acts as a **planner operating inside a deterministic machine**. It extracts bare intent facts, while the **Behavior Compiler** and **Rule Engine** construct the verified behavioral contracts.
+
+---
+
+## 3. Architectural Invariants
 
 All software architecture, engine design, and AI prompts in KwestUp must strictly preserve five invariants:
 
 1. **KwestUp Owns Execution and Persistent Data:**
    KwestUp is the sole system of record for habits, identities, completion logs, notes, vaults, and financial data. The application layer alone controls database writes, file storage, and operating system API calls.
-2. **AI Owns Natural-Language Interpretation and Behavioral Planning:**
-   The on-device Large Language Model (Qwen 2.5 0.5B via `llama.rn`) interprets unstructured natural language and proposes structured behavioral routines. The AI is an advisor and compiler, **never an executor**. It cannot directly mutate storage, schedule notifications, or bypass verification gates.
+2. **AI Is a Semantic Specialist, Not an Executor:**
+   The on-device Large Language Model (Qwen 2.5 0.5B via `llama.rn`) interprets unstructured natural language and proposes structured behavioral routines. The AI is an advisor and translator, **never an executor**. It cannot directly mutate storage, schedule notifications, or bypass verification gates.
 3. **Behavior Engine Owns Behavioral Policy:**
-   Deterministic state machines (`habitEngine.ts`, `recoveryEngine.ts`, `cueEngine.ts`, `interventionEngine.ts`) evaluate and enforce habits, streaks, quiet hours, rate limits, and recovery interventions. The AI cannot relax or override these policies.
-4. **Rulebook Defines the Behavioral Philosophy:**
-   This `rulebook/` directory serves as the immutable specification contract. Every engine logic path, check-in question, and notification prompt traces back to an explicit markdown specification in this directory.
+   Deterministic state machines (`habitEngine.ts`, `recoveryEngine.ts`, `cueEngine.ts`, `interventionEngine.ts`) evaluate and enforce machine rules, streaks, quiet hours, rate limits, and recovery interventions. The AI cannot relax or override these policies.
+4. **Rulebook Defines Philosophy & Executable Constraints:**
+   This `rulebook/` directory serves as the immutable specification contract. Every engine logic path, check-in question, and notification prompt traces back to an explicit markdown or machine rule in this directory.
 5. **Android Platform Owns Final Device and Notification Constraints:**
    The operating system determines whether background tasks run, notifications appear, alarms fire, and widgets refresh. The app must honor Android battery optimizations, Do Not Disturb, permission states, and platform-specific notification channel policies.
 
 ---
 
-## 2. Policy Precedence
+## 4. Policy Precedence
 
 When constraints or desires conflict, decisions resolve in strict hierarchical order:
 
 1. **Android Platform Constraints (Highest):** Battery optimization, system permissions, Do Not Disturb mode, alarm manager quotas.
 2. **Safety & Privacy Constraints:** Zero cloud data transmission, zero telemetry on user habit/cue/note content, PII redaction in logging.
-3. **Deterministic Behavior Policy (This Rulebook):** Daily notification caps (max 3/day), quiet hours (22:00–08:00), minimum reminder intervals (90 min), anti-burnout overload triggers.
+3. **Deterministic Behavior Policy (Machine Rulebook):** Daily notification caps (max 3/day), quiet hours (22:00–08:00), minimum reminder intervals (90 min), anti-burnout overload triggers.
 4. **AI Behavioral Proposals:** Structured plans and habit configurations compiled from user prompts.
 5. **UI Preference (Lowest):** User aesthetic toggles, view layouts, sorting filters.
 
 ---
 
-## 3. Policy Enforcement Timeline & Grandfathering
+## 5. Policy Enforcement Timeline & Grandfathering
 
 > [!IMPORTANT]
 > **Enforcement Gates & Grandfathering Protocol:**

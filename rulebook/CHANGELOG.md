@@ -4,6 +4,16 @@ All notable changes to the KwestUp behavioral rulebook governance contracts are 
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to Semantic Versioning.
 
+## [1.1.0] — 2026-10-01 (Two-Layer Executable Rulebook & Behavior Compiler Architecture)
+
+### Added
+- Established machine-executable rule layer (`rulebook/machine/`) containing `rules.json`, `habitRules.json`, `interventionRules.json`, `recoveryRules.json`, and `rewardRules.json`.
+- Introduced unique Rule IDs (`HABIT_CONCURRENT_CAP_001`, `MINIMUM_ACTION_001`, `CUE_STACK_002`, `RECOVERY_001`, `REMINDER_ANTI_SPAM_001`, `REWARD_FIRST_ACTION_001`) with deterministic condition-action schemas.
+- Introduced Execution Trace logging (`rulesApplied: [...]`) on commands and behavioral transitions for complete auditability.
+- Introduced the **Behavior Compiler** separating lightweight semantic intent extraction (from the ~400 MB on-device Qwen model) from deterministic habit plan construction.
+- Formally defined the **Three-Layer Intelligence Model** (LLM interpretation, Rule policy, Execution runtime) ensuring future model upgrades do not require application rewrites.
+- Updated `rulebook/manifest.json` and `rulebook/README.md` to register and index both human and machine layers.
+
 ## [1.0.0] — 2026-10-01 (Phase 20 Initial Authorship)
 
 ### Added

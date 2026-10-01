@@ -40,7 +40,7 @@
 └─────────────────────────────────────────────────────────────┘
 ```
 
-Governance sits above all layers (not in the runtime path): `rulebook/` (44 specs, `rulebook/manifest.json`, `rulebook/README.md`) plus the 4.0 plan in `4.0/KwestUp_4.0_Master_Plan.md`.
+Governance sits above all layers: `rulebook/` containing both **human philosophy specifications** (Markdown) and **machine-executable rules** (`rulebook/machine/*.json` with explicit Rule IDs) plus the 4.0 plan in `4.0/KwestUp_4.0_Master_Plan.md`.
 
 ## Component Responsibilities
 
@@ -57,7 +57,7 @@ Governance sits above all layers (not in the runtime path): `rulebook/` (44 spec
 | Pure task engine | Framework-agnostic toggle/complete/save/delete/subtask/list/recurrence math; shared by app + widgets | `src/utils/taskMutations.js` |
 | Vault metadata | Vault registry + active-vault id in AsyncStorage, path resolution | `src/utils/vaultService.js` |
 | Notes filesystem | Vault-parameterized markdown CRUD under `FileSystem.documentDirectory` | `src/utils/fileStorage.js` |
-| On-device AI | llama.rn lifecycle (Qwen 2.5 0.5B GGUF), idle/background unload, intent completion | `src/utils/aiService.js` |
+| On-device AI Specialist | llama.rn lifecycle (Qwen 2.5 0.5B GGUF), idle/background unload; specialist for intent extraction, friction diagnosis, plan explanation | `src/utils/aiService.js` |
 | Notifications | Birthday/due-date/billing scheduling, permission requests, quiet-hour handling | `src/utils/notifications.js` |
 | Billing persistence | Billing key CRUD, billing reminder scheduling | `src/utils/billingStorage.js`, `src/utils/billingNotifications.js` |
 | Sync/export | LAN sync client, JSON export, diagnostics/telemetry gates | `src/utils/syncService.js`, `src/utils/exportService.js`, `src/utils/diagnostics.js` |
@@ -65,10 +65,10 @@ Governance sits above all layers (not in the runtime path): `rulebook/` (44 spec
 | Theming | 5 theme names × 3 modes palette + global StyleSheet | `src/theme/colors.js`, `src/theme/styles.js` |
 | Headless widget runtime | Background `WIDGET_CLICK`/`WIDGET_UPDATE` handling, tab state, ticking animation, cross-widget refresh | `widgets/widget-task-handler.tsx` |
 | Widget views | Four Android widget renderers (timer, daily progress, important, full list) | `widgets/FocusTimerWidget.tsx`, `widgets/DailyTasksWidget.tsx`, `widgets/ImportantTasksWidget.tsx`, `widgets/TasksListWidget.tsx` |
-| Behavior contracts | 4.0 domain interfaces (Habit, Cue, Intervention, BehaviorEvent, Reward) | `src/behavior/types.ts` |
-| Command contracts | AI sandbox actions (CREATE/UPDATE/LOG/PAUSE/ARCHIVE/RESUME_HABIT, etc.) + idempotency | `src/commands/types.ts` |
+| Behavior contracts | 4.0 domain interfaces (Habit, Cue, Intervention, BehaviorEvent, Reward, Rule IDs) | `src/behavior/types.ts` |
+| Command contracts & Gateway | Command Gateway actions, schema validation, capability checks, permissions, idempotency | `src/commands/types.ts` |
 | Service contracts | Notification channels, descriptors, `DEFAULT_BEHAVIORAL_NOTIFICATION_POLICY` | `src/services/types.ts` |
-| Governance spec | 44-rule behavioral rulebook, invariants, precedence, enforcement gates | `rulebook/README.md`, `rulebook/manifest.json`, `rulebook/rules/`, `rulebook/ai/`, `rulebook/atomic-habits/` |
+| Governance spec | Two-layer rulebook: human philosophy specs + machine executable rule sets (`rulebook/machine/*.json`) | `rulebook/README.md`, `rulebook/manifest.json`, `rulebook/rules/`, `rulebook/machine/` |
 
 ## Pattern Overview
 
@@ -80,6 +80,10 @@ Governance sits above all layers (not in the runtime path): `rulebook/` (44 spec
 - App-shell owns cross-cutting boot: `App.js` (`initializeApp` → `loadData`) hydrates all providers, then each context re-syncs from storage on foreground.
 - Headless/platform duality: the same pure engine (`src/utils/taskMutations.js`) runs in-process (React state) and headless (widget handler directly on AsyncStorage).
 - Spec-before-code for 4.0: `rulebook/` + `src/behavior/types.ts` + `src/commands/types.ts` + `src/services/types.ts` + `src/domains/README.md` define engines that do not exist yet (Phases 22–28).
+- **Three-Layer Intelligence Architecture:**
+  1. *Layer 1 (LLM Intelligence):* Small ~400 MB Qwen model handles semantic understanding (intent parsing, friction identification, natural-language explanation).
+  2. *Layer 2 (Rule Intelligence):* Deterministic rule engine executes machine rules with unique Rule IDs (`HABIT_CREATE_001`, `MINIMUM_ACTION_001`, `RECOVERY_001`), emitting `rulesApplied` audit traces.
+  3. *Layer 3 (Execution Intelligence):* Command Gateway validates schemas, capabilities, and permissions before dispatching to KwestUp executor and touchpoints (widgets, notifications, in-app).
 
 ## Layers
 

@@ -47,5 +47,12 @@
     { "id": "phone-use", "section": "examples", "path": "rulebook/examples/phone-use.md", "status": "active", "source": "product-decision", "review_date": "2026-10-01" },
     { "id": "work", "section": "examples", "path": "rulebook/examples/work.md", "status": "active", "source": "product-decision", "review_date": "2026-10-01" },
     { "id": "personal-projects", "section": "examples", "path": "rulebook/examples/personal-projects.md", "status": "active", "source": "product-decision", "review_date": "2026-10-01" }
+  ],
+  "machineRules": [
+    { "id": "machine-rules", "section": "machine", "path": "rulebook/machine/rules.json", "status": "active", "review_date": "2026-10-01" },
+    { "id": "machine-habit-rules", "section": "machine", "path": "rulebook/machine/habitRules.json", "status": "active", "review_date": "2026-10-01" },
+    { "id": "machine-intervention-rules", "section": "machine", "path": "rulebook/machine/interventionRules.json", "status": "active", "review_date": "2026-10-01" },
+    { "id": "machine-recovery-rules", "section": "machine", "path": "rulebook/machine/recoveryRules.json", "status": "active", "review_date": "2026-10-01" },
+    { "id": "machine-reward-rules", "section": "machine", "path": "rulebook/machine/rewardRules.json", "status": "active", "review_date": "2026-10-01" }
   ]
 }

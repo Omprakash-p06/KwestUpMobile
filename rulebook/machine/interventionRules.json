@@ -1,0 +1,57 @@
+{
+  "version": "1.0.0",
+  "description": "Deterministic intervention, notification policy, and widget touchpoint rules",
+  "rules": [
+    {
+      "id": "REMINDER_ANTI_SPAM_001",
+      "description": "Enforce hard cap of ≤3 behavioral notifications per calendar day to avoid nagware fatigue.",
+      "when": {
+        "surface": "notification",
+        "behaviorNotificationsToday": ">=3"
+      },
+      "then": {
+        "action": "BLOCK_BEHAVIOR_NOTIFICATION",
+        "fallbackSurface": "widget"
+      },
+      "priority": 100
+    },
+    {
+      "id": "QUIET_HOURS_001",
+      "description": "Enforce quiet hours: no non-critical behavioral notifications between 22:00 and 08:00 local time.",
+      "when": {
+        "surface": "notification",
+        "currentTime": "inQuietHours"
+      },
+      "then": {
+        "action": "DEFER_NOTIFICATION_UNTIL_MORNING",
+        "targetTime": "08:15"
+      },
+      "priority": 95
+    },
+    {
+      "id": "REMINDER_MIN_GAP_001",
+      "description": "Minimum 90-minute cooldown gap between consecutive behavioral notifications.",
+      "when": {
+        "surface": "notification",
+        "minutesSinceLastNotification": "<90"
+      },
+      "then": {
+        "action": "THROTTLE_NOTIFICATION"
+      },
+      "priority": 90
+    },
+    {
+      "id": "WIDGET_PRIORITY_001",
+      "description": "Android widget surface priority hierarchy: Recovery > Today Habit > Next Action.",
+      "when": {
+        "surface": "widget",
+        "event": "RENDER_WIDGET"
+      },
+      "then": {
+        "action": "SELECT_HIGHEST_PRIORITY_TOUCHPOINT",
+        "order": ["recovery", "today_due", "next_action"]
+      },
+      "priority": 80
+    }
+  ]
+}

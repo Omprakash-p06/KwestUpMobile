@@ -108,6 +108,7 @@ export interface CommandExecutionResult {
   message: string; // human-readable outcome; empty string on failure
   error?: string; // only present when success === false
   requestId: string; // echo of idempotencyKey for dedup tracing
+  rulesApplied?: string[]; // IDs of deterministic rules applied during execution trace
 }
 
 export interface DispatchedCommand<A extends CommandAction = CommandAction> {

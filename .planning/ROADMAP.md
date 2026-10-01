@@ -357,12 +357,12 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 
 ### Phase 20: Repository Governance, Behavioral Rulebook & Architecture Foundation
 
-**Goal**: Establish the Atomic Habits behavioral rulebook, governance contracts, TypeScript configuration, and architectural domain scaffolding.
+**Goal**: Establish the Atomic Habits behavioral rulebook (human philosophy + machine-executable rules), governance contracts, TypeScript configuration, and architectural domain scaffolding.
 **Depends on**: Phase 19.
 **Requirements**: [GOV-01, GOV-02]
 **Success Criteria**:
 
-  1. Complete `rulebook/` directory tree established with Atomic Habits principles (4 laws, inversions, identity, 2-minute rule, habit stacking, never miss twice), AI policies, behavioral rules, and examples.
+  1. Complete `rulebook/` directory tree established with two decoupled layers: **human specifications** (Markdown philosophy covering 4 laws, inversions, identity, 2-minute rule, habit stacking, never miss twice, AI policies, and examples) and **machine-executable rules** (`rulebook/machine/*.json` with unique Rule IDs and deterministic `when`/`then` schemas).
   2. Foundation domain directories scaffolded (`src/behavior/`, `src/commands/`, `src/services/`, `src/domains/`) with core type definitions and contracts.
   3. Incremental TypeScript compilation configured (`tsconfig.json`, `npm run typecheck`) and passing cleanly for new architectural foundations.
   4. Codebase map alignment: resolve remaining raw console calls in `src/utils/vaultImport.js`, `billingStorage.js`, and `notifications.js` to route through `logger.js`.
@@ -415,16 +415,18 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 
 ---
 
-### Phase 24: Core Behavior Engine (Habits, Cues, Recovery & Rewards)
+### Phase 24: Core Behavior & Deterministic Rule Engine (Habits, Cues, Recovery & Rewards)
 
-**Goal**: Implement pure, deterministic behavioral logic engines, isolated habit persistence, and `HabitContext`.
+**Goal**: Implement pure, deterministic behavioral logic engines, the machine-executable rule engine, isolated habit persistence, and `HabitContext`.
 **Depends on**: Phase 23.
 **Requirements**: [BEH-01, BEH-02]
 **Success Criteria**:
 
   1. Pure deterministic engines: `habitEngine.ts`, `cueEngine.ts`, `recoveryEngine.ts`, `rewardEngine.ts`, and `improvementEngine.ts`.
-  2. Isolated `HabitContext` with versioned storage key `kwestup_habits_v1` and immutable behavior history `kwestup_behavior_events_v1`.
-  3. Support for minimum action (2-minute rule), habit stacking, and "never miss twice" recovery state machine.
+  2. Deterministic rule engine evaluates machine-readable rules (`rulebook/machine/*.json`) with explicit Rule IDs (`HABIT_CREATE_001`, `MINIMUM_ACTION_001`, `RECOVERY_001`, `REWARD_IMPROVEMENT_001`).
+  3. Execution traces output audit logs (`rulesApplied: [...]`) on every behavioral transition for complete system debuggability.
+  4. Isolated `HabitContext` with versioned storage key `kwestup_habits_v1` and immutable behavior history `kwestup_behavior_events_v1`.
+  5. Support for minimum action (2-minute rule), habit stacking, and "never miss twice" recovery state machine.
 
 ---
 
@@ -435,42 +437,46 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 **Requirements**: [INTV-01, WIDG-03]
 **Success Criteria**:
 
-  1. `interventionEngine.ts` arbitrates when and where to intervene based on user behavior and policy limits.
+  1. `interventionEngine.ts` arbitrates touchpoints governed by `interventionRules.json` with strict anti-spam limits (`REMINDER_ANTI_SPAM_001`) and quiet-hour gates.
   2. Android home-screen widgets render actionable behavioral states (Today, Next Action, Don't Miss Twice recovery).
 
 ---
 
-### Phase 26: Type-Safe Command Registry & AI Sandboxing
+### Phase 26: Command Gateway, Safe Execution Layer & AI Sandboxing
 
-**Goal**: Create a finite, schema-validated command execution layer ensuring the AI can never directly manipulate storage, widgets, or OS APIs.
+**Goal**: Create a finite, schema-validated command gateway ensuring the AI can never directly manipulate storage, widgets, or OS APIs.
 **Depends on**: Phase 25.
 **Requirements**: [CMD-01]
 **Success Criteria**:
 
-  1. Finite KwestUp command registry with strict schema validation (`commandValidator.ts`, `commandExecutor.ts`).
+  1. Command Gateway enforces schema validation, capability checks, and permission checks (`commandValidator.ts`, `commandExecutor.ts`).
   2. Direct storage writes and Android system calls forbidden from AI execution paths.
+  3. Command execution generates traceable result payloads with echo IDs and applied rule IDs.
 
 ---
 
-### Phase 27: On-Device AI Intent Parser & Habit Compiler
+### Phase 27: On-Device AI Intent Parser & Behavior Compiler
 
-**Goal**: Connect on-device Qwen LLM to natural-language intent parsing and habit compilation into structured commands.
+**Goal**: Connect on-device Qwen LLM to specialized natural-language intent parsing and deterministic habit compilation.
 **Depends on**: Phase 26.
 **Requirements**: [AI-03]
 **Success Criteria**:
 
-  1. Natural-language prompt (e.g., "I want to study DSA every evening") compiles into identity statement, habit, cue, minimum action, and normal target.
-  2. Heuristic fallback ensures offline reliability even if LLM inference is unavailable.
+  1. Small ~400 MB Qwen model operates as a specialist **Intent Parser**, extracting bare facts (`intent`, `behavior`, `frequency`, `anchor`) rather than full Atomic Habits schemas.
+  2. **Behavior Compiler** deterministically compiles extracted intent into complete, valid habit plans (identity, minimum <120s action, cue stack, intervention, recovery, reward) using the Deterministic Rule Engine.
+  3. Optional rule packet retrieval (rule RAG) provides 3–4 focused rule definitions to the LLM for edge cases without overflowing context.
+  4. Heuristic fallback ensures offline reliability even if LLM inference is unavailable.
 
 ---
 
-### Phase 28: Behavioral Adaptation, Weekly Review & Hardening
+### Phase 28: Behavioral Adaptation, Weekly Review & Language Generation
 
-**Goal**: Implement historical friction diagnosis, weekly review system, comprehensive end-to-end integration tests, and production release readiness.
+**Goal**: Implement historical friction diagnosis, weekly review generation, comprehensive end-to-end integration tests, and production release readiness.
 **Depends on**: Phase 27.
 **Requirements**: [AI-04]
 **Success Criteria**:
 
-  1. Adaptive engine analyzes miss patterns and suggests friction reductions (e.g., dropping to 2-minute version or changing cue).
-  2. Weekly behavioral review UI provides actionable self-reflection without toxic gamification.
-  3. All unit, domain, and integration tests pass 100% with zero lint or type errors.
+  1. AI operates as **Behavior Analyst** (semantic friction identification) and **Language Generator** (plan explanation and weekly review text).
+  2. Deterministic engine maps identified semantic friction (e.g., phone distraction, low energy) to supported KwestUp interventions.
+  3. Weekly behavioral review UI provides actionable self-reflection without toxic gamification.
+  4. All unit, domain, and integration tests pass 100% with zero lint or type errors.

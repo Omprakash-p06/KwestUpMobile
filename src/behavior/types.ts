@@ -141,3 +141,40 @@ export interface FactualReward {
     | 'fast_activation';
   achievedAt: string;
 }
+
+export interface BehaviorRule {
+  id: string; // Unique rule identifier (e.g. 'HABIT_CONCURRENT_CAP_001', 'MINIMUM_ACTION_001')
+  description: string;
+  when: Record<string, unknown>;
+  then: Record<string, unknown>;
+  priority: number;
+}
+
+export interface CompiledHabitPlan {
+  identity: {
+    statement: string;
+  };
+  behavior: {
+    target: string;
+    minimum: string; // <120 seconds (Two-Minute Rule)
+    normal: string;
+    stretch?: string;
+  };
+  cue: {
+    type: CueType;
+    anchor?: string;
+    time?: string;
+  };
+  intervention: {
+    surface: InterventionSurface;
+    action: string;
+  };
+  recovery: {
+    enabled: boolean;
+    minimum_after_miss: boolean;
+  };
+  reward: {
+    type: string;
+  };
+  rulesApplied: string[]; // Rule IDs applied by Behavior Compiler & Rule Engine
+}

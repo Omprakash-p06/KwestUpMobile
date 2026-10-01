@@ -1,0 +1,62 @@
+{
+  "version": "1.0.0",
+  "description": "Deterministic recovery, never-miss-twice, and friction diagnosis rules",
+  "rules": [
+    {
+      "id": "RECOVERY_001",
+      "description": "Never Miss Twice: First missed day automatically transitions habit to recovery state and scales next session to 2-minute version.",
+      "when": {
+        "event": "HABIT_MISSED",
+        "habit.missedConsecutively": 1
+      },
+      "then": {
+        "action": "TRANSITION_STATUS_RECOVERY",
+        "nextSessionTarget": "minimumAction",
+        "surface": "widget",
+        "displayPrompt": "Never miss twice: 2-minute version ready."
+      },
+      "priority": 95
+    },
+    {
+      "id": "RECOVERY_CONSECUTIVE_MISS_002",
+      "description": "Second consecutive miss: trip friction review rather than increasing notification pressure.",
+      "when": {
+        "event": "HABIT_MISSED",
+        "habit.missedConsecutively": ">=2"
+      },
+      "then": {
+        "action": "TRIGGER_FRICTION_REVIEW",
+        "suppressReminderEscalation": true,
+        "offerAction": "RESCALE_OR_CHANGE_CUE"
+      },
+      "priority": 90
+    },
+    {
+      "id": "RECOVERY_SUCCESS_001",
+      "description": "Successful completion while in recovery state restores active habit status and awards recovery evidence.",
+      "when": {
+        "event": "HABIT_COMPLETED",
+        "habit.status": "recovery"
+      },
+      "then": {
+        "action": "RESTORE_ACTIVE_STATUS",
+        "awardMilestone": "recovery"
+      },
+      "priority": 85
+    },
+    {
+      "id": "OVERLOAD_TRIGGER_001",
+      "description": "Anti-burnout overload protection: active habits ≥3 and 7-day miss rate >40% for ≥3 consecutive days triggers overload pause recommendation.",
+      "when": {
+        "activeHabits": ">=3",
+        "sevenDayMissRate": ">0.40",
+        "consecutiveDaysInCondition": ">=3"
+      },
+      "then": {
+        "action": "RECOMMEND_PAUSE_LOWEST_STREAK",
+        "reason": "Overload protection"
+      },
+      "priority": 80
+    }
+  ]
+}

@@ -44,7 +44,7 @@ Requirements for the hardening and production readiness milestone.
 Requirements for the behavioral execution system, technology platform upgrade, and AI habit compiler.
 
 ### Repository Governance & Architecture Foundation
-- [ ] **GOV-01**: Establish comprehensive Atomic Habits behavioral rulebook and policy contracts in `rulebook/`.
+- [ ] **GOV-01**: Establish comprehensive two-layer Atomic Habits behavioral rulebook: human markdown philosophy contracts and machine-executable rule sets (`rulebook/machine/*.json`) with explicit Rule IDs (`HABIT_CREATE_001`, `RECOVERY_001`, etc.).
 - [ ] **GOV-02**: Set up TypeScript compilation foundation (`tsconfig.json`) and scaffold domain directory hierarchy (`src/behavior/`, `src/commands/`, `src/services/`, `src/domains/`).
 
 ### Technology Platform Upgrade
@@ -52,23 +52,23 @@ Requirements for the behavioral execution system, technology platform upgrade, a
 
 ### Notification Extraction & Policy Engine
 - [ ] **NOTIF-01**: Consolidate distributed notification mechanics into `src/services/notificationService.ts` with dedicated Android channels, priority rules, and timeouts.
-- [ ] **NOTIF-02**: Enforce deterministic behavioral notification policies (quiet hours, max notifications per day, deduplication windows).
+- [ ] **NOTIF-02**: Enforce deterministic behavioral notification policies (quiet hours, max notifications per day, deduplication windows) outside the LLM.
 
 ### Domain Events & Behavioral Telemetry
 - [ ] **EVT-01**: Implement type-safe in-memory domain event bus (`src/behavior/eventBus.ts`) instrumenting task, billing, birthday, and timer lifecycle events.
 
-### Core Behavior Engine & Habit Domain
-- [ ] **BEH-01**: Implement deterministic behavior engines (habit, cue, 2-minute minimum action, never-miss-twice recovery, factual rewards).
+### Core Behavior & Deterministic Rule Engine
+- [ ] **BEH-01**: Implement deterministic behavior engines (habit, cue, 2-minute minimum action, never-miss-twice recovery, factual rewards) evaluating machine rules and logging `rulesApplied` audit traces.
 - [ ] **BEH-02**: Build `HabitContext` with isolated versioned storage (`kwestup_habits_v1`, `kwestup_behavior_events_v1`) and migration safeguards.
 
 ### Multi-Surface Intervention & Behavioral Widgets
-- [ ] **INTV-01**: Implement `interventionEngine.ts` governing multi-surface delivery across Notifications, Widgets, and In-App surfaces.
+- [ ] **INTV-01**: Implement `interventionEngine.ts` governing multi-surface delivery across Notifications, Widgets, and In-App surfaces under `interventionRules.json` policy limits.
 - [ ] **WIDG-03**: Upgrade Android home-screen widgets to render actionable behavioral cues (Today, Next, Don't Miss Twice recovery).
 
-### Safe Command Layer & AI Habit Compiler
-- [ ] **CMD-01**: Implement finite type-safe command registry, schema validation, and safe execution sandbox isolating storage/OS APIs from direct AI writes.
-- [ ] **AI-03**: Implement on-device AI intent parser and habit compiler translating natural-language goals into structured behavioral contracts.
-- [ ] **AI-04**: Build adaptive review engine diagnosing friction and proposing habit adjustments from historical behavior evidence.
+### Command Gateway & Behavior Compiler
+- [ ] **CMD-01**: Implement finite type-safe Command Gateway with schema validation, capability checks, and execution sandboxing isolating storage/OS APIs from direct AI writes.
+- [ ] **AI-03**: Implement on-device AI Intent Parser (extracting bare facts) and deterministic Behavior Compiler (expanding intent into verified habit contracts using the rule engine).
+- [ ] **AI-04**: Build adaptive review engine combining semantic Behavior Analyst (friction diagnosis) and Language Generator (weekly reflection) mapped to deterministic interventions.
 
 ## Out of Scope
 

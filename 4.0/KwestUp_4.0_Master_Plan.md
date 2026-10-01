@@ -7,44 +7,83 @@
 
 ## 1. Executive architecture
 
-KwestUp will become an **AI-driven behavioral layer inside KwestUp**, not an AI-controlled operating system.
+KwestUp is an **AI-assisted deterministic behavioral machine**, not an AI-controlled operating system.
 
-The app owns:
-- capabilities
-- persistent data
-- business rules
-- permissions
-- execution
-- notifications
-- widgets
-- tasks/habits
-- rewards
-- intervention limits
+The core principle: **The backend/application enforces the rulebook**. A ~400 MB quantized on-device Qwen model cannot and should not be expected to memorize, reason over, or reliably apply the entire *Atomic Habits* rulebook on every interaction. Instead, think of the model as a **planner operating inside a deterministic behavioral machine**.
 
-The AI owns:
-- natural-language interpretation
-- intent extraction
-- planning
-- selecting among KwestUp capabilities
-- behavioral reasoning
-- adaptation from observed results
-
-The AI must never directly write storage, schedule Android notifications, modify widgets, control arbitrary third-party apps, or invent capabilities.
+### The Architectural Split:
 
 ```text
-User intent
-  -> AI interpretation
-  -> structured command/plan
-  -> validation
-  -> KwestUp domain services
-  -> domain events
-  -> Behavior Engine
-  -> Intervention Engine
-  -> Notification / Widget / In-app
-  -> user action
-  -> behavior history
-  -> AI adaptation
+                 USER
+                   │
+                   ▼
+          Small Qwen Model
+                   │
+          "What does user want?"
+                   │
+                   ▼
+          Intent Extraction
+                   │
+                   ▼
+        ┌─────────────────────┐
+        │ KwestUp Rule Engine  │
+        │                     │
+        │ Atomic Habits rules │
+        │ Safety rules        │
+        │ Notification rules  │
+        │ Reward rules        │
+        │ User preferences    │
+        └──────────┬──────────┘
+                   │
+             deterministic
+               decision
+                   │
+                   ▼
+          Command Generator
+                   │
+                   ▼
+          KwestUp Executor
+                   │
+        ┌──────────┼──────────┐
+        ▼          ▼          ▼
+      Task       Widget    Notification
 ```
+
+The AI does not decide:
+> *"According to Law 3, I think I should make this habit easier."*
+
+It provides the **facts and semantic context**:
+```json
+{
+  "intent": "create_habit",
+  "behavior": "study DSA",
+  "frequency": "daily",
+  "preferred_time": "evening"
+}
+```
+
+Then KwestUp's deterministic rule engine applies the behavioral rules:
+- Establishes the 2-minute minimum action
+- Selects or prompts for a habit cue / anchor
+- Sets up the "never miss twice" recovery policy
+- Validates notification quotas and quiet hours
+
+The app owns:
+- capabilities and permissions
+- persistent data (AsyncStorage, vaults)
+- executable rulebook enforcement
+- notification dispatch and quiet hours
+- home-screen widgets
+- tasks, habits, and factual rewards
+- intervention limits and anti-spam gates
+
+The AI owns:
+- natural-language interpretation & intent extraction
+- semantic friction identification
+- user-facing plan explanation
+- natural-language check-in & review generation
+
+The AI must never directly write storage, schedule Android notifications, modify widgets, control arbitrary third-party apps, or invent capabilities.
 
 ## 2. Current baseline
 
@@ -87,68 +126,135 @@ Intention
 
 The app must work even when the user does not voluntarily open it. Widgets, notifications and direct notification actions become behavioral surfaces.
 
-## 4. Rulebook
+## 4. Executable Rulebook Architecture
 
-Create:
+The rulebook is not merely static documentation. It is **executable software specification**:
+
+- The **human layer** (Markdown) explains the psychological philosophy and rationale.
+- The **machine layer** (JSON rule sets) enforces the behavioral constraints deterministically.
 
 ```text
 rulebook/
 ├── README.md
 ├── manifest.json
 ├── CHANGELOG.md
-├── atomic-habits/
-│   ├── identity.md
-│   ├── habit-loop.md
-│   ├── law-1-obvious.md
-│   ├── law-2-attractive.md
-│   ├── law-3-easy.md
-│   ├── law-4-satisfying.md
-│   ├── inversion-invisible.md
-│   ├── inversion-unattractive.md
-│   ├── inversion-difficult.md
-│   ├── inversion-unsatisfying.md
-│   ├── implementation-intentions.md
-│   ├── habit-stacking.md
-│   ├── environment-design.md
-│   ├── temptation-bundling.md
-│   ├── two-minute-rule.md
-│   ├── friction.md
-│   ├── habit-tracking.md
-│   ├── never-miss-twice.md
-│   ├── accountability.md
-│   ├── commitment-devices.md
-│   ├── plateau.md
-│   ├── goldilocks-zone.md
-│   ├── deliberate-practice.md
-│   └── review-system.md
-├── ai/
-│   ├── intent-parser.md
-│   ├── habit-compiler.md
-│   ├── intervention-planner.md
-│   ├── check-in-engine.md
-│   └── adaptation-engine.md
-├── rules/
-│   ├── habit-creation.md
-│   ├── habit-modification.md
-│   ├── missed-habit.md
-│   ├── rewards.md
-│   ├── reminders.md
-│   ├── widgets.md
-│   ├── overload.md
-│   └── privacy.md
-└── examples/
-    ├── study.md
-    ├── exercise.md
-    ├── reading.md
-    ├── sleep.md
-    ├── phone-use.md
-    ├── work.md
-    └── personal-projects.md
+│
+├── human/                     # Philosophy, principles & policies (Markdown)
+│   ├── atomic-habits/         # 24 core Atomic Habits specifications
+│   │   ├── obvious.md
+│   │   ├── attractive.md
+│   │   ├── easy.md
+│   │   ├── satisfying.md
+│   │   ├── two-minute-rule.md
+│   │   ├── habit-stacking.md
+│   │   └── never-miss-twice.md
+│   ├── ai/                    # AI interaction policies & prompt constraints
+│   ├── rules/                 # Business rule specifications
+│   └── examples/              # Domain workflow scenarios (DSA, exercise, etc.)
+│
+└── machine/                   # Deterministic executable rule sets (JSON)
+    ├── rules.json             # Core system rules, invariants & validation gates
+    ├── habitRules.json        # Habit creation, scaling & stacking rules
+    ├── interventionRules.json # Notification quotas, quiet hours, widget policies
+    ├── recoveryRules.json     # Never-miss-twice recovery transitions & friction response
+    └── rewardRules.json       # Factual milestone rewards & progress calculations
 ```
 
-The rulebook defines behavioral policy, not implementation. Code enforces hard capabilities. The AI applies the rules.
+### Rule IDs & Debuggable Execution Traces
 
-A supplied PDF of *Atomic Habits* should later be used to make this rulebook exhaustive and source-faithful without reproducing the book.
+Every machine-readable rule carries a unique **Rule ID**:
+- `HABIT_CREATE_001`, `HABIT_CREATE_002` (Creation constraints & concurrent caps)
+- `MINIMUM_ACTION_001` (Mandatory <120s 2-minute version)
+- `CUE_STACK_001`, `CUE_STACK_002` (Implementation intention & habit stack attachment)
+- `RECOVERY_001`, `RECOVERY_002` (Never-miss-twice state transition)
+- `REMINDER_ANTI_SPAM_001` (Daily notification cap enforcement)
+- `REWARD_IMPROVEMENT_001` (Factual behavior improvement reward)
+
+When KwestUp processes any behavioral event or compiles an intent, it produces an **Execution Trace**:
+
+```json
+{
+  "command": "CREATE_HABIT",
+  "rulesApplied": [
+    "HABIT_CREATE_001",
+    "CUE_STACK_002",
+    "MINIMUM_ACTION_001",
+    "RECOVERY_001"
+  ]
+}
+```
+
+This guarantees **complete debuggability**:
+```text
+User request
+    ↓
+AI intent extraction
+    ↓
+Rules applied (Audit Trail)
+    ↓
+Generated Command
+    ↓
+Deterministic Execution
+```
+
+When an intervention fires or is suppressed, developers and users do not need to wonder:
+> *"Why did the Qwen model decide to send or skip this notification?"*
+
+Instead, the deterministic rule engine reports exact rules:
+```text
+Rule:        REMINDER_ANTI_SPAM_001
+Condition:   behaviorNotificationsToday >= 3
+Action:      BLOCK_BEHAVIOR_NOTIFICATION
+Priority:    100
+```
+
+### Deterministic Condition-Action Format
+
+All machine rules specify explicit triggers (`when`), outcomes (`then`), and priority arbitration:
+
+```json
+{
+  "id": "MINIMUM_ACTION_001",
+  "description": "Every habit must have an achievable minimum action (<120 seconds).",
+  "when": {
+    "entity": "habit",
+    "minimumAction": null
+  },
+  "then": {
+    "action": "REQUIRE_MINIMUM_ACTION"
+  },
+  "priority": 80
+}
+```
+
+```json
+{
+  "id": "REMINDER_ANTI_SPAM_001",
+  "description": "Enforce hard daily cap on behavioral notification touchpoints.",
+  "when": {
+    "behaviorNotificationsToday": ">=3"
+  },
+  "then": {
+    "action": "BLOCK_BEHAVIOR_NOTIFICATION"
+  },
+  "priority": 100
+}
+```
+
+```json
+{
+  "id": "RECOVERY_001",
+  "description": "Never miss twice: first miss automatically scales next action to minimum version.",
+  "when": {
+    "habit.missedConsecutively": ">=1"
+  },
+  "then": {
+    "action": "OFFER_MINIMUM_VERSION",
+    "surface": "widget"
+  },
+  "priority": 90
+}
+```
 
 ## 5. Core domain model
 
@@ -286,37 +392,76 @@ src/
 
 TypeScript conversion is incremental. New architecture code is TypeScript first; existing screens migrate later.
 
-## 7. Command architecture
+## 7. Command Gateway & Behavior Compiler
 
-Example:
+A major vulnerability of LLM-based behavioral systems is expecting a small local model to generate deeply nested behavioral structures perfectly. In KwestUp, we introduce the **Behavior Compiler**.
+
+```text
+Natural Language
+       ↓
+Small AI (Specialist Intent Parser)
+       ↓
+Extracted Intent
+       ↓
+Command Gateway (Schema Validation, Capability Check, Permissions)
+       ↓
+Behavior Compiler (Applies Atomic Habits & Product Rules)
+       ↓
+Deterministic Behavior Engine (Cue, Minimum Action, Recovery, Rewards)
+       ↓
+Validated Habit Plan / Executable Commands
+```
+
+### The Behavior Compiler in Practice
+
+Suppose the user says:
+> *"I want to study DSA every evening after dinner."*
+
+The ~400 MB Qwen model only needs to extract the bare facts:
+```json
+{
+  "intent": "CREATE_HABIT",
+  "behavior": "study DSA",
+  "frequency": "daily",
+  "anchor": "after dinner"
+}
+```
+
+The model is **not** asked to generate the entire Atomic Habits schema, remember rule IDs, or compute recovery policies. That is error-prone for small models.
+
+The **Behavior Compiler** deterministically expands that intent into a complete, verified habit plan:
 
 ```json
 {
-  "action": "CREATE_HABIT",
-  "parameters": {
-    "title": "Study DSA",
-    "frequency": "daily",
-    "minimumAction": "Open today's problem",
-    "cue": {
-      "type": "after-habit",
-      "habit": "Dinner"
-    }
+  "identity": "consistent learner",
+  "behavior": {
+    "target": "study DSA",
+    "minimum": "solve one question",
+    "normal": "30 minutes"
+  },
+  "cue": {
+    "type": "habit_stack",
+    "anchor": "dinner"
+  },
+  "intervention": {
+    "surface": "widget",
+    "action": "START_MINIMUM"
+  },
+  "recovery": {
+    "enabled": true,
+    "minimum_after_miss": true
+  },
+  "reward": {
+    "type": "behavioral_improvement"
   }
 }
 ```
 
-Pipeline:
-
-```text
-LLM
- -> structured intent
- -> schema validation
- -> capability validation
- -> command executor
- -> domain service
-```
-
-The LLM never directly calls AsyncStorage, notification APIs, widget APIs, filesystem APIs or Android APIs.
+### Why This Is More Reliable
+1. **Model Simplicity:** The model's prompt is constrained to extracting intent, behavior, frequency, and cue anchors.
+2. **Deterministic Correctness:** The compiler fills in missing pieces according to hard-coded rulebook logic (`rulebook/machine/*.json`).
+3. **Safety & Capability Check:** The Command Gateway verifies that capabilities exist and permissions are granted before any execution occurs.
+4. **Execution Isolation:** The LLM never directly calls AsyncStorage, notification APIs, widget APIs, filesystem APIs, or Android APIs.
 
 ## 8. Notification refactor
 
@@ -456,24 +601,118 @@ Friction categories:
 - too much setup
 - low motivation
 
-## 13. AI responsibilities
+## 13. AI Responsibilities & Three-Layer Intelligence Model
 
-### Interpreter
-Natural language → structured intent.
+### The Three-Layer Intelligence Model
 
-### Habit compiler
-Intent → identity, behavior, cue, minimum action, routine, reward, recovery.
+KwestUp separates system intelligence into three distinct, decoupled layers:
 
-### Intervention planner
-Decides whether/when/why/where to intervene.
+```text
+Layer 1 — LLM Intelligence:       "What does the human mean?"
+Layer 2 — Rule Intelligence:      "What does KwestUp believe should happen?"
+Layer 3 — Execution Intelligence: "What can KwestUp actually execute right now?"
+```
 
-### Behavioral analyst
-Uses completion, misses, start delay, duration, cues, friction and intervention response.
+This separation is the single most important architectural decision for the on-device AI system:
+- **Model Agnostic:** Upgrading from a 400 MB quantized Qwen model to a 2–4 GB model later does not require rewriting application logic. A larger model simply gets better at interpreting messy natural language, diagnosing nuanced friction, and generating fluent text.
+- **Deterministic Stability:** The behavioral rulebook and state machines remain rock-solid and testable regardless of model fluctuations or hallucination tendencies.
 
-### Adaptive planner
-Changes the system based on evidence.
+---
 
-The LLM is never the source of truth; deterministic KwestUp engines remain authoritative.
+### Division of Labor: AI vs. Backend
+
+| Responsibility | AI? | Backend / Rulebook? |
+| :--- | :---: | :---: |
+| Understand "I want to exercise" | **Yes** | No |
+| Understand "after dinner" | **Yes** | No |
+| Determine valid habit schema | No | **Yes** |
+| Minimum action rules (<120s Two-Minute Rule) | No | **Yes** |
+| Notification limits & rate-limiting | No | **Yes** |
+| Quiet hours enforcement (22:00–08:00) | No | **Yes** |
+| Recovery rules (Never Miss Twice) | No | **Yes** |
+| Reward calculation (milestones & improvements) | No | **Yes** |
+| Detect duplicate reminders & cues | No | **Yes** |
+| Store habit & persist state | No | **Yes** |
+| Update Android home-screen widget | No | **Yes** |
+| Schedule Android notification | No | **Yes** |
+| Decide whether a system capability exists | No | **Yes** |
+| Diagnose why user keeps failing | Semantic extraction | Rule mapping + AI |
+| Generate natural-language explanation | **Yes** | No |
+| Weekly behavioral summary | **Yes** (text generation) | **Yes** (factual aggregation) |
+
+---
+
+### Use the AI as a Specialist, Not an Operating System
+
+The small local model operates in three tightly defined specialist roles:
+
+```text
+Intent Parser
+       │
+       ├── CREATE_HABIT
+       ├── MODIFY_HABIT
+       ├── CREATE_TASK
+       ├── COMPLETE_TASK
+       ├── CHECK_IN
+       └── REVIEW
+
+Behavior Analyst
+       │
+       ├── explain failure
+       ├── identify semantic friction
+       └── suggest adaptation options
+
+Language Generator
+       │
+       ├── explain compiled plan
+       ├── generate check-in feedback
+       └── compose weekly review summary
+```
+
+The deterministic application handles everything else.
+
+---
+
+### Semantic vs. Deterministic Boundary
+
+Not everything can or should be encoded in pure static rules. The system maintains a strict boundary:
+- **Semantic Interpretation:** When a user says: *"I've been struggling to study because I keep getting distracted by my phone,"* a pure regex or rule engine cannot reliably comprehend the nuance. The small model parses this into a structured semantic diagnosis:
+  ```json
+  {
+    "friction": "phone_distraction",
+    "domain": "study",
+    "severity": "moderate"
+  }
+  ```
+- **Deterministic Action:** The deterministic rule engine takes that semantic diagnosis and maps it to supported KwestUp interventions:
+  ```text
+  phone_distraction
+         ↓
+  available interventions
+         ├── earlier cue (before evening relaxation)
+         ├── smaller session (2-min version)
+         ├── focus timer with lockout overlay
+         └── KwestUp-native commitment checklist
+  ```
+The AI interprets. The rule engine decides what KwestUp is allowed to do.
+
+---
+
+### Optional Rulebook Retrieval (Rule Packet RAG)
+
+For complex or edge-case interactions, the system can provide the local LLM with a **small relevant rule packet** (3–4 rules) rather than loading the entire 44-document rulebook:
+
+```text
+User:       "I keep failing my reading habit."
+Retriever:  Selects relevant rule definitions:
+            - MINIMUM_ACTION_001 (Two-minute rule)
+            - FRICTION_001 (Activation energy)
+            - RECOVERY_001 (Never miss twice)
+            - CUE_STACK_001 (Habit stacking)
+Prompt:     Qwen + 4 selected rules + user's recent completion facts
+```
+
+This rule packet provides targeted context without blowing up the context window or overwhelming the 400 MB model. The deterministic rule engine still enforces all hard constraints after the AI responds.
 
 ## 14. External-app boundary
 
@@ -842,76 +1081,99 @@ and remind the user around the established cue.
 
 User confirms. KwestUp creates the behavioral system.
 
-## 30. Final architecture
+## 30. Final Architecture
 
 ```text
                          USER
-                           |
-                           v
-                  +-----------------+
-                  |   KwestUp AI    |
-                  | Interpreter /   |
-                  | Planner         |
-                  +--------+--------+
-                           |
-                    structured intent
-                           |
-                           v
-                  +-----------------+
-                  | COMMAND LAYER   |
-                  | validate/allow  |
-                  +--------+--------+
-                           |
-                           v
-                  +-----------------+
-                  | DOMAIN LAYER    |
-                  | Tasks / Habits  |
-                  | Notes / Timer   |
-                  | Billing / Birth |
-                  +--------+--------+
-                           |
-                       domain events
-                           |
-                           v
-                  +-----------------+
-                  | BEHAVIOR ENGINE |
-                  | Cues / Stacking |
-                  | Friction /      |
-                  | Recovery /      |
-                  | Rewards /       |
-                  | Review          |
-                  +--------+--------+
-                           |
-                           v
-                +---------------------+
-                | INTERVENTION ENGINE |
-                +----------+----------+
-                           |
-              +------------+------------+
-              |            |            |
-              v            v            v
-          Notification   Widget      In-App
-              |            |            |
-              +------------+------------+
-                           |
-                           v
+                           │
+                           ▼
+                  ┌─────────────────┐
+                  │ SMALL LOCAL LLM │
+                  │ (~400MB Qwen)   │
+                  │                 │
+                  │ Intent          │
+                  │ Extraction      │
+                  │ Friction Diag.  │
+                  │ Text Generation │
+                  └────────┬────────┘
+                           │
+                     Structured Intent
+                           │
+                           ▼
+                ┌──────────────────────┐
+                │   COMMAND GATEWAY    │
+                │                      │
+                │ Schema Validation    │
+                │ Capability Check     │
+                │ Permission Check     │
+                └──────────┬───────────┘
+                           │
+                           ▼
+                ┌──────────────────────┐
+                │  BEHAVIOR COMPILER   │
+                │                      │
+                │ Atomic Habits Rules  │
+                │ Product Rules        │
+                │ User Preferences     │
+                │ Safety Constraints   │
+                └──────────┬───────────┘
+                           │
+                           ▼
+                ┌──────────────────────┐
+                │  DETERMINISTIC       │
+                │  BEHAVIOR ENGINE     │
+                │                      │
+                │ Cue & Habit Stacking │
+                │ Minimum Action (<2m) │
+                │ Never Miss Twice     │
+                │ Factual Rewards      │
+                │ Rulebook Engine (IDs)│
+                └──────────┬───────────┘
+                           │
+                           ▼
+                ┌──────────────────────┐
+                │ INTERVENTION ENGINE  │
+                │                      │
+                │ Anti-Spam Gate       │
+                │ Quiet Hours Policy   │
+                │ Surface Arbitration  │
+                └──────────┬───────────┘
+                           │
+                           ▼
+                ┌──────────────────────┐
+                │   KwestUp COMMANDS   │
+                └──────────┬───────────┘
+                           │
+              ┌────────────┼────────────┐
+              ▼            ▼            ▼
+           Tasks        Widget     Notification
+          (Storage)   (Android)    (Android OS)
+              │            │            │
+              └────────────┼────────────┘
+                           │
+                           ▼
                          USER
-                           |
-                           v
-                       BEHAVIOR
-                           |
-                           v
-                         HISTORY
-                           |
-                           +------> AI
-
-Architectural invariant:
-KwestUp owns execution.
-AI owns interpretation and planning.
-Behavior Engine owns behavioral policy.
-Rulebook defines behavioral philosophy.
-Android owns final device/notification constraints.
+                           │
+                           ▼
+                     DOMAIN EVENTS
+                           │
+                           ▼
+                   BEHAVIOR HISTORY
+                           │
+                           ▼
+                 ADAPTATION / REVIEW
+                           │
+                           └──────► AI Specialist (Analysis & Summarization)
 ```
+
+### Architectural Invariants:
+1. **KwestUp Owns Execution and Persistent Data:** The application layer alone controls database writes, file storage, and OS API calls.
+2. **AI Is a Semantic Specialist:** Operates as Intent Parser, Behavior Analyst, and Language Generator. Never directly manipulates storage or Android APIs.
+3. **Command Gateway Enforces Safety:** Validates schemas, system capabilities, permissions, and idempotency before dispatch.
+4. **Behavior Compiler Constructs Habits:** Eliminates model hallucination by deterministically filling in identity, 2-minute minimum actions, cues, interventions, and recovery policies.
+5. **Rule Engine Enforces Deterministic Policy:** Evaluates machine-readable rules (`rulebook/machine/*.json`) with explicit Rule IDs (`HABIT_CREATE_001`, `RECOVERY_001`, etc.) and outputs debuggable audit traces (`rulesApplied`).
+6. **Rulebook Has Two Decoupled Layers:** Human layer (Markdown) for psychological philosophy; Machine layer (JSON) for deterministic runtime execution.
+7. **Android Platform Owns Final Constraints:** Honor battery optimizations, notification quotas, and system permissions.
 
 ## 31. Source basis and technology references
 

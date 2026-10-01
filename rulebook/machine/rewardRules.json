@@ -1,0 +1,61 @@
+{
+  "version": "1.0.0",
+  "description": "Deterministic factual reward and milestone rules rejecting artificial gamification",
+  "rules": [
+    {
+      "id": "REWARD_ANTI_GAMIFICATION_001",
+      "description": "Reject arbitrary XP, points, and coins. Rewards must record factual behavioral evidence.",
+      "when": {
+        "event": "EVALUATE_REWARD",
+        "requestedType": "points_or_xp"
+      },
+      "then": {
+        "action": "REJECT_GAMIFIED_REWARD",
+        "allowedType": "factual_milestone"
+      },
+      "priority": 100
+    },
+    {
+      "id": "REWARD_FIRST_ACTION_001",
+      "description": "Award first action milestone upon the initial successful completion of a newly formed habit.",
+      "when": {
+        "event": "HABIT_COMPLETED",
+        "habit.totalEvidenceVotes": 1
+      },
+      "then": {
+        "action": "GRANT_FACTUAL_REWARD",
+        "milestoneType": "first_action",
+        "title": "First Step Taken"
+      },
+      "priority": 90
+    },
+    {
+      "id": "REWARD_RECOVERY_001",
+      "description": "Award recovery milestone when completing a session after a missed day (Never Miss Twice).",
+      "when": {
+        "event": "HABIT_COMPLETED",
+        "previousEvent": "HABIT_MISSED"
+      },
+      "then": {
+        "action": "GRANT_FACTUAL_REWARD",
+        "milestoneType": "recovery",
+        "title": "Bounced Back"
+      },
+      "priority": 85
+    },
+    {
+      "id": "REWARD_CONSISTENCY_001",
+      "description": "Award consistency milestones at 7, 21, and 66 consecutive completion days (automaticity threshold).",
+      "when": {
+        "event": "HABIT_COMPLETED",
+        "habit.streakCount": [7, 21, 66]
+      },
+      "then": {
+        "action": "GRANT_FACTUAL_REWARD",
+        "milestoneType": "consistency",
+        "title": "Consistency Milestone"
+      },
+      "priority": 80
+    }
+  ]
+}
