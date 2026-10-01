@@ -52,7 +52,13 @@ export const importMDFilesAsVault = async (vaultName) => {
   }
 
   // Create the vault
-  const vault = await createVault(vaultName || "Imported");
+  const rawVaultName = typeof vaultName === 'string' ? vaultName.trim() : '';
+  const safeVaultName = rawVaultName
+    .replace(/[/\\?%*:|"<>]/g, "_")
+    .replace(/[\x00-\x1f\x7f]/g, "_")
+    .replace(/^\.+$/, "_")
+    .slice(0, 64) || "Imported";
+  const vault = await createVault(safeVaultName);
   const vaultBase = String(vault.path).replace(/\/?$/, '/');
 
   // Copy each file into the vault root
