@@ -64,10 +64,18 @@ export type InterventionPriority = 'low' | 'normal' | 'high' | 'urgent';
 
 export type InterventionStatus = 'scheduled' | 'dispatched' | 'dismissed' | 'acted' | 'expired';
 
+export type InterventionType =
+  | 'reminder'
+  | 'check-in'
+  | 'recovery'
+  | 'overload'
+  | 'reward'
+  | 'encouragement';
+
 export interface Intervention {
   id: string;
   habitId: string;
-  type: string;
+  type: InterventionType;
   surface: InterventionSurface;
   priority: InterventionPriority;
   scheduledFor: string;
@@ -78,6 +86,8 @@ export interface Intervention {
 }
 
 export type BehaviorEventType =
+  | 'TASK_CREATED'
+  | 'TASK_MISSED'
   | 'TASK_COMPLETED'
   | 'HABIT_COMPLETED'
   | 'HABIT_MISSED'
@@ -114,11 +124,20 @@ export interface FactualReward {
   identityId: string;
   title: string;
   description: string;
+  // Canonical Master Plan §10 seven categories. Legacy aliases
+  // (first_completion, consistency_streak, recovery_success, fast_activation)
+  // remain accepted until Phase 24 migration renames stored rewards.
   milestoneType:
+    | 'first_action'
+    | 'improvement'
+    | 'consistency'
+    | 'recovery'
+    | 'difficulty_progression'
+    | 'friction_reduction'
+    | 'identity_evidence'
     | 'first_completion'
     | 'consistency_streak'
     | 'recovery_success'
-    | 'fast_activation'
-    | 'friction_reduction';
+    | 'fast_activation';
   achievedAt: string;
 }
