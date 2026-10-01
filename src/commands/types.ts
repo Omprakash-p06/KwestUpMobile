@@ -4,7 +4,11 @@
  * Source: 4.0/KwestUp_4.0_Master_Plan.md, rulebook/ai/intent-parser.md
  */
 
-import { CueType, Habit, FrictionCategory } from '../behavior/types';
+import { CueType, Habit, HabitFrequency, FrictionCategory } from '../behavior/types';
+
+export interface CustomSchedule {
+  weekdays: number[]; // 0=Sunday..6=Saturday
+}
 
 export type CommandAction =
   | 'CREATE_HABIT'
@@ -13,7 +17,11 @@ export type CommandAction =
   | 'LOG_HABIT'
   | 'START_RECOVERY'
   | 'DISMISS_INTERVENTION'
-  | 'ADJUST_DIFFICULTY';
+  | 'ADJUST_DIFFICULTY'
+  | 'CREATE_IDENTITY'
+  | 'PAUSE_HABIT'
+  | 'ARCHIVE_HABIT'
+  | 'RESUME_HABIT';
 
 export type CommandPayload<A extends CommandAction> =
   A extends 'CREATE_HABIT'
@@ -23,13 +31,20 @@ export type CommandPayload<A extends CommandAction> =
         behavior: string;
         minimumAction: string;
         normalTarget: string;
+        stretchTarget?: string;
+        frequency: HabitFrequency;
+        customSchedule?: CustomSchedule;
         cueType: CueType;
         cueTime?: string;
+        cueLocation?: string;
       }
     : A extends 'UPDATE_HABIT'
     ? {
         habitId: string;
-        updates: Partial<Pick<Habit, 'title' | 'behavior' | 'minimumAction' | 'normalTarget' | 'status'>>;
+        // NOTE: 'status' is engine-owned (midnight-rollover state machine in
+        // rulebook/rules/missed-habit.md) and never AI-settable. Use
+        // PAUSE_HABIT / ARCHIVE_HABIT / RESUME_HABIT with actor + reason.
+        updates: Partial<Pick<Habit, 'title' | 'behavior' | 'minimumAction' | 'normalTarget'>>;
       }
     : A extends 'LOG_HABIT'
     ? {
@@ -57,6 +72,28 @@ export type CommandPayload<A extends CommandAction> =
         habitId: string;
         direction: 'easier' | 'harder';
         newMinimumAction: string;
+      }
+    : A extends 'CREATE_IDENTITY'
+    ? {
+        statement: string;
+      }
+    : A extends 'PAUSE_HABIT'
+    ? {
+        habitId: string;
+        actor: 'user' | 'engine';
+        reason: string;
+      }
+    : A extends 'ARCHIVE_HABIT'
+    ? {
+        habitId: string;
+        actor: 'user' | 'engine';
+        reason: string;
+      }
+    : A extends 'RESUME_HABIT'
+    ? {
+        habitId: string;
+        actor: 'user' | 'engine';
+        reason: string;
       }
     : never;
 
