@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [ main, development ]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint-and-test:
     name: Code Quality & Test Automation
@@ -14,20 +21,31 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm install
+        run: npm ci
 
       - name: Run ESLint Check
-        run: npm run lint
+        run: npm run lint -- --max-warnings=0
 
       - name: Run TypeScript Check
         run: npm run typecheck
 
       - name: Run Jest Test Suite
-        run: npm test -- --ci --maxWorkers=2 --coverage
+        run: npx jest --ci --maxWorkers=2 --coverage
+
+  semgrep:
+    name: Semgrep Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Semgrep Scan
+        uses: returntocorp/semgrep-action@v1
+        continue-on-error: true
