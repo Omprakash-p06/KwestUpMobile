@@ -12,7 +12,7 @@ review_date: 2026-10-01
 To ensure sustainable behavioral adoption and prevent initial burnout, all newly registered habits in KwestUp must satisfy three deterministic constraints before persistence:
 
 1. **Concurrent Active Habit Limit:**
-   A user may maintain a maximum of **3 active habits simultaneously**. If 3 active habits already exist, any command attempting `CREATE_HABIT` will be rejected by `commandValidator.ts` unless an existing habit is archived or paused.
+   A user may maintain a maximum of **3 active habits simultaneously**. If 3 active habits already exist, any command attempting `CREATE_HABIT` will be rejected by `commandValidator.ts` unless an existing habit is archived or paused. The overload engine (`rulebook/rules/overload.md`) counts active-or-recovery load jointly with threshold ≥3, so overload stays reachable under this cap.
 2. **Mandatory Minimum Action (2-Minute Rule):**
    Every habit must define a `minimumAction` that takes under 120 seconds to execute. Registrations with blank or identical targets (e.g., `normalTarget: "50 pushups"`, `minimumAction: "50 pushups"`) are rejected.
 3. **Mandatory Cue Specification:**

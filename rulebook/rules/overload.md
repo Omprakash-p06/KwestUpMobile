@@ -15,7 +15,7 @@ To prevent behavioral exhaustion and chronic failure spirals, KwestUp monitors a
 An **Overload Condition** is declared if and only if **ALL** of the following three conditions are met simultaneously:
 
 1. **Active Habit Count:**
-   The user has **4 or more habits active simultaneously** (`status: 'active'` or `status: 'recovery'`).
+   The user has **3 or more habits in active-or-recovery load** (`status: 'active'` or `status: 'recovery'`). Threshold sits at 3 (not 4) so it is reachable under the habit-creation cap of max 3 active habits.
 2. **Systemic Miss Rate:**
    The combined 7-day miss rate across **ALL** active habits exceeds **40%** (i.e., less than 60% of scheduled habit occurrences were completed over the last 7 calendar days).
 3. **Persistence:**
@@ -36,4 +36,4 @@ When an Overload Condition is declared:
 > [!NOTE]
 > **Counterexample: High Miss Rate with Few Habits**
 > A user has only 2 active habits, but misses both 3 days in a row (100% miss rate).
-> *System Behavior:* This does **NOT** trip the Overload Engine because active habits are $< 4$. Instead, this trips the standard Never-Miss-Twice recovery flow (`rulebook/rules/missed-habit.md`), which scales the habit down to its 2-minute version.
+> *System Behavior:* This does **NOT** trip the Overload Engine because active-or-recovery load is $< 3$. Instead, this trips the standard Never-Miss-Twice recovery flow (`rulebook/rules/missed-habit.md`), which scales the habit down to its 2-minute version.
