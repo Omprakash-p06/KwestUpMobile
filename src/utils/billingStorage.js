@@ -36,9 +36,17 @@ export const loadBillingData = async () => {
 export const saveBillingData = async (billingState) => {
   try {
     await AsyncStorage.setItem(BILLING_KEY, JSON.stringify(billingState));
+    return true;
   } catch (err) {
     logger.error("billingStorage: saveBillingData failed", { error: err });
+    return false;
   }
+};
+
+const persistOrThrow = async (updated) => {
+  const ok = await saveBillingData(updated);
+  if (!ok) throw new Error('billingStorage: persist failed — state not saved');
+  return updated;
 };
 
 // ─── Transactions ─────────────────────────────────────────────────────────────
@@ -46,15 +54,13 @@ export const saveBillingData = async (billingState) => {
 export const addTransaction = async (tx) => {
   const data = await loadBillingData();
   const updated = { ...data, transactions: [tx, ...data.transactions] };
-  await saveBillingData(updated);
-  return updated;
+  return await persistOrThrow(updated);
 };
 
 export const deleteTransaction = async (id) => {
   const data = await loadBillingData();
   const updated = { ...data, transactions: data.transactions.filter((t) => t.id !== id) };
-  await saveBillingData(updated);
-  return updated;
+  return await persistOrThrow(updated);
 };
 
 // ─── Budgets ──────────────────────────────────────────────────────────────────
@@ -67,15 +73,13 @@ export const upsertBudget = async (budget) => {
     ? data.budgets.map((b, i) => (i === idx ? { ...b, ...budget, id: b.id } : b))
     : [...data.budgets, budget];
   const updated = { ...data, budgets: updatedBudgets };
-  await saveBillingData(updated);
-  return updated;
+  return await persistOrThrow(updated);
 };
 
 export const deleteBudget = async (id) => {
   const data = await loadBillingData();
   const updated = { ...data, budgets: data.budgets.filter((b) => b.id !== id) };
-  await saveBillingData(updated);
-  return updated;
+  return await persistOrThrow(updated);
 };
 
 // ─── Analytics Helpers ────────────────────────────────────────────────────────
@@ -122,15 +126,13 @@ export const getMonthlyTotals = (transactions, month) => {
 export const addRecurringBill = async (bill) => {
   const data = await loadBillingData();
   const updated = { ...data, recurringBills: [...data.recurringBills, bill] };
-  await saveBillingData(updated);
-  return updated;
+  return await persistOrThrow(updated);
 };
 
 export const deleteRecurringBill = async (id) => {
   const data = await loadBillingData();
   const updated = { ...data, recurringBills: data.recurringBills.filter((b) => b.id !== id) };
-  await saveBillingData(updated);
-  return updated;
+  return await persistOrThrow(updated);
 };
 
 export const markBillPaid = async (id, paidDate) => {
@@ -141,8 +143,7 @@ export const markBillPaid = async (id, paidDate) => {
       b.id === id ? { ...b, lastPaidDate: paidDate } : b
     ),
   };
-  await saveBillingData(updated);
-  return updated;
+  return await persistOrThrow(updated);
 };
 
 export const updateBillNotificationIds = async (id, notificationIds) => {
@@ -153,6 +154,5 @@ export const updateBillNotificationIds = async (id, notificationIds) => {
       b.id === id ? { ...b, notificationIds } : b
     ),
   };
-  await saveBillingData(updated);
-  return updated;
+  return await persistOrThrow(updated);
 };
