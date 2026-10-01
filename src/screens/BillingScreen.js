@@ -284,7 +284,7 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
           <View style={[s.netRow, { borderColor: currentTheme.border + "40" }]}>
             <Text style={[s.netLabel, { color: currentTheme.secondaryText }]}>Net Balance</Text>
             <Text style={[s.netValue, { color: net >= 0 ? currentTheme.primary : "#ef4444" }]}>
-              {net >= 0 ? "+" : ""}{currency}{Math.abs(net).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+              {net >= 0 ? "+" : "-"}{currency}{Math.abs(net).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
             </Text>
           </View>
 
