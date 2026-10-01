@@ -99,12 +99,19 @@ export type CommandPayload<A extends CommandAction> =
 
 export interface CommandValidationResult {
   valid: boolean;
-  errors?: string[];
+  errors: string[]; // always present; empty when valid
 }
 
 export interface CommandExecutionResult {
   success: boolean;
   entityId?: string;
-  message: string;
-  error?: string;
+  message: string; // human-readable outcome; empty string on failure
+  error?: string; // only present when success === false
+  requestId: string; // echo of idempotencyKey for dedup tracing
+}
+
+export interface DispatchedCommand<A extends CommandAction = CommandAction> {
+  action: A;
+  payload: CommandPayload<A>;
+  idempotencyKey: string; // required — widget/notification callers must send; executor dedups double-tap
 }
