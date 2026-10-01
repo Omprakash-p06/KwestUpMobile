@@ -39,6 +39,22 @@ jobs:
       - name: Run Jest Test Suite
         run: npx jest --ci --maxWorkers=2 --coverage
 
+      - name: Upload ESLint Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eslint-report
+          path: eslint-report.json
+          if-no-files-found: ignore
+
+      - name: Upload Coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: ignore
+
   semgrep:
     name: Semgrep Security Scan
     runs-on: ubuntu-latest
