@@ -20,7 +20,13 @@ export const loadBillingData = async () => {
     const raw = await AsyncStorage.getItem(BILLING_KEY);
     if (!raw) return { ...DEFAULT_BILLING };
     const parsed = JSON.parse(raw);
-    return { ...DEFAULT_BILLING, ...parsed };
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return { ...DEFAULT_BILLING };
+    return {
+      transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
+      budgets: Array.isArray(parsed.budgets) ? parsed.budgets : [],
+      recurringBills: Array.isArray(parsed.recurringBills) ? parsed.recurringBills : [],
+      currency: typeof parsed.currency === 'string' ? parsed.currency : DEFAULT_BILLING.currency,
+    };
   } catch (err) {
     logger.error("billingStorage: loadBillingData failed", { error: err });
     return { ...DEFAULT_BILLING };
