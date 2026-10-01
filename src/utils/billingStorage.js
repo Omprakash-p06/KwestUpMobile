@@ -60,16 +60,12 @@ export const deleteTransaction = async (id) => {
 // ─── Budgets ──────────────────────────────────────────────────────────────────
 
 export const upsertBudget = async (budget) => {
+  if (!budget || typeof budget.id !== 'string' || !budget.id) throw new Error('upsertBudget: budget.id is required');
   const data = await loadBillingData();
-  const existing = data.budgets.find((b) => b.id === budget.id || b.category === budget.category);
-  let updatedBudgets;
-  if (existing) {
-    updatedBudgets = data.budgets.map((b) =>
-      b.id === existing.id ? { ...existing, ...budget } : b
-    );
-  } else {
-    updatedBudgets = [...data.budgets, budget];
-  }
+  const idx = data.budgets.findIndex((b) => b.id === budget.id);
+  const updatedBudgets = idx >= 0
+    ? data.budgets.map((b, i) => (i === idx ? { ...b, ...budget, id: b.id } : b))
+    : [...data.budgets, budget];
   const updated = { ...data, budgets: updatedBudgets };
   await saveBillingData(updated);
   return updated;
