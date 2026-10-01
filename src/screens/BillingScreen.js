@@ -637,8 +637,8 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
             />
 
             <View style={s.modalActions}>
-              <CustomButton label="CANCEL" onPress={() => setShowAddBudget(false)} variant="secondary" theme={currentTheme} style={{ flex: 1, marginRight: 8 }} />
-              <CustomButton label="SET BUDGET" onPress={handleSaveBudget} theme={currentTheme} style={{ flex: 1 }} />
+              <CustomButton title="CANCEL" onPress={() => setShowAddBudget(false)} outline color={currentTheme.primary} style={{ flex: 1, marginRight: 8 }} />
+              <CustomButton title="SET BUDGET" onPress={handleSaveBudget} color={currentTheme.primary} style={{ flex: 1 }} />
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -707,8 +707,8 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
               />
 
               <View style={[s.modalActions, { marginTop: 12 }]}>
-                <CustomButton label="CANCEL" onPress={() => setShowAddBill(false)} variant="secondary" theme={currentTheme} style={{ flex: 1, marginRight: 8 }} />
-                <CustomButton label="ADD BILL" onPress={handleSaveBill} theme={currentTheme} style={{ flex: 1 }} />
+                <CustomButton title="CANCEL" onPress={() => setShowAddBill(false)} outline color={currentTheme.primary} style={{ flex: 1, marginRight: 8 }} />
+                <CustomButton title="ADD BILL" onPress={handleSaveBill} color={currentTheme.primary} style={{ flex: 1 }} />
               </View>
             </View>
           </ScrollView>
