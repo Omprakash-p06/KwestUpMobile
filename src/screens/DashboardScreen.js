@@ -21,6 +21,8 @@ const formatDueDateLabel = (dueDate) => {
   if (isNaN(due.getTime())) return "LOGGED IN QUEUE";
   return `DUE: ${due.toLocaleDateString([], { month: "short", day: "numeric" })}`;
 };
+
+const getDailyCompletions = (tasks) => {
   const now = new Date();
   const buckets = Array.from({ length: DAYS }, (_, i) => {
     const d = new Date(now);

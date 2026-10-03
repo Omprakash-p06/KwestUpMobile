@@ -237,10 +237,19 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 | 13. Billing & Money Management | 2/2 | ✅ Complete | 2026-07-07 |
 | 14. Testing & CI/CD | 3/3 | ✅ Complete | 2026-09-27 |
 | 15. Local Date Engine | 2/2 | ✅ Complete | 2026-09-27 |
-| 16. Security & Storage Hardening | 0/2 | ⏳ Pending | - |
-| 17. State & Mutation Architecture | 0/2 | ⏳ Pending | - |
-| 18. Local AI Hardening | 0/2 | ⏳ Pending | - |
-| 19. Observability & Logging | 0/1 | ⏳ Pending | - |
+| 16. Security & Storage Hardening | 2/2 | ✅ Complete | 2026-09-27 |
+| 17. State & Mutation Architecture | 2/2 | ✅ Complete | 2026-09-28 |
+| 18. Local AI Hardening | 2/2 | ✅ Complete | 2026-09-28 |
+| 19. Observability & Logging | 2/2 | ✅ Complete | 2026-09-28 |
+| 20. Governance & Rulebook Foundation | 2/2 | ✅ Complete | 2026-10-01 |
+| 21. Technology Platform Upgrade | 0/2 | ⏳ Pending | - |
+| 22. Unified Notification Service | 0/2 | ⏳ Pending | - |
+| 23. Domain Event Bus | 0/2 | ⏳ Pending | - |
+| 24. Core Behavior & Rule Engine | 0/2 | ⏳ Pending | - |
+| 25. Intervention & Widgets | 0/2 | ⏳ Pending | - |
+| 26. Command Gateway & Sandboxing | 0/2 | ⏳ Pending | - |
+| 27. Intent Parser & Compiler | 0/2 | ⏳ Pending | - |
+| 28. Behavioral Adaptation & Review | 0/2 | ⏳ Pending | - |
 
 ---
 
@@ -389,6 +398,11 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
   2. Native modules (`llama.rn` postinstall patch, `react-native-android-widget`, `reanimated`) compile and function correctly.
   3. Full Jest test suite and ESLint pass 100% cleanly on Node 22.
 
+**Plans**:
+
+- [ ] 21-01-PLAN.md — Runtime & Dependency Upgrade (Expo SDK 57, RN 0.86, React 19.2.3, Babel config, and Jest test script cleanup)
+- [ ] 21-02-PLAN.md — Native Module & Postinstall Patch Hardening (`patch-llama-gradle.js` checksum validation, 16KB page-size linker flags, and widget build validation)
+
 ---
 
 ### Phase 22: Unified Notification Service & Dispatch Engine
@@ -401,6 +415,11 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
   1. Single authoritative `src/services/notificationService.ts` handles all Android channels, scheduling, cancellations, and permissions.
   2. Hard behavioral notification policy engine enforces quiet hours, max daily notification caps, and deduplication windows outside the LLM.
 
+**Plans**:
+
+- [ ] 22-01-PLAN.md — Unified `src/services/notificationService.ts` core engine (channels, permissions, and typed descriptors)
+- [ ] 22-02-PLAN.md — Policy gate enforcement, caller migration from `App.js` & contexts, and `logger.js` redaction expansion
+
 ---
 
 ### Phase 23: Domain Event Bus & Behavioral Telemetry
@@ -412,6 +431,11 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 
   1. `src/behavior/eventBus.ts` handles decoupled pub/sub for domain events (`TASK_CREATED`, `TASK_COMPLETED`, `HABIT_COMPLETED`, `WIDGET_ACTION`, etc.).
   2. Task, billing, birthday, and timer mutations emit domain events on state transitions.
+
+**Plans**:
+
+- [ ] 23-01-PLAN.md — In-memory type-safe `eventBus.ts` core and event dispatcher
+- [ ] 23-02-PLAN.md — Domain mutation instrumentation (tasks, billing, birthdays, focus timer) with unit test coverage
 
 ---
 
@@ -428,6 +452,11 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
   4. Isolated `HabitContext` with versioned storage key `kwestup_habits_v1` and immutable behavior history `kwestup_behavior_events_v1`.
   5. Support for minimum action (2-minute rule), habit stacking, and "never miss twice" recovery state machine.
 
+**Plans**:
+
+- [ ] 24-01-PLAN.md — Pure deterministic rule evaluation engine and machine rule parsers with audit logging
+- [ ] 24-02-PLAN.md — `HabitContext`, versioned storage persistence, minimum action, and recovery state machines
+
 ---
 
 ### Phase 25: Intervention Engine & Behavioral Home-Screen Widgets
@@ -439,6 +468,11 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 
   1. `interventionEngine.ts` arbitrates touchpoints governed by `interventionRules.json` with strict anti-spam limits (`REMINDER_ANTI_SPAM_001`) and quiet-hour gates.
   2. Android home-screen widgets render actionable behavioral states (Today, Next Action, Don't Miss Twice recovery).
+
+**Plans**:
+
+- [ ] 25-01-PLAN.md — Multi-surface `interventionEngine.ts` with anti-spam and quiet-hour arbitration
+- [ ] 25-02-PLAN.md — Behavioral widget renderers (Today, Next Action, Recovery cues) and widget typecheck inclusion
 
 ---
 
@@ -452,6 +486,11 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
   1. Command Gateway enforces schema validation, capability checks, and permission checks (`commandValidator.ts`, `commandExecutor.ts`).
   2. Direct storage writes and Android system calls forbidden from AI execution paths.
   3. Command execution generates traceable result payloads with echo IDs and applied rule IDs.
+
+**Plans**:
+
+- [ ] 26-01-PLAN.md — Command Gateway validation, capability checks, and sandboxed executor
+- [ ] 26-02-PLAN.md — AI sandboxing layer and command dispatch integration with domain contexts
 
 ---
 
@@ -467,6 +506,11 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
   3. Optional rule packet retrieval (rule RAG) provides 3–4 focused rule definitions to the LLM for edge cases without overflowing context.
   4. Heuristic fallback ensures offline reliability even if LLM inference is unavailable.
 
+**Plans**:
+
+- [ ] 27-01-PLAN.md — Specialist Intent Parser module and offline heuristic fallback
+- [ ] 27-02-PLAN.md — Deterministic Behavior Compiler and llama.rn memory lifecycle management
+
 ---
 
 ### Phase 28: Behavioral Adaptation, Weekly Review & Language Generation
@@ -480,3 +524,9 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
   2. Deterministic engine maps identified semantic friction (e.g., phone distraction, low energy) to supported KwestUp interventions.
   3. Weekly behavioral review UI provides actionable self-reflection without toxic gamification.
   4. All unit, domain, and integration tests pass 100% with zero lint or type errors.
+
+**Plans**:
+
+- [ ] 28-01-PLAN.md — Behavior Analyst friction diagnosis and Language Generator weekly review engine
+- [ ] 28-02-PLAN.md — End-to-end test suite hardening, performance validation, and production release sign-off
+

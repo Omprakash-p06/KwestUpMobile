@@ -44,8 +44,8 @@ Requirements for the hardening and production readiness milestone.
 Requirements for the behavioral execution system, technology platform upgrade, and AI habit compiler.
 
 ### Repository Governance & Architecture Foundation
-- [ ] **GOV-01**: Establish comprehensive two-layer Atomic Habits behavioral rulebook: human markdown philosophy contracts and machine-executable rule sets (`rulebook/machine/*.json`) with explicit Rule IDs (`HABIT_CREATE_001`, `RECOVERY_001`, etc.).
-- [ ] **GOV-02**: Set up TypeScript compilation foundation (`tsconfig.json`) and scaffold domain directory hierarchy (`src/behavior/`, `src/commands/`, `src/services/`, `src/domains/`).
+- [x] **GOV-01**: Establish comprehensive two-layer Atomic Habits behavioral rulebook: human markdown philosophy contracts and machine-executable rule sets (`rulebook/machine/*.json`) with explicit Rule IDs (`HABIT_CREATE_001`, `RECOVERY_001`, etc.).
+- [x] **GOV-02**: Set up TypeScript compilation foundation (`tsconfig.json`) and scaffold domain directory hierarchy (`src/behavior/`, `src/commands/`, `src/services/`, `src/domains/`).
 
 ### Technology Platform Upgrade
 - [ ] **UPGD-01**: Upgrade to Expo SDK 57, React Native 0.86, React 19.2.3, and Node 22 while preserving native module stability (`llama.rn`, `react-native-android-widget`).
@@ -98,8 +98,8 @@ Requirements for the behavioral execution system, technology platform upgrade, a
 | AI-02   | Phase 18 | Complete |
 | OBS-01  | Phase 19 | Complete |
 | OBS-02  | Phase 19 | Complete |
-| GOV-01  | Phase 20 | Pending |
-| GOV-02  | Phase 20 | Pending |
+| GOV-01  | Phase 20 | Complete |
+| GOV-02  | Phase 20 | Complete |
 | UPGD-01 | Phase 21 | Pending |
 | NOTIF-01| Phase 22 | Pending |
 | NOTIF-02| Phase 22 | Pending |
@@ -113,11 +113,11 @@ Requirements for the behavioral execution system, technology platform upgrade, a
 | AI-04   | Phase 28 | Pending |
 
 **Coverage:**
-- Active requirements: 13 total (Milestone 3)
-- Completed requirements: 14 total (Milestone 2)
+- Active requirements: 11 total (Milestone 3 remaining)
+- Completed requirements: 16 total (Milestone 2 + Phase 20)
 - Mapped to phases: 27
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-09-27*
-*Last updated: 2026-09-27 after Milestone 2 scope definition*
+*Last updated: 2026-10-04 after Phase 20 completion & codemap alignment audit*
