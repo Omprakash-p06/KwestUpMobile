@@ -1,23 +1,24 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-10-01
+**Analysis Date:** 2026-10-04
 
 ## Directory Layout
 
 ```
 KwestUpMobile/
 ├── index.js                # Expo root: registers App + headless widget handler
-├── App.js                  # App shell: boot, theme, timer, persistence, providers (1067 lines)
+├── App.js                  # App shell: boot, theme, timer, persistence, providers (1078 lines)
 ├── app.json                # Expo config: app id, 4 widgets, plugins, EAS project id
-├── eas.json                # EAS build profiles
-├── package.json            # Deps: expo ~53, react 19, llama.rn, android-widget
+├── eas.json                # EAS build profiles (development / preview / production)
+├── package.json            # Deps: expo ~57, RN 0.86, react 19.2.3, llama.rn 0.12.4, android-widget
+├── patch-llama-gradle.js   # Postinstall: idempotent llama.rn native patch + syntax assert
 ├── babel.config.js         # Babel preset chain
 ├── metro.config.js         # Metro bundler config
 ├── jest.config.js          # Jest + jest-expo preset
 ├── eslint.config.js / .eslintrc.js  # Lint (flat + legacy)
 ├── tsconfig.json           # TypeScript (covers src/behavior|commands|services)
-├── assets/                 # Icons, splash, widget previews
-├── android/                # Native Android shell (generated)
+├── assets/                 # Icons, splash, widget previews (incl. widget-preview/)
+├── android/                # Native Android shell (gradle.properties, app/build.gradle)
 ├── src/                    # All application source
 │   ├── screens/            # 9 feature screens (drawer routes)
 │   ├── components/         # 15 shared UI primitives + overlays
@@ -29,7 +30,7 @@ KwestUpMobile/
 │   ├── commands/           # 4.0 command type contracts (spec)
 │   ├── services/           # 4.0 notification/service contracts (spec)
 │   └── domains/            # 4.0 domain boundary placeholder (README only)
-├── widgets/                # 4 Android widgets + headless task handler
+├── widgets/                # 4 Android widgets + headless task handler (5 .tsx files)
 ├── rulebook/               # 44-doc behavioral governance spec
 │   ├── atomic-habits/      # 24 principle specs
 │   ├── ai/                 # 5 AI interaction policies
@@ -67,12 +68,12 @@ KwestUpMobile/
 **`src/utils/`:**
 - Purpose: Engines, device services, persistence — the largest layer (14 modules).
 - Contains: Pure logic + Expo/AsyncStorage facades.
-- Key files: `src/utils/taskMutations.js` (pure task engine shared with widgets), `src/utils/aiService.js` (1064-line llama.rn lifecycle), `src/utils/fileStorage.js` (vault markdown CRUD), `src/utils/vaultService.js` (vault registry), `src/utils/storage.js` (`APP_VERSION`, `STORAGE_VERSION`, migration), `src/utils/notifications.js`, `src/utils/billingStorage.js`, `src/utils/syncService.js`, `src/utils/exportService.js`, `src/utils/diagnostics.js`, `src/utils/dateUtils.js`, `src/utils/logger.js`, `src/utils/vaultImport.js`, `src/utils/billingNotifications.js`
+- Key files: `src/utils/taskMutations.js` (pure task engine shared with widgets), `src/utils/aiService.js` (llama.rn lifecycle), `src/utils/fileStorage.js` (vault markdown CRUD), `src/utils/vaultService.js` (vault registry), `src/utils/storage.js` (`APP_VERSION v3.5.0`, `STORAGE_VERSION v7.0`, migration), `src/utils/notifications.js`, `src/utils/billingStorage.js`, `src/utils/syncService.js`, `src/utils/exportService.js`, `src/utils/diagnostics.js`, `src/utils/dateUtils.js`, `src/utils/logger.js`, `src/utils/vaultImport.js`, `src/utils/billingNotifications.js`
 
 **`src/theme/`:**
 - Purpose: Design tokens + global stylesheet.
 - Contains: 2 files.
-- Key files: `src/theme/colors.js` (`themes`: 5 names × 3 modes), `src/theme/styles.js` (895-line shared StyleSheet)
+- Key files: `src/theme/colors.js` (`themes`: 5 names × 3 modes), `src/theme/styles.js` (shared StyleSheet)
 
 **`src/behavior/` + `src/commands/` + `src/services/`:**
 - Purpose: 4.0 contract stubs — TypeScript interfaces only, zero runtime code, zero tests yet.
@@ -85,9 +86,14 @@ KwestUpMobile/
 - Key files: `src/domains/README.md`
 
 **`widgets/`:**
-- Purpose: Android home-screen widgets + headless background handler (no dependency on React tree at runtime).
+- Purpose: Android home-screen widgets + headless background handler (no dependency on React tree at runtime; Old Arch bridge, never imports contexts).
 - Contains: 5 `.tsx` files.
-- Key files: `widgets/widget-task-handler.tsx` (headless entry: tab switch, task toggle, render fan-out), `widgets/TasksListWidget.tsx` (interactive list, 275 lines), `widgets/ImportantTasksWidget.tsx`, `widgets/DailyTasksWidget.tsx`, `widgets/FocusTimerWidget.tsx`
+- Key files: `widgets/widget-task-handler.tsx` (headless entry: tab switch, task toggle via `toggleTask` from `src/utils/taskMutations.js`, render fan-out), `widgets/TasksListWidget.tsx` (interactive list), `widgets/ImportantTasksWidget.tsx` (top-5 important unfinished slice), `widgets/DailyTasksWidget.tsx` (counts only), `widgets/FocusTimerWidget.tsx` (remaining + isRunning only)
+
+**`android/`:**
+- Purpose: Native Android shell (Expo prebuild output, checked in with deliberate hand-maintained flags).
+- Contains: `android/gradle.properties` (`newArchEnabled=false`, `hermesEnabled=true`, `reactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64`, `expo.useLegacyPackaging=true`, `expo.edgeToEdgeEnabled=true`), `android/app/build.gradle` (applicationId `com.omprakashp06.kwestupmobile`, versionCode 7, legacy-packaging wiring), `android/build.gradle` (`-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON` for Android 16 16 KB page-size support), `android/settings.gradle`, `android/gradle/`, `android/gradlew(.bat)`
+- Key files: `android/gradle.properties` (read before touching any native bridge choice — the `newArchEnabled=false` comment block is the decision record), `android/app/build.gradle`, `android/build.gradle`
 
 **`rulebook/`:**
 - Purpose: Immutable behavioral specification; every future engine path must trace to a doc here.
@@ -113,9 +119,11 @@ KwestUpMobile/
 - `widgets/widget-task-handler.tsx`: Headless widget runtime — all background widget logic lives here
 
 **Configuration:**
-- `app.json`: Expo + widget plugin registrations (4 widgets), package `com.omprakashp06.kwestupmobile`, EAS project id
-- `eas.json`: Build profiles
-- `package.json`: Scripts (`start`, `android`, `lint`, `typecheck`, `test`), expo ~53 / react 19 / `llama.rn@0.12.4` / `react-native-android-widget`
+- `app.json`: Expo + widget plugin registrations (4 widgets: FocusTimer, DailyTasks, ImportantTasks, TasksList), package `com.omprakashp06.kwestupmobile`, EAS project id
+- `eas.json`: Build profiles — `development` (dev-client APK), `preview` (internal), `production` (APK + raised Node heap)
+- `android/gradle.properties`: Native bridge + packaging flags — `newArchEnabled=false` (Old Arch + JSI), `hermesEnabled=true`, `expo.useLegacyPackaging=true` (Android 16 install-time lib extraction), ABIs, edge-to-edge
+- `android/app/build.gradle` / `android/build.gradle`: App id/versionCode, legacy-packaging wiring, 16 KB page-size cmake flag
+- `package.json`: Scripts (`start`, `android`, `lint`, `typecheck`, `test`), expo `~57.0.0` / RN `0.86.0` / react `19.2.3` / `llama.rn@0.12.4` / `react-native-android-widget`, `postinstall: node patch-llama-gradle.js`, `engines: node >=22.13`
 - `tsconfig.json`: TS scope (covers the three `src/*/types.ts` contracts)
 - `babel.config.js`, `metro.config.js`: Transpile/bundle
 - `jest.config.js`: `jest-expo` preset, test match
@@ -174,6 +182,11 @@ KwestUpMobile/
 - Implementation: `widgets/<Name>Widget.tsx`, register in `app.json` plugin `widgets` array (copy a `FocusTimer` block: name/label/description/minWidth/minHeight/previewImage), map in `nameToWidget` in `widgets/widget-task-handler.tsx:13-18`, add render branch in `widgets/widget-task-handler.tsx:242-271`
 - Follow the slice + stagger + `active`-only discipline in `App.js:558-648` and headless AsyncStorage reads (never import contexts into `widgets/`)
 
+**Native / Build Changes:**
+- Bridge flags: Edit `android/gradle.properties` only — read the `newArchEnabled=false` decision comment first; do not enable New Arch without the two gating conditions (non-NothingOS validation + llama.rn `getJSCallInvoker` migration)
+- 16 KB / packaging flags: `android/build.gradle` (flexible page sizes) + `expo.useLegacyPackaging` in `android/gradle.properties`; verify via a release APK install on Android 16
+- Build flavors: Edit `eas.json` profiles; version bumps touch `app.json` + `android/app/build.gradle` versionCode + `package.json` + `src/utils/storage.js` `APP_VERSION` together
+
 ## Special Directories
 
 **`rulebook/`:**
@@ -186,10 +199,15 @@ KwestUpMobile/
 - Generated: No
 - Committed: Yes (`src/domains/README.md`)
 
-**`android/` + `build/` + `coverage/` + `node_modules/`:**
-- Purpose: Native shell / build artifacts / coverage output / installed deps
+**`android/`:**
+- Purpose: Native shell with hand-maintained bridge/packaging flags (Old Arch, Hermes, 16 KB page-size, legacy packaging)
+- Generated: Partially (Expo prebuild output + manual flag edits — treat `gradle.properties` comment block as decision record)
+- Committed: Yes
+
+**`build/` + `coverage/` + `node_modules/`:**
+- Purpose: Build artifacts / coverage output / installed deps
 - Generated: Yes
-- Committed: No (gitignored; `android/` is the Expo prebuild output)
+- Committed: No (gitignored)
 
 **`.planning/`:**
 - Purpose: GSD roadmap, phases, and this codebase map (`.planning/codebase/`)
@@ -198,4 +216,4 @@ KwestUpMobile/
 
 ---
 
-*Structure analysis: 2026-10-01*
+*Structure analysis: 2026-10-04*

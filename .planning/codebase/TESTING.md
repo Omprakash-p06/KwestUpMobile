@@ -1,6 +1,6 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-10-01
+**Analysis Date:** 2026-10-04
 
 ## Test Framework
 
@@ -15,7 +15,7 @@
 
 **Run Commands:**
 ```bash
-npm test                 # Run all tests (jest --passWithNoTests)
+npm test                 # Run all tests (plain `jest`, no --passWithNoTests — empty suite fails)
 npm run test:watch       # Watch mode (jest --watch)
 npm run test:coverage    # Coverage (jest --coverage)
 npx jest --ci --maxWorkers=2 --coverage   # CI invocation (.github/workflows/ci.yml)
@@ -155,7 +155,7 @@ const TestTaskConsumer = () => {
 
 ## Coverage
 
-**Requirements:** No global `coverageThreshold` enforced (`jest.config.js`). The file documents why: current coverage is ~28% lines / ~17% functions across 26 suites / 358 tests passing (2026-10-01), so a 70% gate would red CI. Targets step up toward 70/90/95 as engine suites land. CI still runs `--coverage` for tracking and uploads `coverage/` as an artifact (`.github/workflows/ci.yml`).
+**Requirements:** No global `coverageThreshold` enforced (`jest.config.js`). The file documents why (CR-09 partial): current coverage is ~28% lines / ~17% functions across 13 suites / 180 tests passing (2026-10-04, Phase 21 per `.planning/STATE.md`), so a 70% gate would red CI. Targets step up toward 70/90/95 as engine suites land. CI still runs `--coverage` for tracking and uploads `coverage/` as an artifact (`.github/workflows/ci.yml`).
 
 **View Coverage:**
 ```bash
@@ -167,7 +167,7 @@ npm run test:coverage
 ## Test Types
 
 **Unit Tests:**
-- Scope: pure logic and service units. 11 suites in `__tests__/unit/`: logger ring-buffer/PII gating, date boundary math, task mutation/recurrence, sync validation, storage migration, vault/file storage against the in-memory FS mock, export/import, AI service pipeline, TaskContext provider, ErrorBoundary recovery.
+- Scope: pure logic and service units. 11 suites in `__tests__/unit/` plus the setup smoke test and the legacy widget-logic suite (13 suites / 180 tests total, 2026-10-04): logger ring-buffer/PII gating, date boundary math, task mutation/recurrence, sync validation, storage migration, vault/file storage against the in-memory FS mock, export/import, AI service pipeline, TaskContext provider, ErrorBoundary recovery.
 - Approach: deterministic inputs, pinned clocks, real module + mocked platform boundary.
 
 **Integration Tests:**
@@ -222,6 +222,16 @@ expect(isNaN(parseLocalDate('random-junk').getTime())).toBe(true);
 expect(isSameLocalDay(null, '2026-04-01')).toBe(false);
 ```
 
+## CI Gates
+
+**Pipeline:** `.github/workflows/ci.yml` (`lint-and-test` on `ubuntu-latest`, Node 22, `npm ci`), triggers on push/PR to `main` and `development`, with `cancel-in-progress` concurrency.
+1. `npm run lint` — plain `eslint .`, no `--max-warnings=0` (WR-10 partial until ~849 warnings triaged).
+2. `npm run typecheck` — `tsc --noEmit`.
+3. `npx jest --ci --maxWorkers=2 --coverage` — full suite (13 suites / 180 tests); `coverage/` uploaded as an artifact alongside the ESLint report.
+4. Semgrep security scan runs as a separate job with `continue-on-error: true`.
+
+**Local mirror:** `check.bat` runs `npm run lint` then `npm test` (plain `jest`); both must pass before committing on Windows.
+
 ---
 
-*Testing analysis: 2026-10-01*
+*Testing analysis: 2026-10-04*

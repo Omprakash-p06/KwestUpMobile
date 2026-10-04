@@ -1,7 +1,7 @@
-<!-- refreshed: 2026-10-01 -->
+<!-- refreshed: 2026-10-04 -->
 # Architecture
 
-**Analysis Date:** 2026-10-01
+**Analysis Date:** 2026-10-04
 
 ## System Overview
 
@@ -33,10 +33,11 @@
          │
          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  Persistence / Platform Bridge                               │
+│  Persistence / Platform Bridge (Old Arch + JSI)              │
 │  AsyncStorage (`src/utils/storage.js`) + expo-file-system     │
 │  Headless widgets `widgets/widget-task-handler.tsx`          │
 │  Android widgets `widgets/*.tsx` + `app.json` plugin config  │
+│  `android/gradle.properties` (newArchEnabled=false)          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -122,10 +123,12 @@ Governance sits above all layers: `rulebook/` containing both **human philosophy
 - Depends on: AsyncStorage + `expo-file-system`
 - Used by: `App.js` (`initializeApp`/`loadData`/`saveData`), all contexts, widget handler
 
-**Platform bridge (widgets + native):**
-- Purpose: Push throttled widget renders from app process; handle taps headlessly without launching the app.
+**Platform bridge (widgets + native — Old Architecture + JSI):**
+- Purpose: Push throttled widget renders from app process; handle taps headlessly without launching the app. Runs on the Old Architecture bridge (`newArchEnabled=false`) with JSI used by llama.rn via the CatalystInstance path.
 - Location: `widgets/`, `app.json`, `android/`
-- Contains: `widgets/widget-task-handler.tsx`, `widgets/TasksListWidget.tsx`, `widgets/ImportantTasksWidget.tsx`, `widgets/DailyTasksWidget.tsx`, `widgets/FocusTimerWidget.tsx`; widget plugin block in `app.json`
+- Contains: `widgets/widget-task-handler.tsx`, `widgets/TasksListWidget.tsx`, `widgets/ImportantTasksWidget.tsx`, `widgets/DailyTasksWidget.tsx`, `widgets/FocusTimerWidget.tsx`; widget plugin block in `app.json`; native flags in `android/gradle.properties`, `android/app/build.gradle`, `android/build.gradle`
+- Native bridge choice: Old Architecture — `newArchEnabled=false` in `android/gradle.properties:60` (deliberate; Fabric `DefaultNewArchitectureEntryPoint.load()` crashes on NothingOS NtOnlineConfigImpl injection on Nothing Phone 3a — see inline comment `android/gradle.properties:42-60`). `hermesEnabled=true` (`android/gradle.properties:64`). llama.rn `0.12.4` installs JSI bindings through `RNLlamaModule.install()` → `getCatalystInstance().getJSCallInvokerHolder()`, i.e. the Old-Arch bridge API — no Fabric/TurboModules required. Re-enable New Arch only after non-NothingOS validation AND llama.rn migrates to `ReactContext.getJSCallInvoker()`.
+- Android 16 / 16 KB page-size support: `-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON` injected into cmake args (`android/build.gradle:47-48`); `expo.useLegacyPackaging=true` (`android/gradle.properties:79`, honored in `android/app/build.gradle:122`) so native libs extract at install time. ABIs: `armeabi-v7a,arm64-v8a,x86,x86_64` (`android/gradle.properties:34`).
 - Depends on: `react-native-android-widget`, `src/utils/taskMutations.js`, `src/utils/storage.js`
 - Used by: `index.js` (`registerWidgetTaskHandler`), `App.js` (`requestWidgetUpdate` effects)
 
@@ -216,9 +219,21 @@ Governance sits above all layers: `rulebook/` containing both **human philosophy
 - Triggers: Build (EAS/npx expo), bundler
 - Responsibilities: App id (`com.omprakashp06.kwestupmobile`), 4 widget registrations, plugin list (`llama.rn`, `expo-camera`, `react-native-android-widget`), EAS project id
 
+## Build Flavors
+
+**EAS profiles (`eas.json`):**
+- `development` — dev-client, `distribution: internal`, Android `buildType: apk` (sideloadable debug loop).
+- `preview` — `distribution: internal` (internal sharing, no store submit).
+- `production` — Android `buildType: apk` with `NODE_OPTIONS=--max-old-space-size=4096` for the Hermes/llama.rn link step.
+
+**Versioning:**
+- App version `3.5.0` / Android `versionCode 7` (`app.json`, `android/app/build.gradle:95`, `package.json`, `src/utils/storage.js:4` `APP_VERSION`). Storage namespace `STORAGE_VERSION = v7.0` (`src/utils/storage.js:5`).
+- Platform baseline (Phase 21): Expo SDK `~57.0.0`, RN `0.86.0`, React `19.2.3`, Node `>=22.13` (`package.json`); native pins `llama.rn 0.12.4`, `react-native-android-widget ^0.16.1` (postinstall hardened by `patch-llama-gradle.js`).
+
 ## Architectural Constraints
 
 - **Threading:** Single-threaded JS event loop; native work (llama.rn inference, expo-file-system, notifications) is async-bridged. Timer uses `setInterval` in `App.js:677`; AI idle unload on 5-min timer in `src/utils/aiService.js:46`; widget stagger via `setTimeout` in `App.js:582-643`.
+- **Native bridge:** Old Architecture only (`newArchEnabled=false`, `hermesEnabled=true`). No Fabric renderers, no TurboModules — `react-native-android-widget` renders through the headless task handler, and llama.rn binds JSI over the Old-Arch CatalystInstance. Do not add New-Arch-only libraries without revisiting `android/gradle.properties:42-60`.
 - **Global state:** Module singletons `_llamaContext`/`_initPromise`/`_loadGeneration` in `src/utils/aiService.js:34-40`; timer/widget throttle refs in `App.js:111-140`; `lastPersistedJsonRef`/`tasksHydratedRef` in `src/context/TaskContext.js:73-74`. No global Redux store.
 - **Circular imports:** None detected between layers. `App.js` ↔ contexts is parent→child props only; `AppNavigator.js` re-imports `../utils/billingStorage` lazily (`src/navigation/AppNavigator.js:157`) to avoid a static cycle with `BillingContext`.
 - **Binder budget:** Widget payloads and save frequency are hard-constrained (slice to 5/8 items, 5 s widget throttle, 15 s save throttle) — see `App.js:558-648`. New widget surfaces must follow the same slice + stagger pattern.
@@ -257,4 +272,4 @@ Governance sits above all layers: `rulebook/` containing both **human philosophy
 
 ---
 
-*Architecture analysis: 2026-10-01*
+*Architecture analysis: 2026-10-04*

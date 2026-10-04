@@ -1,6 +1,6 @@
 # External Integrations
 
-**Analysis Date:** 2026-10-01
+**Analysis Date:** 2026-10-04
 
 ## APIs & External Services
 
@@ -8,7 +8,7 @@
 - Hugging Face (`huggingface.co`) - One-time GGUF model fetch for offline inference
   - SDK/Client: `llama.rn 0.12.4` (`initLlama`) + `expo-file-system` resumable download in `src/utils/aiService.js`
   - URL: `https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/<pinned-commit>/qwen2.5-0.5b-instruct-q4_k_m.gguf` (`MODEL_DOWNLOAD_URL`, `MODEL_PINNED_COMMIT`, `MODEL_EXPECTED_SHA256`, `MODEL_EXPECTED_SIZE` in `src/utils/aiService.js`)
-  - Auth: none (public repo, pinned commit `9217f5db79a29953eb74d5343926648285ec7e67`, SHA-256 verified)
+  - Auth: none (public repo, pinned commit `9217f5db79a29953eb74d5343926648285ec7e67`, SHA-256 verified, size-checked at 491,400,032 bytes)
 
 **LAN companion sync (user's own PC, not a SaaS backend):**
 - User-hosted KwestUp PC endpoint over local network - Ping + REST sync handshake with QR-provisioned config
@@ -32,6 +32,29 @@
 **Dead / stub endpoint (never called in production):**
 - `https://api.kwestup.com/telemetry` - Exists only inside a commented/disabled stub in `src/utils/diagnostics.js`; no telemetry is sent
   - Auth: n/a
+
+## Native Modules (bundled, no network)
+
+**On-device inference:**
+- `llama.rn 0.12.4` (pinned) - JSI inference via Old-Architecture bridge (`RNLlamaModule.install()` on `getCatalystInstance()`); Expo plugin entry `"llama.rn"` in `app.json`; `node_modules/llama.rn/android/build.gradle` unwrapped for old-arch support by `patch-llama-gradle.js` (`postinstall` in `package.json`); lifecycle managed in `src/utils/aiService.js` (`initLlama`, `releaseAllLlama`, `subscribeAppState` unload, idle-unload timer); `transformIgnorePatterns` allowlist entry in `jest.config.js`
+  - Local-first constraint: model (~468.64 MB) lives at `${FileSystem.documentDirectory}models/qwen2.5-0.5b-instruct-q4_k_m.gguf`; inference never leaves the device
+
+**Home-screen widgets (Android only):**
+- `react-native-android-widget ^0.16.1` - 4 widgets declared in `app.json` (`FocusTimer`, `DailyTasks`, `ImportantTasks`, `TasksList`, 30-min `updatePeriodMillis`); surfaces in `widgets/*.tsx`, headless handler in `widgets/widget-task-handler.tsx` registered via `registerWidgetTaskHandler` in `index.js`; native sizing fallback (`getFallbackSize`) injected into `RNWidgetUtil.java` by `patch-llama-gradle.js`
+  - Local-first constraint: widgets render from on-device AsyncStorage/file data only; no push, no server fetch
+
+**Local notifications (no push provider):**
+- `expo-notifications ~0.31.4` - Local scheduling only in `src/utils/notifications.js`, `src/utils/billingNotifications.js`, `src/context/BirthdayContext.js`; no FCM/APNs credentials configured, no push tokens
+
+**Camera / media / device APIs (permissions-gated, on-device):**
+- `expo-camera ~16.1.11` - QR sync-code scanning in `src/components/QRScannerModal.js` (permission string in `app.json`)
+- `expo-document-picker ~13.1.6` + `expo-sharing ~13.1.5` - Backup import/export in `src/utils/vaultImport.js`, `src/screens/SettingsScreen.js`, `src/utils/exportService.js`
+- `expo-clipboard ~7.0.1` - Error copy in `src/components/ErrorBoundary.js`
+- `expo-haptics ~14.1.4` - Tactile feedback across `src/screens/*`, `src/components/CustomButton.js`, `src/components/AIAssistant.js`
+- `expo-font ~13.3.2` + `@expo-google-fonts/*` - Bundled fonts loaded in `App.js`
+
+**Native build constraints:**
+- Old architecture locked (`newArchEnabled=false`, `hermesEnabled=true` in `android/gradle.properties`); `expo.useLegacyPackaging=true` (Android 16 16KB page-size support); `expo-build-properties ~0.14.8` with iOS `useFrameworks: static`
 
 ## Data Storage
 
@@ -89,7 +112,7 @@
 
 **Incoming:**
 - None (no server, no push provider like FCM/APNs configured; `expo-notifications` used for local scheduling only in `src/utils/notifications.js`, `src/utils/billingNotifications.js`, `src/context/BirthdayContext.js`)
-- OS callbacks only: `AppState` background/unload hook for the LLM context (`subscribeAppState` in `src/utils/aiService.js`), headless widget task handler (`registerWidgetTaskHandler(widgetTaskHandler)` in `index.js` → `widgets/widget-task-handler.js`)
+- OS callbacks only: `AppState` background/unload hook for the LLM context (`subscribeAppState` in `src/utils/aiService.js`), headless widget task handler (`registerWidgetTaskHandler(widgetTaskHandler)` in `index.js` → `widgets/widget-task-handler.tsx`)
 
 **Outgoing:**
 - Hugging Face model download (one-time, `src/utils/aiService.js`)
@@ -100,4 +123,4 @@
 
 ---
 
-*Integration audit: 2026-10-01*
+*Integration audit: 2026-10-04*

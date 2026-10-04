@@ -1,6 +1,6 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-10-01
+**Analysis Date:** 2026-10-04
 
 ## Naming Patterns
 
@@ -45,14 +45,14 @@
   - `react-hooks/rules-of-hooks: error`, `react-hooks/exhaustive-deps: warn` — hooks rules are mandatory.
   - `react-native/no-inline-styles: warn`, `react-native/no-unused-styles: warn`, `react-native/no-color-literals: warn` — extract styles to `StyleSheet.create`, delete dead styles, hoist colors to `src/theme/colors.js`.
   - `no-unused-vars: warn` with `argsIgnorePattern: '^_'`.
-  - `no-console: warn` — see Logging section; new code must use `src/utils/logger.js`, never raw `console`.
-- Ignored paths: `node_modules/`, `.expo/`, `dist/`, `android/`, `ios/`, `assets/`, `coverage/`, `KwestUpPC/` (`eslint.config.js`).
-- Quality gates run in CI (`.github/workflows/ci.yml`): `npm run lint` (plain, no `--max-warnings=0` until ~849 pre-existing warnings are triaged), `npm run typecheck` (`tsc --noEmit`), then `npx jest --ci --maxWorkers=2 --coverage`. Mirror with `check.bat` (`npm run lint` then `npm test`) before committing on Windows.
+  - `no-console: warn` — stays `warn` until the ~100 pre-existing console statements are triaged (WR-09 partial, verified 2026-10-01); see Logging section, new code must use `src/utils/logger.js`, never raw `console`.
+- Ignored paths: `node_modules/`, `.expo/`, `dist/`, `web-build/`, `android/`, `ios/`, `assets/`, `coverage/`, `eslint-report.json`, `KwestUpPC/` (`eslint.config.js`).
+- Quality gates run in CI (`.github/workflows/ci.yml`): `npm run lint` (plain `eslint .`, no `--max-warnings=0` until ~849 pre-existing warnings are triaged), `npm run typecheck` (`tsc --noEmit`), then `npx jest --ci --maxWorkers=2 --coverage`. Mirror with `check.bat` (`npm run lint` then `npm test`) before committing on Windows.
 
 **TypeScript:**
 - `tsconfig.json` extends `expo/tsconfig.base` with `strict: true`, `allowJs: true`, `checkJs: false`, `noEmit: true`.
 - New code in `src/behavior/`, `src/commands/`, `src/services/` is strict TypeScript: explicit `interface`/`type` exports, no `any` without justification, `Record<string, unknown>` for open maps (see `src/commands/types.ts`, `src/services/types.ts`).
-- `checkJs: false` is intentional until the ~1152 pre-existing JS errors are triaged — do not enable it casually. `App.js`/`index.js` and `widgets/` are excluded from the program for the same reason; keep exclusions intact.
+- `checkJs: false` is intentional until the ~1152 pre-existing JS errors are triaged (CR-08 partial, verified 2026-10-01) — do not enable it casually. `App.js`/`index.js` (via `widgets/` imports) and `widgets/**/*` are excluded from the program for the same reason; keep exclusions intact.
 
 ## Import Organization
 
@@ -121,6 +121,14 @@
 
 **State pattern:** Context provider per domain (`TaskProvider` in `src/context/TaskContext.js`) owning AsyncStorage persistence, versioned keys (`STORAGE_VERSION`), and mutation delegation to pure utils. New 4.0 domains live under `src/domains/*` and communicate via events only (`src/domains/README.md`).
 
+## Commit Conventions
+
+**Format:** Conventional-commit prefix with phase scope: `fix(21): ...`, `docs(21): ...`, `feat(platform): ...`, `docs(phase-21): ...` (see `git log --oneline`).
+- `fix(<phase>):` for review-finding fixes — append review IDs in the subject: `fix(21): WR-02 WR-03 per-pattern patch guards and fail-closed missing targets`, `fix(15): WR-08 reschedule birthdays actually loaded, not stale state`.
+- `docs(<phase>):` for review/fix reports and planning updates: `docs(21): add code review fix report`.
+- `feat(...):` for user-facing work: `feat(platform): complete phase 21 technology platform upgrade (Expo SDK 57, RN 0.86, Node 22)`.
+- Keep the subject imperative and specific; put the `WR-`/`CR-` finding IDs first so the fix is traceable to its review report.
+
 ---
 
-*Convention analysis: 2026-10-01*
+*Convention analysis: 2026-10-04*
