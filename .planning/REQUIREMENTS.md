@@ -48,7 +48,7 @@ Requirements for the behavioral execution system, technology platform upgrade, a
 - [x] **GOV-02**: Set up TypeScript compilation foundation (`tsconfig.json`) and scaffold domain directory hierarchy (`src/behavior/`, `src/commands/`, `src/services/`, `src/domains/`).
 
 ### Technology Platform Upgrade
-- [ ] **UPGD-01**: Upgrade to Expo SDK 57, React Native 0.86, React 19.2.3, and Node 22 while preserving native module stability (`llama.rn`, `react-native-android-widget`).
+- [x] **UPGD-01**: Upgrade to Expo SDK 57, React Native 0.86, React 19.2.3, and Node 22 while preserving native module stability (`llama.rn`, `react-native-android-widget`).
 
 ### Notification Extraction & Policy Engine
 - [ ] **NOTIF-01**: Consolidate distributed notification mechanics into `src/services/notificationService.ts` with dedicated Android channels, priority rules, and timeouts.
@@ -100,7 +100,7 @@ Requirements for the behavioral execution system, technology platform upgrade, a
 | OBS-02  | Phase 19 | Complete |
 | GOV-01  | Phase 20 | Complete |
 | GOV-02  | Phase 20 | Complete |
-| UPGD-01 | Phase 21 | Pending |
+| UPGD-01 | Phase 21 | Complete |
 | NOTIF-01| Phase 22 | Pending |
 | NOTIF-02| Phase 22 | Pending |
 | EVT-01  | Phase 23 | Pending |
@@ -113,11 +113,11 @@ Requirements for the behavioral execution system, technology platform upgrade, a
 | AI-04   | Phase 28 | Pending |
 
 **Coverage:**
-- Active requirements: 11 total (Milestone 3 remaining)
-- Completed requirements: 16 total (Milestone 2 + Phase 20)
+- Active requirements: 10 total (Milestone 3 remaining)
+- Completed requirements: 17 total (Milestone 2 + Phase 20, 21)
 - Mapped to phases: 27
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-09-27*
-*Last updated: 2026-10-04 after Phase 20 completion & codemap alignment audit*
+*Last updated: 2026-10-04 after Phase 21 execution*

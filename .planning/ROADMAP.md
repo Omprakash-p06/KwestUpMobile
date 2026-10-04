@@ -34,7 +34,7 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 ### Milestone 3: KwestUp 4.0 — Atomic Behavior Engine
 
 - [x] **Phase 20: Repository Governance, Behavioral Rulebook & Architecture Foundation** - Establish Atomic Habits rulebook, governance contracts, and domain scaffolding. ✅ COMPLETE
-- [ ] **Phase 21: Technology Platform Upgrade (Expo SDK 57, RN 0.86, Node 22)** - Upgrade runtime framework and verify native dependencies (`llama.rn`, `android-widget`).
+- [x] **Phase 21: Technology Platform Upgrade (Expo SDK 57, RN 0.86, Node 22)** - Upgrade runtime framework and verify native dependencies (`llama.rn`, `android-widget`). ✅ COMPLETE
 - [ ] **Phase 22: Unified Notification Service & Dispatch Engine** - Consolidate distributed notification mechanics and implement strict policy gates (rate limits, quiet hours).
 - [ ] **Phase 23: Domain Event Bus & Behavioral Telemetry** - Type-safe internal event bus instrumenting domain state transitions.
 - [ ] **Phase 24: Core Behavior Engine (Habits, Cues, Recovery & Rewards)** - Pure behavior engines (2-minute rule, never-miss-twice recovery) and `HabitContext`.
@@ -400,8 +400,8 @@ The roadmap for KwestUp Mobile transitions the application into a highly perform
 
 **Plans**:
 
-- [ ] 21-01-PLAN.md — Runtime & Dependency Upgrade (Expo SDK 57, RN 0.86, React 19.2.3, Babel config, and Jest test script cleanup)
-- [ ] 21-02-PLAN.md — Native Module & Postinstall Patch Hardening (`patch-llama-gradle.js` checksum validation, 16KB page-size linker flags, and widget build validation)
+- [x] 21-01-PLAN.md — Runtime & Dependency Upgrade (Expo SDK 57, RN 0.86, React 19.2.3, Babel config, and Jest test script cleanup) ✅
+- [x] 21-02-PLAN.md — Native Module & Postinstall Patch Hardening (`patch-llama-gradle.js` checksum validation, 16KB page-size linker flags, and widget build validation) ✅
 
 ---
 
