@@ -4,6 +4,9 @@
 
 The roadmap for KwestUp Mobile transitions the application into a highly performant, local-first productivity workspace. The phases are ordered logically to establish core modules first (Notes, Tasks, Birthdays), implement the Wi-Fi synchronization network next, integrate offline local AI, and finally containerize developer environments.
 
+### Planning Governance: Mandatory Codebase Map Review
+Per workspace standard `GEMINI.md`, **all phase planning (`gsd-plan-phase`) must strictly read and cross-reference all 7 codebase map files in `.planning/codebase/`** (`ARCHITECTURE.md`, `CONCERNS.md`, `CONVENTIONS.md`, `INTEGRATIONS.md`, `STACK.md`, `STRUCTURE.md`, `TESTING.md`) before authoring any `PLAN.md` or `RESEARCH.md`. Every plan must explicitly incorporate a `## Codebase Map Alignment` section addressing architecture boundaries, known debt from `CONCERNS.md`, and test/mock patterns.
+
 ---
 
 ## Phases
