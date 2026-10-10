@@ -140,13 +140,28 @@ jest.mock('react-native-android-widget', () => ({
 jest.mock('expo-notifications', () => ({
   scheduleNotificationAsync: jest.fn().mockResolvedValue('mock-notification-id'),
   cancelScheduledNotificationAsync: jest.fn().mockResolvedValue(undefined),
+  cancelAllScheduledNotificationsAsync: jest.fn().mockResolvedValue(undefined),
   getAllScheduledNotificationsAsync: jest.fn().mockResolvedValue([]),
   setNotificationHandler: jest.fn(),
   requestPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
   getPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
+  setNotificationChannelAsync: jest.fn().mockResolvedValue(undefined),
+  deleteNotificationChannelAsync: jest.fn().mockResolvedValue(undefined),
+  getNotificationChannelsAsync: jest.fn().mockResolvedValue([]),
+  getNotificationChannelAsync: jest.fn().mockResolvedValue(null),
   AndroidNotificationPriority: {
     HIGH: 'high',
     DEFAULT: 'default',
+  },
+  AndroidImportance: {
+    UNKNOWN: 0,
+    UNSPECIFIED: 1,
+    NONE: 2,
+    MIN: 3,
+    LOW: 4,
+    DEFAULT: 5,
+    HIGH: 6,
+    MAX: 7,
   },
 }));
 

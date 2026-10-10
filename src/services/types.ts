@@ -8,9 +8,55 @@ export interface AndroidNotificationChannel {
   id: string;
   name: string;
   description?: string;
-  importance: 0 | 1 | 2 | 3 | 4; // Expo AndroidImportance enum value (None..Max)
+  importance: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7; // Expo AndroidImportance enum value (UNKNOWN=0..MAX=7)
   sound?: string;
   vibrationPattern?: number[];
+}
+
+export type NotificationCategory =
+  | 'behavior'
+  | 'task'
+  | 'birthday'
+  | 'billing'
+  | 'system'
+  | 'critical';
+
+export type NotificationRecurrence = 'one-shot' | 'recurring';
+
+export interface NotificationDispatchRequest {
+  category: NotificationCategory;
+  payloadKey: string;
+  recurrence: NotificationRecurrence;
+  triggerDate?: string; // ISO 8601 string in device-local wall-clock (see dateUtils); NOT a UTC instant
+  channelId: string;
+  title: string;
+  body: string;
+  data?: Record<string, unknown>;
+}
+
+export interface NotificationHistoryEntry {
+  id: string;
+  category: NotificationCategory;
+  payloadKey: string;
+  recurrence: NotificationRecurrence;
+  channelId: string;
+  dispatchedAt: string; // ISO 8601 string in device-local wall-clock
+  triggerDate?: string;
+  exempt?: boolean;
+}
+
+export type PolicyEvaluationReason =
+  | 'ok'
+  | 'quiet-hours'
+  | 'daily-cap'
+  | 'min-gap'
+  | 'dedup'
+  | 'user-opt-out';
+
+export interface PolicyEvaluationResult {
+  allowed: boolean;
+  adjustedTriggerDate?: string;
+  reason: PolicyEvaluationReason;
 }
 
 export interface ScheduledNotificationDescriptor {
