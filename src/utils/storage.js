@@ -17,7 +17,12 @@ export const isUserDataKey = (key) => {
     key.startsWith("kwestup_billing_") ||
     key.startsWith("kwestup_widget_") ||
     key.startsWith("kwestup_telemetry_") ||
-    key.startsWith("kwestup_ai_model_")
+    key.startsWith("kwestup_ai_model_") ||
+    key.startsWith("kwestup_habits_") ||
+    key.startsWith("kwestup_behavior_events_") ||
+    key.startsWith("kwestup_identities_") ||
+    key.startsWith("kwestup_rewards_") ||
+    key.startsWith("kwestup_interventions_")
   );
 };
 

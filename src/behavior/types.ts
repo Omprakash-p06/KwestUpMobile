@@ -213,3 +213,20 @@ export interface CompiledHabitPlan {
   };
   rulesApplied: string[]; // Rule IDs applied by Behavior Compiler & Rule Engine
 }
+
+export type RuleEvaluationContext = Record<string, unknown>;
+
+export interface RuleEvaluationResult {
+  rulesApplied: string[];
+  actions: Array<Record<string, unknown>>;
+  matchedRules: BehaviorRule[];
+  rejected?: {
+    ruleId: string;
+    reason: string;
+  };
+}
+
+export interface TimeOptions {
+  now?: string;
+  todayDate?: string;
+}

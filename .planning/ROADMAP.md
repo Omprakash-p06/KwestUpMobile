@@ -461,8 +461,8 @@ Per workspace standard `GEMINI.md`, **all phase planning (`gsd-plan-phase`) must
 
 **Plans**:
 
-- [ ] 24-01-PLAN.md — Pure deterministic rule evaluation engine and machine rule parsers with audit logging
-- [ ] 24-02-PLAN.md — `HabitContext`, versioned storage persistence, minimum action, and recovery state machines
+- [x] 24-01-PLAN.md — Pure deterministic rule evaluation engine and machine rule parsers with audit logging ✅
+- [x] 24-02-PLAN.md — `HabitContext`, versioned storage persistence, minimum action, and recovery state machines ✅
 
 ---
 

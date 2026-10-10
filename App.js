@@ -44,6 +44,7 @@ import { TaskProvider } from "./src/context/TaskContext";
 import { VaultProvider } from "./src/context/VaultContext";
 import { BillingProvider } from "./src/context/BillingContext";
 import { BirthdayProvider } from "./src/context/BirthdayContext";
+import { HabitProvider } from "./src/context/HabitContext";
 import { initNotesFolder, getAllNotesFromFilesystem, wipeNotesFilesystem, saveNoteFile } from "./src/utils/fileStorage";
 import { migrateToVaultSystem, getVaults, getActiveVaultId, setActiveVaultId } from "./src/utils/vaultService";
 
@@ -880,46 +881,48 @@ const App = () => {
                       initialBirthdays={birthdays}
                       showConfirmationDialog={showConfirmation}
                     >
-                      <NavigationContainer theme={{ colors: { background: "transparent" } }}>
-                        <AppNavigator
-                          currentTheme={currentTheme}
-                          notes={notes}
-                          setNotes={setNotes}
-                          birthdays={birthdays}
-                          setBirthdays={setBirthdays}
-                          showConfirmation={showConfirmation}
-                          setConfettiVisible={setConfettiVisible}
-                          timerDuration={timerDuration}
-                          timerRemaining={timerRemaining}
-                          isTimerRunning={isTimerRunning}
-                          setIsTimerRunning={setIsTimerRunning}
-                          setTimerRemaining={setTimerRemaining}
-                          setTimerDuration={setTimerDuration}
-                          setShowTimerLockout={setShowTimerLockout}
-                          searchQuery={searchQuery}
-                          setSearchQuery={setSearchQuery}
-                          userName={userName}
-                          setUserName={setUserName}
-                          themeMode={themeMode}
-                          setThemeMode={setThemeMode}
-                          selectedThemeName={selectedThemeName}
-                          setSelectedThemeName={setSelectedThemeName}
-                          handleResetData={handleResetData}
-                          handleExecuteSync={handleExecuteSync}
-                          lastSynced={lastSynced}
-                          isSyncing={isSyncing}
-                          vaults={vaults}
-                          setVaults={setVaults}
-                          activeVaultId={activeVaultId}
-                          handleSetActiveVault={handleSetActiveVault}
-                          activeNote={activeNote}
-                          setActiveNote={setActiveNote}
-                          billingData={billingData}
-                          setBillingData={setBillingData}
-                          telemetryEnabled={telemetryEnabled}
-                          setTelemetryEnabled={setTelemetryEnabled}
-                        />
-                      </NavigationContainer>
+                      <HabitProvider>
+                        <NavigationContainer theme={{ colors: { background: "transparent" } }}>
+                          <AppNavigator
+                            currentTheme={currentTheme}
+                            notes={notes}
+                            setNotes={setNotes}
+                            birthdays={birthdays}
+                            setBirthdays={setBirthdays}
+                            showConfirmation={showConfirmation}
+                            setConfettiVisible={setConfettiVisible}
+                            timerDuration={timerDuration}
+                            timerRemaining={timerRemaining}
+                            isTimerRunning={isTimerRunning}
+                            setIsTimerRunning={setIsTimerRunning}
+                            setTimerRemaining={setTimerRemaining}
+                            setTimerDuration={setTimerDuration}
+                            setShowTimerLockout={setShowTimerLockout}
+                            searchQuery={searchQuery}
+                            setSearchQuery={setSearchQuery}
+                            userName={userName}
+                            setUserName={setUserName}
+                            themeMode={themeMode}
+                            setThemeMode={setThemeMode}
+                            selectedThemeName={selectedThemeName}
+                            setSelectedThemeName={setSelectedThemeName}
+                            handleResetData={handleResetData}
+                            handleExecuteSync={handleExecuteSync}
+                            lastSynced={lastSynced}
+                            isSyncing={isSyncing}
+                            vaults={vaults}
+                            setVaults={setVaults}
+                            activeVaultId={activeVaultId}
+                            handleSetActiveVault={handleSetActiveVault}
+                            activeNote={activeNote}
+                            setActiveNote={setActiveNote}
+                            billingData={billingData}
+                            setBillingData={setBillingData}
+                            telemetryEnabled={telemetryEnabled}
+                            setTelemetryEnabled={setTelemetryEnabled}
+                          />
+                        </NavigationContainer>
+                      </HabitProvider>
                     </BirthdayProvider>
                   </BillingProvider>
                 </VaultProvider>
