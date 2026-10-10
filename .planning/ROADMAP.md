@@ -246,7 +246,7 @@ Per workspace standard `GEMINI.md`, **all phase planning (`gsd-plan-phase`) must
 | 19. Observability & Logging | 2/2 | ✅ Complete | 2026-09-28 |
 | 20. Governance & Rulebook Foundation | 2/2 | ✅ Complete | 2026-10-01 |
 | 21. Technology Platform Upgrade | 0/2 | ⏳ Pending | - |
-| 22. Unified Notification Service | 0/2 | ⏳ Pending | - |
+| 22. Unified Notification Service | 1/2 | In Progress|  |
 | 23. Domain Event Bus | 0/2 | ⏳ Pending | - |
 | 24. Core Behavior & Rule Engine | 0/2 | ⏳ Pending | - |
 | 25. Intervention & Widgets | 0/2 | ⏳ Pending | - |
@@ -420,7 +420,7 @@ Per workspace standard `GEMINI.md`, **all phase planning (`gsd-plan-phase`) must
 
 **Plans**:
 
-- [ ] 22-01-PLAN.md — Unified `src/services/notificationService.ts` core engine (channels, permissions, and typed descriptors)
+- [x] 22-01-PLAN.md — Unified `src/services/notificationService.ts` core engine (channels, permissions, and typed descriptors)
 - [ ] 22-02-PLAN.md — Policy gate enforcement, caller migration from `App.js` & contexts, and `logger.js` redaction expansion
 
 ---
