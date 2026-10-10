@@ -210,8 +210,8 @@ describe('src/behavior/eventBus', () => {
         source: 'app',
       });
 
-      // Allow microtasks to settle
-      await Promise.resolve();
+      // Allow async rejection to settle in event loop
+      await new Promise((resolve) => setTimeout(resolve, 20));
 
       expect(asyncCrashingListener).toHaveBeenCalledTimes(1);
       expect(loggerErrorSpy).toHaveBeenCalledWith(
@@ -284,30 +284,26 @@ describe('src/behavior/eventBus', () => {
   });
 
   describe('TC-EVT-07: Defensive Immutability', () => {
-    it('deep-freezes emitted event to prevent listener mutation leakage', () => {
-      const mutatorListener = (event: DomainEvent) => {
-        try {
-          (event as any).entityId = 'hacked-id';
-        } catch {
-          // In strict mode modifying frozen object throws
-        }
+    it('deep-freezes emitted event and nested payload to prevent listener mutation leakage', () => {
+      const inputPayload = {
+        title: 'Original Title',
+        nested: { count: 42, tags: ['urgent'] },
       };
-
-      const verificationListener = jest.fn();
-
-      eventBus.subscribe('TASK_COMPLETED', mutatorListener);
-      eventBus.subscribe('TASK_COMPLETED', verificationListener);
 
       const event = eventBus.emit({
         type: 'TASK_COMPLETED',
         entityId: 'original-id',
         source: 'app',
+        payload: inputPayload,
       });
 
       expect(Object.isFrozen(event)).toBe(true);
-      expect(verificationListener).toHaveBeenCalledWith(
-        expect.objectContaining({ entityId: 'original-id' })
-      );
+      expect(Object.isFrozen(event.payload)).toBe(true);
+      expect(Object.isFrozen((event.payload as any).nested)).toBe(true);
+
+      // Verify input mutation does not mutate emitted payload
+      inputPayload.nested.count = 99;
+      expect((event.payload as any).nested.count).toBe(42);
     });
   });
 

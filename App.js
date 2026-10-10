@@ -104,6 +104,7 @@ const App = () => {
   const confirmationActionRef = useRef(null);
   const confirmationCancelActionRef = useRef(null);
   const timerIntervalRef = useRef(null);
+  const focusCompletedRef = useRef(false);
 
   const [themeMode, setThemeMode] = useState("light"); // "light", "dark", "amoled"
   const [selectedThemeName, setSelectedThemeName] = useState("dribbble"); // Default to dribbble theme
@@ -487,7 +488,9 @@ const App = () => {
     if (isInitialized) {
       loadData();
       // Load billing data separately (its own storage key)
-      loadBillingData().then(setBillingData);
+      loadBillingData()
+        .then(setBillingData)
+        .catch((err) => logger.warn("Failed to load billing data:", err));
     }
   }, [isInitialized, loadData]);
 
@@ -681,14 +684,16 @@ const App = () => {
 
   useEffect(() => {
     if (isTimerRunning && timerRemaining > 0) {
+      focusCompletedRef.current = false;
       timerIntervalRef.current = setInterval(() => {
         setTimerRemaining((prev) => {
-          return prev - 1;
+          return Math.max(0, prev - 1);
         });
       }, 1000);
     } else if (timerRemaining === 0) {
       clearInterval(timerIntervalRef.current);
-      if (isTimerRunning) {
+      if (isTimerRunning && !focusCompletedRef.current) {
+        focusCompletedRef.current = true;
         setIsTimerRunning(false);
         setShowTimerLockout(false);
         showConfirmation("Congratulations! You completed your focus session!", () => {

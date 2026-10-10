@@ -192,6 +192,7 @@ export const TaskProvider = ({
   }, [refreshTasksFromStorage]);
 
   // Task Action Handlers
+  // WR-01: Compute toggleTask outside updater, schedule notifications outside, keep setTasks pure
   const toggleTaskComplete = useCallback((id) => {
     let wasCompleted = false;
     let targetTitle = "";
@@ -201,19 +202,20 @@ export const TaskProvider = ({
       targetTitle = target.title || "";
     }
 
-    setTasks((currentTasks) => {
-      const { updatedTasks, spawnedTask } = toggleTask(currentTasks, id);
-      if (spawnedTask && spawnedTask.dueDate) {
-        scheduleDueDateReminder(spawnedTask).then((notificationId) => {
+    const { updatedTasks, spawnedTask } = toggleTask(tasks, id);
+    setTasks(updatedTasks);
+
+    if (spawnedTask && spawnedTask.dueDate) {
+      scheduleDueDateReminder(spawnedTask)
+        .then((notificationId) => {
           if (notificationId) {
             setTasks((prev) =>
               prev.map((t) => (t.id === spawnedTask.id ? { ...t, notificationId } : t))
             );
           }
-        });
-      }
-      return updatedTasks;
-    });
+        })
+        .catch((e) => logger.warn("Reminder schedule failed:", e));
+    }
 
     if (!wasCompleted) {
       eventBus.emit({
@@ -312,26 +314,23 @@ export const TaskProvider = ({
       if (nid) notificationId = nid;
     }
 
-    let finalSavedTask = null;
-    setTasks((currentTasks) => {
-      const { updatedTasks, savedTask } = saveTask(currentTasks, {
-        ...taskToSave,
-        notificationId,
-      });
-      finalSavedTask = savedTask;
-      return updatedTasks;
+    // WR-02: Compute saveTask deterministically outside updater, set tasks, and emit telemetry immediately
+    const { updatedTasks, savedTask } = saveTask(tasks, {
+      ...taskToSave,
+      notificationId,
     });
+    setTasks(updatedTasks);
 
-    if (finalSavedTask) {
+    if (savedTask) {
       eventBus.emit({
         type: isUpdate ? "TASK_UPDATED" : "TASK_CREATED",
-        entityId: finalSavedTask.id,
+        entityId: savedTask.id,
         source: "app",
         payload: {
-          title: finalSavedTask.title,
-          listId: finalSavedTask.listId,
-          dueDate: finalSavedTask.dueDate,
-          recurrence: finalSavedTask.recurrence,
+          title: savedTask.title,
+          listId: savedTask.listId,
+          dueDate: savedTask.dueDate,
+          recurrence: savedTask.recurrence,
         },
       });
     }

@@ -3,6 +3,7 @@ import {
   scheduleBirthdayReminders,
   cancelNotification,
 } from "../services/notificationService";
+import { logger } from "../utils/logger";
 import { eventBus } from "../behavior/eventBus";
 
 const BirthdayContext = createContext(null);
@@ -16,8 +17,9 @@ export const BirthdayProvider = ({
 }) => {
   const [birthdays, setBirthdays] = useState(initialBirthdays);
 
+  // WR-05: Sync unconditionally when an array is passed so empty-state resets propagate
   useEffect(() => {
-    if (initialBirthdays && initialBirthdays !== DEFAULT_BIRTHDAYS && initialBirthdays.length > 0) {
+    if (Array.isArray(initialBirthdays)) {
       setBirthdays(initialBirthdays);
     }
   }, [initialBirthdays]);
@@ -37,8 +39,13 @@ export const BirthdayProvider = ({
 
     const newId = birthdayData.id || Date.now().toString();
     const bdayToSchedule = { ...birthdayData, id: newId };
-    const notificationIds = await scheduleBirthdayReminders(bdayToSchedule);
-    const finalBirthday = { ...bdayToSchedule, notificationIds };
+    let notificationIds = [];
+    try {
+      notificationIds = await scheduleBirthdayReminders(bdayToSchedule);
+    } catch (e) {
+      logger.warn("Birthday reminder scheduling failed; saving without reminder:", e?.message);
+    }
+    const finalBirthday = { ...bdayToSchedule, notificationIds: notificationIds || [] };
 
     setBirthdays((prev) => {
       const idx = prev.findIndex((b) => b.id === newId);

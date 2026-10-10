@@ -46,16 +46,17 @@ export const BillingProvider = ({
 
   const addTransactionAction = useCallback(async (tx) => {
     try {
-      const updated = await addTransaction(tx);
+      const txWithId = { ...tx, id: tx.id || String(Date.now()) };
+      const updated = await addTransaction(txWithId);
       setBillingData(updated);
       eventBus.emit({
         type: "BILL_PAID",
-        entityId: String(tx.id || Date.now()),
+        entityId: String(txWithId.id),
         source: "app",
         payload: {
-          amount: tx.amount,
-          category: tx.category,
-          date: tx.date,
+          amount: txWithId.amount,
+          category: txWithId.category,
+          date: txWithId.date,
         },
       });
       return updated;
@@ -68,6 +69,12 @@ export const BillingProvider = ({
     try {
       const updated = await deleteTransaction(id);
       setBillingData(updated);
+      eventBus.emit({
+        type: "BILL_DELETED",
+        entityId: String(id),
+        source: "app",
+        payload: { subType: "transaction" },
+      });
       return updated;
     } catch (err) {
       logger.error("❌ Failed to delete transaction:", err);
@@ -76,18 +83,35 @@ export const BillingProvider = ({
 
   const upsertBudgetAction = useCallback(async (budget) => {
     try {
+      const isExisting = Boolean(budget?.id && billingData?.budgets?.some((b) => b.id === budget.id));
       const updated = await upsertBudget(budget);
       setBillingData(updated);
+      eventBus.emit({
+        type: isExisting ? "BILL_UPDATED" : "BILL_CREATED",
+        entityId: String(budget.id),
+        source: "app",
+        payload: {
+          subType: "budget",
+          category: budget.category,
+          amount: budget.amount,
+        },
+      });
       return updated;
     } catch (err) {
       logger.error("❌ Failed to upsert budget:", err);
     }
-  }, []);
+  }, [billingData]);
 
   const deleteBudgetAction = useCallback(async (id) => {
     try {
       const updated = await deleteBudget(id);
       setBillingData(updated);
+      eventBus.emit({
+        type: "BILL_DELETED",
+        entityId: String(id),
+        source: "app",
+        payload: { subType: "budget" },
+      });
       return updated;
     } catch (err) {
       logger.error("❌ Failed to delete budget:", err);
@@ -96,16 +120,17 @@ export const BillingProvider = ({
 
   const addRecurringBillAction = useCallback(async (bill) => {
     try {
-      const updated = await addRecurringBill(bill);
+      const billWithId = { ...bill, id: bill.id || String(Date.now()) };
+      const updated = await addRecurringBill(billWithId);
       setBillingData(updated);
       eventBus.emit({
         type: "BILL_CREATED",
-        entityId: String(bill.id || Date.now()),
+        entityId: String(billWithId.id),
         source: "app",
         payload: {
-          amount: bill.amount,
-          category: bill.category,
-          dueDate: bill.dueDate,
+          amount: billWithId.amount,
+          category: billWithId.category,
+          dueDate: billWithId.dueDate,
         },
       });
       return updated;
@@ -129,12 +154,20 @@ export const BillingProvider = ({
     }
   }, []);
 
+  // CR-01: Compute next state inside pure updater, then persist outside updater with error handling
   const updateBillingDataState = useCallback(async (updater) => {
+    let next;
     setBillingData((prev) => {
-      const next = typeof updater === "function" ? updater(prev) : updater;
-      saveBillingData(next);
+      next = typeof updater === "function" ? updater(prev) : updater;
       return next;
     });
+    if (next !== undefined) {
+      try {
+        await saveBillingData(next);
+      } catch (err) {
+        logger.error("❌ Failed to persist billing data:", err);
+      }
+    }
   }, []);
 
   const value = {

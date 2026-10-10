@@ -231,6 +231,63 @@ describe('Domain Event Instrumentation', () => {
       );
       expect(deletedEvent).toBeDefined();
     });
+
+    it('emits BILL_DELETED on deleteTransactionAction', async () => {
+      await act(async () => {
+        renderer.create(
+          <BillingProvider>
+            <BillingConsumer />
+          </BillingProvider>
+        );
+      });
+
+      await act(async () => {
+        await billingContextValue.deleteTransactionAction('tx-del-1');
+      });
+
+      const events = eventBus.getRecentEvents();
+      const deletedTxEvent = events.find(
+        (e) => e.type === 'BILL_DELETED' && e.entityId === 'tx-del-1'
+      );
+      expect(deletedTxEvent).toBeDefined();
+      expect(deletedTxEvent?.payload?.subType).toBe('transaction');
+    });
+
+    it('emits BILL_CREATED on upsertBudgetAction for a new budget and BILL_DELETED on deleteBudgetAction', async () => {
+      await act(async () => {
+        renderer.create(
+          <BillingProvider>
+            <BillingConsumer />
+          </BillingProvider>
+        );
+      });
+
+      await act(async () => {
+        await billingContextValue.upsertBudgetAction({
+          id: 'budget-travel',
+          category: 'Travel',
+          amount: 50000,
+        });
+      });
+
+      const eventsAfterUpsert = eventBus.getRecentEvents();
+      const createdBudget = eventsAfterUpsert.find(
+        (e) => e.type === 'BILL_CREATED' && e.entityId === 'budget-travel'
+      );
+      expect(createdBudget).toBeDefined();
+      expect(createdBudget?.payload?.subType).toBe('budget');
+
+      await act(async () => {
+        await billingContextValue.deleteBudgetAction('budget-travel');
+      });
+
+      const eventsAfterDelete = eventBus.getRecentEvents();
+      const deletedBudget = eventsAfterDelete.find(
+        (e) => e.type === 'BILL_DELETED' && e.entityId === 'budget-travel'
+      );
+      expect(deletedBudget).toBeDefined();
+      expect(deletedBudget?.payload?.subType).toBe('budget');
+    });
   });
 
   describe('Birthday Domain Events (TC-EVT-11)', () => {
@@ -315,6 +372,29 @@ describe('Domain Event Instrumentation', () => {
         (e) => e.type === 'BIRTHDAY_DELETED' && e.entityId === 'bday-charlie'
       );
       expect(deletedEvent).toBeDefined();
+    });
+
+    it('propagates empty-state reset when initialBirthdays transitions to empty array (WR-05)', async () => {
+      let tree = null;
+      await act(async () => {
+        tree = renderer.create(
+          <BirthdayProvider initialBirthdays={[{ id: 'bday-1', name: 'Dan', date: '1990-01-01' }]}>
+            <BirthdayConsumer />
+          </BirthdayProvider>
+        );
+      });
+
+      expect(birthdayContextValue.birthdays).toHaveLength(1);
+
+      await act(async () => {
+        tree.update(
+          <BirthdayProvider initialBirthdays={[]}>
+            <BirthdayConsumer />
+          </BirthdayProvider>
+        );
+      });
+
+      expect(birthdayContextValue.birthdays).toEqual([]);
     });
   });
 

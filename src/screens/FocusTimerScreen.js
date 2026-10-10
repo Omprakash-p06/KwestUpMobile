@@ -43,6 +43,8 @@ export const FocusTimerScreen = ({
     outputRange: ["0%", "100%"],
   });
 
+  const sessionIdRef = useRef(null);
+
   const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -51,13 +53,17 @@ export const FocusTimerScreen = ({
 
   const startTimer = () => {
     if (!isTimerRunning && timerRemaining > 0) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
       setIsTimerRunning(true);
+      if (!sessionIdRef.current) {
+        sessionIdRef.current = `focus_${Date.now()}`;
+      }
       eventBus.emit({
         type: "FOCUS_STARTED",
-        entityId: `focus_${Date.now()}`,
+        entityId: sessionIdRef.current,
         source: "app",
         payload: {
+          sessionId: sessionIdRef.current,
           duration: timerDuration,
           remaining: timerRemaining,
         },
@@ -66,7 +72,7 @@ export const FocusTimerScreen = ({
   };
 
   const pauseTimer = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setIsTimerRunning(false);
   };
 
@@ -74,7 +80,8 @@ export const FocusTimerScreen = ({
     showConfirmation(
       "Confirm reset of objective timer?",
       () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+        sessionIdRef.current = null;
         setIsTimerRunning(false);
         setTimerRemaining(timerDuration);
         setShowTimerLockout(false);
@@ -83,19 +90,22 @@ export const FocusTimerScreen = ({
     );
   };
 
+  // WR-10: Upper bound duration to 180 minutes (3 hours)
+  const MAX_MINUTES = 180;
   const handleDurationChange = (minutes) => {
     const cleanMinutes = minutes.replace(/[^0-9]/g, "");
-    setLocalMinutes(cleanMinutes);
+    if (cleanMinutes === "") {
+      setLocalMinutes("");
+      return;
+    }
 
-    if (cleanMinutes !== "") {
-      const parsedMinutes = Number.parseInt(cleanMinutes, 10);
-      if (parsedMinutes > 0) {
-        const newDuration = parsedMinutes * 60;
-        setTimerDuration(newDuration);
-        if (!isTimerRunning) {
-          setTimerRemaining(newDuration);
-        }
-      }
+    const parsedMinutes = Math.min(MAX_MINUTES, Math.max(1, Number.parseInt(cleanMinutes, 10)));
+    setLocalMinutes(parsedMinutes.toString());
+
+    const newDuration = parsedMinutes * 60;
+    setTimerDuration(newDuration);
+    if (!isTimerRunning) {
+      setTimerRemaining(newDuration);
     }
   };
 

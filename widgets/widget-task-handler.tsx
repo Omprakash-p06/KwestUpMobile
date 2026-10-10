@@ -12,6 +12,17 @@ import { toggleTask } from '../src/utils/taskMutations';
 import { logger } from '../src/utils/logger';
 import { eventBus } from '../src/behavior/eventBus';
 
+// Note (WR-07): On Android, headless widget task handlers execute in a separate JS environment
+// from the main app. In-memory eventBus events emitted here populate the widget process's local ring
+// buffer and notify any headless listeners. Persistent state synchronization is achieved through AsyncStorage.
+const safeRequestWidgetUpdate = async (options: Parameters<typeof requestWidgetUpdate>[0]): Promise<void> => {
+  try {
+    await requestWidgetUpdate(options);
+  } catch (err) {
+    logger.warn('[WidgetTaskHandler] requestWidgetUpdate failed:', err);
+  }
+};
+
 const nameToWidget = {
   FocusTimer: FocusTimerWidget,
   DailyTasks: DailyTasksWidget,
@@ -123,18 +134,8 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
             
             if (taskToToggle) {
               const nextCompletedState = !taskToToggle.completed;
-              
-              // --- TICKING ANIMATION ---
-              if (nextCompletedState) {
-                const tempTasks = parsed.tasks.map(t => t.id === taskId ? { ...t, isTicking: true } : t);
-                requestWidgetUpdate({
-                  widgetName: 'TasksList',
-                  renderWidget: () => <TasksListWidget tasks={tempTasks as any} activeTab={activeTab} />,
-                });
-                await new Promise(r => setTimeout(r, 600)); // wait for animation
-              }
-              // -------------------------
 
+              // Write to storage immediately to minimize the lost-update race window
               const { updatedTasks } = toggleTask(parsed.tasks, taskId, {
                 now,
                 todayDate: getLocalDateString(),
@@ -164,14 +165,34 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
                     completed: true,
                   },
                 });
+              } else {
+                eventBus.emit({
+                  type: 'TASK_UPDATED',
+                  entityId: taskId,
+                  source: 'widget',
+                  payload: {
+                    completed: false,
+                  },
+                });
               }
+
+              // --- TICKING ANIMATION (after storage write) ---
+              if (nextCompletedState) {
+                const tempTasks = parsed.tasks.map(t => t.id === taskId ? { ...t, isTicking: true } : t);
+                await safeRequestWidgetUpdate({
+                  widgetName: 'TasksList',
+                  renderWidget: () => <TasksListWidget tasks={tempTasks as any} activeTab={activeTab} />,
+                });
+                await new Promise(r => setTimeout(r, 600)); // wait for animation
+              }
+              // ----------------------------------------------
 
               // Update other widgets in the background so everything stays in sync
               const importantUnfinished = parsed.tasks
                 .filter((t) => t.important && !t.completed)
                 .slice(0, 5);
 
-              requestWidgetUpdate({
+              await safeRequestWidgetUpdate({
                 widgetName: 'ImportantTasks',
                 renderWidget: () => <ImportantTasksWidget tasks={importantUnfinished} />,
               });
@@ -181,7 +202,7 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
                 ? parsed.dailyTasks.filter((t) => t.completed).length
                 : 0;
 
-              requestWidgetUpdate({
+              await safeRequestWidgetUpdate({
                 widgetName: 'DailyTasks',
                 renderWidget: () => (
                   <DailyTasksWidget
@@ -191,7 +212,7 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
                 ),
               });
 
-              requestWidgetUpdate({
+              await safeRequestWidgetUpdate({
                 widgetName: 'TasksList',
                 renderWidget: () => (
                   <TasksListWidget

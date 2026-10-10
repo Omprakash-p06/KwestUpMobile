@@ -33,7 +33,7 @@ export const DailyTasksScreen = ({
 
   const addDailyTask = () => {
     if (newTaskName.trim()) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       const newDailyTask = {
         id: Date.now(),
         name: newTaskName.trim(),
@@ -83,29 +83,31 @@ export const DailyTasksScreen = ({
     setShowTimePicker(false);
   };
 
+  // WR-09: Functional updater to avoid stale closure updates, guarded existence check
   const toggleDailyTaskComplete = (id) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     const target = dailyTasks.find((t) => t.id === id);
-    if (target) {
-      const nextStatus = !target.completed;
-      if (nextStatus) {
-        eventBus.emit({
-          type: "TASK_COMPLETED",
-          entityId: String(id),
-          source: "app",
-          payload: { title: target.name, isDaily: true },
-        });
-      } else {
-        eventBus.emit({
-          type: "TASK_UPDATED",
-          entityId: String(id),
-          source: "app",
-          payload: { title: target.name, isDaily: true, completed: false },
-        });
-      }
+    if (!target) return;
+
+    const nextStatus = !target.completed;
+    if (nextStatus) {
+      eventBus.emit({
+        type: "TASK_COMPLETED",
+        entityId: String(id),
+        source: "app",
+        payload: { title: target.name, isDaily: true },
+      });
+    } else {
+      eventBus.emit({
+        type: "TASK_UPDATED",
+        entityId: String(id),
+        source: "app",
+        payload: { title: target.name, isDaily: true, completed: false },
+      });
     }
-    setDailyTasks(
-      dailyTasks.map((task) => {
+
+    setDailyTasks((prev) =>
+      prev.map((task) => {
         if (task.id === id) {
           const newCompletedStatus = !task.completed;
           let streak = task.streak || 0;
@@ -142,23 +144,27 @@ export const DailyTasksScreen = ({
     );
   };
 
+  // WR-09: Guard against phantom delete events if task does not exist
   const deleteDailyTask = (id) => {
     showConfirmation(
       "Confirm deletion of objective from system?",
       () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+        const exists = dailyTasks.some((t) => t.id === id);
+        if (!exists) return;
+
         eventBus.emit({
           type: "TASK_DELETED",
           entityId: String(id),
           source: "app",
           payload: { isDaily: true },
         });
-        setDailyTasks(dailyTasks => {
-          const taskToDelete = dailyTasks.find(t => t.id === id);
-          if (taskToDelete && taskToDelete.notificationId) {
-            cancelNotification(taskToDelete.notificationId);
+        setDailyTasks((prev) => {
+          const taskToDelete = prev.find((t) => t.id === id);
+          if (taskToDelete?.notificationId) {
+            cancelNotification(taskToDelete.notificationId).catch(() => {});
           }
-          return dailyTasks.filter((task) => task.id !== id);
+          return prev.filter((task) => task.id !== id);
         });
       },
       () => {}

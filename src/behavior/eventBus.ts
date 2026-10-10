@@ -22,6 +22,38 @@ export const generateEventId = (): string => {
   return `evt_${timestamp}_${entropy}_${eventCounter}`;
 };
 
+/**
+ * Deep clones plain object structures to isolate inputs from callers.
+ */
+function deepClone<T>(obj: T): T {
+  if (obj === null || typeof obj !== 'object') return obj;
+  try {
+    if (typeof structuredClone === 'function') {
+      return structuredClone(obj);
+    }
+  } catch {
+    // Fall back to JSON clone if structuredClone fails on non-cloneable references
+  }
+  return JSON.parse(JSON.stringify(obj));
+}
+
+/**
+ * Deep freezes an object and its nested properties recursively.
+ * Guarantees true defensive immutability across subscribers and telemetry buffer (WR-04).
+ */
+function deepFreeze<T>(obj: T): T {
+  if (obj && typeof obj === 'object' && !Object.isFrozen(obj)) {
+    Object.freeze(obj);
+    for (const key of Object.keys(obj)) {
+      const val = (obj as Record<string, unknown>)[key];
+      if (val && typeof val === 'object') {
+        deepFreeze(val);
+      }
+    }
+  }
+  return obj;
+}
+
 export interface DomainEventBus {
   subscribe<T extends DomainEventType>(
     type: T,
@@ -115,14 +147,20 @@ class EventBus implements DomainEventBus {
     const id = eventInput.id || generateEventId();
     const timestamp = eventInput.timestamp || new Date().toISOString();
 
-    const event: DomainEvent<T> = Object.freeze({
+    // WR-04: Deep clone input structures and deep freeze event to prevent mutation leakage
+    const clonedMetadata = eventInput.metadata ? deepClone(eventInput.metadata) : undefined;
+    const clonedPayload = eventInput.payload ? deepClone(eventInput.payload) : undefined;
+
+    const event: DomainEvent<T> = deepFreeze({
       ...eventInput,
       id,
       timestamp,
-      metadata: eventInput.metadata ? { ...eventInput.metadata } : undefined,
-      payload: eventInput.payload ? { ...eventInput.payload } : undefined,
+      metadata: clonedMetadata,
+      payload: clonedPayload,
     });
 
+    // Note (IN-02): Payloads may contain entity details (e.g. titles, amounts) retained in memory
+    // within the 100-event ring buffer. Never persist or export raw event buffer without redaction.
     // Record into telemetry ring buffer (FIFO)
     this.recordEvent(event);
 
@@ -249,8 +287,9 @@ export const useDomainEvent = <T extends DomainEventType>(
 
     const unsubscribe = eventBus.subscribe(type, (event) => {
       if (listenerRef.current) {
-        listenerRef.current(event);
+        return listenerRef.current(event);
       }
+      return undefined;
     });
 
     return unsubscribe;
