@@ -9,6 +9,8 @@ import { TasksListWidget } from './TasksListWidget';
 import { STORAGE_VERSION } from '../src/utils/storage';
 import { getLocalDateString } from '../src/utils/dateUtils';
 import { toggleTask } from '../src/utils/taskMutations';
+import { logger } from '../src/utils/logger';
+import { eventBus } from '../src/behavior/eventBus';
 
 const nameToWidget = {
   FocusTimer: FocusTimerWidget,
@@ -76,9 +78,19 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
           AsyncStorage.setItem(tabKey, targetTab),
           AsyncStorage.setItem('kwestup_widget_active_tab', targetTab),
         ]);
-        console.log('[WidgetTaskHandler] Tab switched to:', targetTab);
+        eventBus.emit({
+          type: 'WIDGET_ACTION',
+          entityId: `widget_${widgetId}`,
+          source: 'widget',
+          payload: {
+            action: 'SWITCH_TAB',
+            tab: targetTab,
+            widgetName,
+          },
+        });
+        logger.info('[WidgetTaskHandler] Tab switched to:', targetTab);
       } catch (err) {
-        console.warn('[WidgetTaskHandler] Failed to save active tab:', err);
+        logger.warn('[WidgetTaskHandler] Failed to save active tab:', err);
       }
     }
 
@@ -130,7 +142,29 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
               parsed.tasks = updatedTasks as TaskItemType[];
 
               await AsyncStorage.setItem(storageKey, JSON.stringify(parsed));
-              console.log('[WidgetTaskHandler] Task completion status toggled:', taskId);
+              logger.info('[WidgetTaskHandler] Task completion status toggled:', taskId);
+
+              eventBus.emit({
+                type: 'WIDGET_ACTION',
+                entityId: `widget_${widgetId}`,
+                source: 'widget',
+                payload: {
+                  action: props.clickAction,
+                  taskId,
+                  widgetName,
+                },
+              });
+
+              if (nextCompletedState) {
+                eventBus.emit({
+                  type: 'TASK_COMPLETED',
+                  entityId: taskId,
+                  source: 'widget',
+                  payload: {
+                    completed: true,
+                  },
+                });
+              }
 
               // Update other widgets in the background so everything stays in sync
               const importantUnfinished = parsed.tasks
@@ -170,7 +204,7 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
           }
         }
       } catch (err) {
-        console.warn('[WidgetTaskHandler] Failed to toggle task state:', err);
+        logger.warn('[WidgetTaskHandler] Failed to toggle task state:', err);
       }
     }
   }
@@ -236,7 +270,7 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
         }
       }
     } catch (err) {
-      console.warn('[WidgetTaskHandler] Failed to read AsyncStorage:', err);
+      logger.warn('[WidgetTaskHandler] Failed to read AsyncStorage:', err);
     }
 
     const WidgetComponent = nameToWidget[widgetName] as any;

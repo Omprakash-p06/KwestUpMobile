@@ -28,6 +28,7 @@ import {
   cancelNotifications as cancelBillReminders,
 } from "../services/notificationService";
 import { getLocalDateString, getLocalMonthString } from "../utils/dateUtils";
+import { eventBus } from "../behavior/eventBus";
 
 
 // ─── Category config ──────────────────────────────────────────────────────────
@@ -156,6 +157,16 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
     };
     const updated = await saveAddTx(newTx);
     setBillingData((prev) => ({ ...prev, transactions: updated.transactions }));
+    eventBus.emit({
+      type: "BILL_PAID",
+      entityId: newTx.id,
+      source: "app",
+      payload: {
+        amount: newTx.amount,
+        category: newTx.category,
+        date: newTx.date,
+      },
+    });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     resetTxForm();
     setShowAddTx(false);
@@ -212,6 +223,15 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
     if (notifId) newBill.notificationIds = [notifId];
     const updated = await saveAddBill(newBill);
     setBillingData((prev) => ({ ...prev, recurringBills: updated.recurringBills }));
+    eventBus.emit({
+      type: "BILL_CREATED",
+      entityId: newBill.id,
+      source: "app",
+      payload: {
+        amount: newBill.amount,
+        category: newBill.category,
+      },
+    });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setBillName(""); setBillAmount(""); setBillCategory("Housing");
     setBillDueDay("1"); setBillNotifyDays("3");
@@ -227,6 +247,11 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
       }
       const updated = await saveDeleteBill(bill.id);
       setBillingData((prev) => ({ ...prev, recurringBills: updated.recurringBills }));
+      eventBus.emit({
+        type: "BILL_DELETED",
+        entityId: bill.id,
+        source: "app",
+      });
     });
   }, [showConfirmation]);
 
@@ -248,6 +273,16 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
         b.id === bill.id ? { ...b, lastPaidDate: paidDate, notificationIds: ids } : b
       ),
     }));
+    eventBus.emit({
+      type: "BILL_PAID",
+      entityId: bill.id,
+      source: "app",
+      payload: {
+        amount: bill.amount,
+        category: bill.category,
+        paidDate,
+      },
+    });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, [currency]);
 

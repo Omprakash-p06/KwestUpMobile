@@ -246,9 +246,9 @@ Per workspace standard `GEMINI.md`, **all phase planning (`gsd-plan-phase`) must
 | 18. Local AI Hardening | 2/2 | ✅ Complete | 2026-09-28 |
 | 19. Observability & Logging | 2/2 | ✅ Complete | 2026-09-28 |
 | 20. Governance & Rulebook Foundation | 2/2 | ✅ Complete | 2026-10-01 |
-| 21. Technology Platform Upgrade | 0/2 | ⏳ Pending | - |
-| 22. Unified Notification Service | 2/2 | Complete    | 2026-10-10 |
-| 23. Domain Event Bus | 0/2 | ⏳ Pending | - |
+| 21. Technology Platform Upgrade | 2/2 | ✅ Complete | 2026-10-04 |
+| 22. Unified Notification Service | 2/2 | ✅ Complete | 2026-10-10 |
+| 23. Domain Event Bus | 2/2 | ✅ Complete | 2026-10-10 |
 | 24. Core Behavior & Rule Engine | 0/2 | ⏳ Pending | - |
 | 25. Intervention & Widgets | 0/2 | ⏳ Pending | - |
 | 26. Command Gateway & Sandboxing | 0/2 | ⏳ Pending | - |
@@ -441,8 +441,8 @@ Per workspace standard `GEMINI.md`, **all phase planning (`gsd-plan-phase`) must
 
 **Plans**:
 
-- [ ] 23-01-PLAN.md — In-memory type-safe `eventBus.ts` core and event dispatcher
-- [ ] 23-02-PLAN.md — Domain mutation instrumentation (tasks, billing, birthdays, focus timer) with unit test coverage
+- [x] 23-01-PLAN.md — In-memory type-safe `eventBus.ts` core and event dispatcher ✅
+- [x] 23-02-PLAN.md — Domain mutation instrumentation (tasks, billing, birthdays, focus timer) with unit test coverage ✅
 
 ---
 

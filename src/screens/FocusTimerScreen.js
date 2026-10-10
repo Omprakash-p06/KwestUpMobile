@@ -5,6 +5,7 @@ import * as Haptics from "expo-haptics";
 import { LiquidGlassCard } from "../components/LiquidGlassCard";
 import { CustomTextInput } from "../components/CustomTextInput";
 import { injectFontFamily } from "../theme/styles";
+import { eventBus } from "../behavior/eventBus";
 
 export const FocusTimerScreen = ({
   currentTheme,
@@ -52,6 +53,15 @@ export const FocusTimerScreen = ({
     if (!isTimerRunning && timerRemaining > 0) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       setIsTimerRunning(true);
+      eventBus.emit({
+        type: "FOCUS_STARTED",
+        entityId: `focus_${Date.now()}`,
+        source: "app",
+        payload: {
+          duration: timerDuration,
+          remaining: timerRemaining,
+        },
+      });
     }
   };
 

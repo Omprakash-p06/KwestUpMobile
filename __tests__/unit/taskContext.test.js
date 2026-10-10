@@ -4,6 +4,7 @@ import renderer, { act } from "react-test-renderer";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { TaskProvider, useTasks } from "../../src/context/TaskContext";
 import { STORAGE_VERSION } from "../../src/utils/storage";
+import { eventBus } from "../../src/behavior/eventBus";
 
 let contextValue = null;
 
@@ -19,6 +20,8 @@ const TestTaskConsumer = () => {
 describe("TaskContext & Provider Unit Tests", () => {
   beforeEach(async () => {
     await AsyncStorage.clear();
+    eventBus.clearListeners();
+    eventBus.clearBuffer();
     jest.clearAllMocks();
     contextValue = null;
   });
@@ -44,7 +47,7 @@ describe("TaskContext & Provider Unit Tests", () => {
     expect(contextValue.tasks[1].completed).toBe(true);
   });
 
-  it("toggles task completion via toggleTaskComplete", async () => {
+  it("toggles task completion via toggleTaskComplete and emits TASK_COMPLETED", async () => {
     const initialTasks = [{ id: "t1", title: "Toggle Me", completed: false }];
 
     await act(async () => {
@@ -62,9 +65,12 @@ describe("TaskContext & Provider Unit Tests", () => {
     });
 
     expect(contextValue.tasks[0].completed).toBe(true);
+
+    const recentEvents = eventBus.getRecentEvents();
+    expect(recentEvents.some((e) => e.type === "TASK_COMPLETED" && e.entityId === "t1")).toBe(true);
   });
 
-  it("adds new task via handleSaveTask", async () => {
+  it("adds new task via handleSaveTask and emits TASK_CREATED", async () => {
     await act(async () => {
       renderer.create(
         <TaskProvider initialTasks={[]}>
@@ -82,9 +88,12 @@ describe("TaskContext & Provider Unit Tests", () => {
     expect(contextValue.tasks).toHaveLength(1);
     expect(contextValue.tasks[0].title).toBe("New Context Task");
     expect(contextValue.tasks[0].listId).toBe("default_inbox");
+
+    const recentEvents = eventBus.getRecentEvents();
+    expect(recentEvents.some((e) => e.type === "TASK_CREATED" && e.payload?.title === "New Context Task")).toBe(true);
   });
 
-  it("deletes a task via deleteTask", async () => {
+  it("deletes a task via deleteTask and emits TASK_DELETED", async () => {
     const initialTasks = [{ id: "del-1", title: "Delete Me", completed: false }];
 
     await act(async () => {
@@ -102,6 +111,9 @@ describe("TaskContext & Provider Unit Tests", () => {
     });
 
     expect(contextValue.tasks).toHaveLength(0);
+
+    const recentEvents = eventBus.getRecentEvents();
+    expect(recentEvents.some((e) => e.type === "TASK_DELETED" && e.entityId === "del-1")).toBe(true);
   });
 
   it("synchronizes with AsyncStorage when refreshTasksFromStorage is invoked (widget parity)", async () => {

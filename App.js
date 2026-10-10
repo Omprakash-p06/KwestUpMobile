@@ -60,6 +60,7 @@ import { ImportantTasksWidget } from './widgets/ImportantTasksWidget';
 import { TasksListWidget } from './widgets/TasksListWidget';
 import { getLocalDateString, getYesterdayLocalDateString } from './src/utils/dateUtils';
 import { subscribeAppState, unsubscribeAppState } from "./src/utils/aiService";
+import { eventBus } from "./src/behavior/eventBus";
 
 // Configuration
 const FORCE_CLEAR_ALL_STORAGE = false;
@@ -700,6 +701,14 @@ const App = () => {
           channelId: "kwestup_system",
           title: "KwestUp Focus Timer",
           body: "Your focus session is complete! Great job!",
+        });
+        eventBus.emit({
+          type: "FOCUS_COMPLETED",
+          entityId: `focus_${Date.now()}`,
+          source: "app",
+          payload: {
+            duration: timerDuration,
+          },
         });
       }
     }

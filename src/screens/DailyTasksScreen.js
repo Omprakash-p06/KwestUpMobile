@@ -11,6 +11,7 @@ import { CustomTextInput } from "../components/CustomTextInput";
 import { injectFontFamily } from "../theme/styles";
 import { logger } from "../utils/logger";
 import { getLocalDateString, getYesterdayLocalDateString } from "../utils/dateUtils";
+import { eventBus } from "../behavior/eventBus";
 
 export const DailyTasksScreen = ({
   currentTheme,
@@ -56,6 +57,18 @@ export const DailyTasksScreen = ({
       } else {
         setDailyTasks(prev => [...prev, newDailyTask]);
       }
+
+      eventBus.emit({
+        type: "TASK_CREATED",
+        entityId: String(newDailyTask.id),
+        source: "app",
+        payload: {
+          title: newDailyTask.name,
+          isDaily: true,
+          time: newDailyTask.time,
+        },
+      });
+
       setNewTaskName("");
       setNewTaskTime("");
       setAddModalVisible(false);
@@ -72,6 +85,25 @@ export const DailyTasksScreen = ({
 
   const toggleDailyTaskComplete = (id) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const target = dailyTasks.find((t) => t.id === id);
+    if (target) {
+      const nextStatus = !target.completed;
+      if (nextStatus) {
+        eventBus.emit({
+          type: "TASK_COMPLETED",
+          entityId: String(id),
+          source: "app",
+          payload: { title: target.name, isDaily: true },
+        });
+      } else {
+        eventBus.emit({
+          type: "TASK_UPDATED",
+          entityId: String(id),
+          source: "app",
+          payload: { title: target.name, isDaily: true, completed: false },
+        });
+      }
+    }
     setDailyTasks(
       dailyTasks.map((task) => {
         if (task.id === id) {
@@ -115,6 +147,12 @@ export const DailyTasksScreen = ({
       "Confirm deletion of objective from system?",
       () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        eventBus.emit({
+          type: "TASK_DELETED",
+          entityId: String(id),
+          source: "app",
+          payload: { isDaily: true },
+        });
         setDailyTasks(dailyTasks => {
           const taskToDelete = dailyTasks.find(t => t.id === id);
           if (taskToDelete && taskToDelete.notificationId) {

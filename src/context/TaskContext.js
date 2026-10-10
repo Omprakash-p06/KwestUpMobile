@@ -19,6 +19,7 @@ import {
 } from "../services/notificationService";
 import { STORAGE_VERSION } from "../utils/storage";
 import { logger } from "../utils/logger";
+import { eventBus } from "../behavior/eventBus";
 
 const TaskContext = createContext(null);
 
@@ -192,6 +193,14 @@ export const TaskProvider = ({
 
   // Task Action Handlers
   const toggleTaskComplete = useCallback((id) => {
+    let wasCompleted = false;
+    let targetTitle = "";
+    const target = tasks.find((t) => t.id === id);
+    if (target) {
+      wasCompleted = Boolean(target.completed);
+      targetTitle = target.title || "";
+    }
+
     setTasks((currentTasks) => {
       const { updatedTasks, spawnedTask } = toggleTask(currentTasks, id);
       if (spawnedTask && spawnedTask.dueDate) {
@@ -205,7 +214,23 @@ export const TaskProvider = ({
       }
       return updatedTasks;
     });
-  }, []);
+
+    if (!wasCompleted) {
+      eventBus.emit({
+        type: "TASK_COMPLETED",
+        entityId: id,
+        source: "app",
+        payload: { title: targetTitle, completed: true },
+      });
+    } else {
+      eventBus.emit({
+        type: "TASK_UPDATED",
+        entityId: id,
+        source: "app",
+        payload: { title: targetTitle, completed: false },
+      });
+    }
+  }, [tasks]);
 
   const handleCompleteTask = useCallback((taskId) => {
     setTasks((currentTasks) => {
@@ -227,6 +252,13 @@ export const TaskProvider = ({
       title: "Task Completed! ✨",
       body: "Great job! Another one bites the dust.",
     });
+
+    eventBus.emit({
+      type: "TASK_COMPLETED",
+      entityId: taskId,
+      source: "app",
+      payload: { completed: true },
+    });
   }, []);
 
   const deleteTask = useCallback((id, customConfirm = null) => {
@@ -237,6 +269,12 @@ export const TaskProvider = ({
           cancelNotification(deletedTask.notificationId);
         }
         return updatedTasks;
+      });
+
+      eventBus.emit({
+        type: "TASK_DELETED",
+        entityId: id,
+        source: "app",
       });
     };
 
@@ -253,6 +291,7 @@ export const TaskProvider = ({
   }, [showConfirmationDialog]);
 
   const handleSaveTask = useCallback(async (taskData) => {
+    const isUpdate = Boolean(taskData.id && tasks.some((t) => t.id === taskData.id));
     const taskToSave = {
       ...taskData,
       listId: taskData.listId || "default_inbox",
@@ -273,13 +312,29 @@ export const TaskProvider = ({
       if (nid) notificationId = nid;
     }
 
+    let finalSavedTask = null;
     setTasks((currentTasks) => {
-      const { updatedTasks } = saveTask(currentTasks, {
+      const { updatedTasks, savedTask } = saveTask(currentTasks, {
         ...taskToSave,
         notificationId,
       });
+      finalSavedTask = savedTask;
       return updatedTasks;
     });
+
+    if (finalSavedTask) {
+      eventBus.emit({
+        type: isUpdate ? "TASK_UPDATED" : "TASK_CREATED",
+        entityId: finalSavedTask.id,
+        source: "app",
+        payload: {
+          title: finalSavedTask.title,
+          listId: finalSavedTask.listId,
+          dueDate: finalSavedTask.dueDate,
+          recurrence: finalSavedTask.recurrence,
+        },
+      });
+    }
   }, [tasks]);
 
   const handleToggleSubtask = useCallback((taskId, subtaskIdx) => {

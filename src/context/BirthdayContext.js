@@ -3,6 +3,7 @@ import {
   scheduleBirthdayReminders,
   cancelNotification,
 } from "../services/notificationService";
+import { eventBus } from "../behavior/eventBus";
 
 const BirthdayContext = createContext(null);
 
@@ -22,6 +23,8 @@ export const BirthdayProvider = ({
   }, [initialBirthdays]);
 
   const handleSaveBirthday = useCallback(async (birthdayData) => {
+    const isUpdate = Boolean(birthdayData.id && birthdays.some((b) => b.id === birthdayData.id));
+
     // If updating, cancel old notifications
     if (birthdayData.id) {
       const existing = birthdays.find((b) => b.id === birthdayData.id);
@@ -47,6 +50,16 @@ export const BirthdayProvider = ({
       return [...prev, finalBirthday];
     });
 
+    eventBus.emit({
+      type: isUpdate ? "BIRTHDAY_UPDATED" : "BIRTHDAY_CREATED",
+      entityId: finalBirthday.id,
+      source: "app",
+      payload: {
+        name: finalBirthday.name,
+        date: finalBirthday.date,
+      },
+    });
+
     return finalBirthday;
   }, [birthdays]);
 
@@ -59,6 +72,11 @@ export const BirthdayProvider = ({
         }
       }
       setBirthdays((prev) => prev.filter((b) => b.id !== id));
+      eventBus.emit({
+        type: "BIRTHDAY_DELETED",
+        entityId: String(id),
+        source: "app",
+      });
     };
 
     const confirmFn = customConfirm || showConfirmationDialog;

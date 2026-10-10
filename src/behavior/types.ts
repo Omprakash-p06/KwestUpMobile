@@ -86,19 +86,37 @@ export interface Intervention {
 }
 
 export type BehaviorEventType =
+  // Task lifecycle
   | 'TASK_CREATED'
-  | 'TASK_MISSED'
+  | 'TASK_UPDATED'
   | 'TASK_COMPLETED'
-  | 'HABIT_COMPLETED'
-  | 'HABIT_MISSED'
-  | 'REMINDER_DISMISSED'
-  | 'REMINDER_IGNORED'
-  | 'WIDGET_ACTION'
+  | 'TASK_DELETED'
+  | 'TASK_MISSED'
+  // Billing lifecycle
+  | 'BILL_CREATED'
+  | 'BILL_PAID'
+  | 'BILL_UPDATED'
+  | 'BILL_DELETED'
+  // Birthday lifecycle
+  | 'BIRTHDAY_CREATED'
+  | 'BIRTHDAY_UPDATED'
+  | 'BIRTHDAY_DELETED'
+  // Focus Timer lifecycle
+  | 'FOCUS_STARTED'
   | 'FOCUS_COMPLETED'
-  | 'CHECK_IN_COMPLETED'
+  // Home-screen Widget lifecycle
+  | 'WIDGET_ACTION'
+  // Habit & Behavioral lifecycle (Phase 24 readiness)
   | 'HABIT_CREATED'
   | 'HABIT_UPDATED'
-  | 'RECOVERY_STARTED';
+  | 'HABIT_COMPLETED'
+  | 'HABIT_MISSED'
+  | 'RECOVERY_STARTED'
+  | 'REMINDER_DISMISSED'
+  | 'REMINDER_IGNORED'
+  | 'CHECK_IN_COMPLETED';
+
+export type DomainEventType = BehaviorEventType;
 
 export interface BehaviorEvent {
   id: string;
@@ -106,8 +124,25 @@ export interface BehaviorEvent {
   entityId: string;
   timestamp: string;
   metadata?: Record<string, unknown>;
+  payload?: Record<string, unknown>;
   source: 'app' | 'widget' | 'notification' | 'system';
 }
+
+export type DomainEvent<T extends DomainEventType = DomainEventType> = BehaviorEvent & {
+  type: T;
+};
+
+export type DomainEventInput<T extends DomainEventType = DomainEventType> = Omit<
+  DomainEvent<T>,
+  'id' | 'timestamp'
+> & {
+  id?: string;
+  timestamp?: string;
+};
+
+export type DomainEventListener<T extends DomainEventType = DomainEventType> = (
+  event: DomainEvent<T>
+) => void | Promise<void>;
 
 export type FrictionCategory = 'effort' | 'time' | 'setup' | 'emotional' | 'mental' | 'location';
 

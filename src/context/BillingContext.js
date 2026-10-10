@@ -9,6 +9,8 @@ import {
   addRecurringBill,
   deleteRecurringBill,
 } from "../utils/billingStorage";
+import { logger } from "../utils/logger";
+import { eventBus } from "../behavior/eventBus";
 
 const BillingContext = createContext(null);
 
@@ -37,7 +39,7 @@ export const BillingProvider = ({
       setBillingData(data);
       return data;
     } catch (err) {
-      console.error("❌ Failed to refresh billing data:", err);
+      logger.error("❌ Failed to refresh billing data:", err);
       return DEFAULT_BILLING;
     }
   }, []);
@@ -46,9 +48,19 @@ export const BillingProvider = ({
     try {
       const updated = await addTransaction(tx);
       setBillingData(updated);
+      eventBus.emit({
+        type: "BILL_PAID",
+        entityId: String(tx.id || Date.now()),
+        source: "app",
+        payload: {
+          amount: tx.amount,
+          category: tx.category,
+          date: tx.date,
+        },
+      });
       return updated;
     } catch (err) {
-      console.error("❌ Failed to add transaction:", err);
+      logger.error("❌ Failed to add transaction:", err);
     }
   }, []);
 
@@ -58,7 +70,7 @@ export const BillingProvider = ({
       setBillingData(updated);
       return updated;
     } catch (err) {
-      console.error("❌ Failed to delete transaction:", err);
+      logger.error("❌ Failed to delete transaction:", err);
     }
   }, []);
 
@@ -68,7 +80,7 @@ export const BillingProvider = ({
       setBillingData(updated);
       return updated;
     } catch (err) {
-      console.error("❌ Failed to upsert budget:", err);
+      logger.error("❌ Failed to upsert budget:", err);
     }
   }, []);
 
@@ -78,7 +90,7 @@ export const BillingProvider = ({
       setBillingData(updated);
       return updated;
     } catch (err) {
-      console.error("❌ Failed to delete budget:", err);
+      logger.error("❌ Failed to delete budget:", err);
     }
   }, []);
 
@@ -86,9 +98,19 @@ export const BillingProvider = ({
     try {
       const updated = await addRecurringBill(bill);
       setBillingData(updated);
+      eventBus.emit({
+        type: "BILL_CREATED",
+        entityId: String(bill.id || Date.now()),
+        source: "app",
+        payload: {
+          amount: bill.amount,
+          category: bill.category,
+          dueDate: bill.dueDate,
+        },
+      });
       return updated;
     } catch (err) {
-      console.error("❌ Failed to add recurring bill:", err);
+      logger.error("❌ Failed to add recurring bill:", err);
     }
   }, []);
 
@@ -96,9 +118,14 @@ export const BillingProvider = ({
     try {
       const updated = await deleteRecurringBill(id);
       setBillingData(updated);
+      eventBus.emit({
+        type: "BILL_DELETED",
+        entityId: String(id),
+        source: "app",
+      });
       return updated;
     } catch (err) {
-      console.error("❌ Failed to delete recurring bill:", err);
+      logger.error("❌ Failed to delete recurring bill:", err);
     }
   }, []);
 
