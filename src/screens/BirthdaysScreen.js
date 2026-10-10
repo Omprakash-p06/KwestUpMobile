@@ -5,8 +5,9 @@ import { CustomDatePickerModal, CustomTimePickerModal } from "../components/Cust
 import * as Haptics from "expo-haptics";
 import { LiquidGlassCard } from "../components/LiquidGlassCard";
 import { CustomTextInput } from "../components/CustomTextInput";
-import { scheduleCustomBirthdayReminders, cancelCustomBirthdayReminders } from "../utils/notifications";
+import { scheduleBirthdayReminders, cancelNotification } from "../services/notificationService";
 import { injectFontFamily } from "../theme/styles";
+import { logger } from "../utils/logger";
 
 export const BirthdaysScreen = ({
   currentTheme,
@@ -58,7 +59,7 @@ export const BirthdaysScreen = ({
       };
 
       try {
-        const notificationIds = await scheduleCustomBirthdayReminders(tempBday);
+        const notificationIds = await scheduleBirthdayReminders(tempBday);
         const finalBday = { ...tempBday, notificationIds };
         setBirthdays((prev) => [...prev, finalBday]);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -69,7 +70,7 @@ export const BirthdaysScreen = ({
         setAdvanceReminder("none");
         setIncludeYear(true);
       } catch (err) {
-        console.error("Failed to schedule birthday notification:", err);
+        logger.warn("Failed to schedule birthday notification");
         // Still add the birthday even if notification scheduling fails
         setBirthdays((prev) => [...prev, tempBday]);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -89,7 +90,9 @@ export const BirthdaysScreen = ({
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         const targetBday = birthdays.find(b => b.id === id);
         if (targetBday && targetBday.notificationIds) {
-          await cancelCustomBirthdayReminders(targetBday.notificationIds);
+          for (const notifId of targetBday.notificationIds) {
+            if (notifId) await cancelNotification(notifId);
+          }
         }
         setBirthdays((prev) => prev.filter((b) => b.id !== id));
       },

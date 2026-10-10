@@ -6,7 +6,7 @@ import { CustomTimePickerModal } from "../components/CustomDateTimePicker";
 import * as Haptics from "expo-haptics";
 import { useNavigation } from "@react-navigation/native";
 import { LiquidGlassCard } from "../components/LiquidGlassCard";
-import { scheduleDailyTaskNotification, cancelDueDateNotification } from "../utils/notifications";
+import { scheduleDailyTaskReminder, cancelNotification } from "../services/notificationService";
 import { CustomTextInput } from "../components/CustomTextInput";
 import { injectFontFamily } from "../theme/styles";
 import { logger } from "../utils/logger";
@@ -44,7 +44,7 @@ export const DailyTasksScreen = ({
       };
 
       if (newDailyTask.time) {
-        scheduleDailyTaskNotification(newDailyTask).then(
+        scheduleDailyTaskReminder(newDailyTask).then(
           (notificationId) => setDailyTasks((prev) => [...prev, { ...newDailyTask, notificationId }]),
           (err) => {
             // WR-04: scheduling failure must degrade to an unscheduled task,
@@ -118,7 +118,7 @@ export const DailyTasksScreen = ({
         setDailyTasks(dailyTasks => {
           const taskToDelete = dailyTasks.find(t => t.id === id);
           if (taskToDelete && taskToDelete.notificationId) {
-            cancelDueDateNotification(taskToDelete.notificationId);
+            cancelNotification(taskToDelete.notificationId);
           }
           return dailyTasks.filter((task) => task.id !== id);
         });

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { View, Text, Platform, ActivityIndicator, AppState, Linking } from "react-native";
 import { PaperProvider } from "react-native-paper";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Notifications from "expo-notifications";
 import Modal from "react-native-modal";
 import ConfettiCannon from "react-native-confetti-cannon";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -50,12 +49,7 @@ import { migrateToVaultSystem, getVaults, getActiveVaultId, setActiveVaultId } f
 
 // Utility imports
 import { APP_VERSION, STORAGE_VERSION, clearAllCaches, migrateUserDataIfNeeded } from "./src/utils/storage";
-import {
-  requestNotificationPermissions,
-  scheduleDailyTaskNotification,
-  cancelCustomBirthdayReminders,
-  scheduleCustomBirthdayReminders
-} from "./src/utils/notifications";
+import { scheduleNotification } from "./src/services/notificationService";
 import { performSync } from "./src/utils/syncService";
 import { runDeviceDiagnostics, runNetworkDiagnostics, checkForUpdates, sendTelemetryEvent, DEBUG_MODE } from "./src/utils/diagnostics";
 import { loadBillingData } from "./src/utils/billingStorage";
@@ -490,7 +484,6 @@ const App = () => {
 
   useEffect(() => {
     if (isInitialized) {
-      requestNotificationPermissions();
       loadData();
       // Load billing data separately (its own storage key)
       loadBillingData().then(setBillingData);
@@ -700,13 +693,13 @@ const App = () => {
         showConfirmation("Congratulations! You completed your focus session!", () => {
           setConfettiVisible(true);
         });
-        Notifications.scheduleNotificationAsync({
-          content: {
-            title: "KwestUp Focus Timer",
-            body: "Your focus session is complete! Great job!",
-            sound: "default",
-          },
-          trigger: null,
+        scheduleNotification({
+          category: "system",
+          payloadKey: `focus_timer_${Date.now()}`,
+          recurrence: "one-shot",
+          channelId: "kwestup_system",
+          title: "KwestUp Focus Timer",
+          body: "Your focus session is complete! Great job!",
         });
       }
     }

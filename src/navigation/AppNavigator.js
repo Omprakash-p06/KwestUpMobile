@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useWindowDimensions, View } from "react-native";
 import { AIAssistant } from "../components/AIAssistant";
 import { TaskEditModal } from "../components/TaskEditModal";
@@ -14,8 +14,10 @@ import { SearchScreen } from "../screens/SearchScreen";
 import { NotesScreen } from "../screens/NotesScreen";
 import { BillingScreen } from "../screens/BillingScreen";
 import {
-  scheduleCustomBirthdayReminders,
-} from "../utils/notifications";
+  initNotificationChannels,
+  requestNotificationPermissions,
+  scheduleBirthdayReminders,
+} from "../services/notificationService";
 import { useNavigationState } from "@react-navigation/native";
 import { getLocalDateString } from "../utils/dateUtils";
 import { useTasks } from "../context/TaskContext";
@@ -68,6 +70,11 @@ export const AppNavigator = ({
   const vaultCtx = useVaults();
   const billingCtx = useBilling();
   const birthdayCtx = useBirthdays();
+
+  useEffect(() => {
+    initNotificationChannels();
+    requestNotificationPermissions();
+  }, []);
 
   // C-02: TaskContext is the only task-mutation path. App.js no longer passes
   // task handlers, so there are no prop fallbacks — context is required.
@@ -136,7 +143,7 @@ export const AppNavigator = ({
       advanceReminder: "none",
       notificationIds: [],
     };
-    const notificationIds = await scheduleCustomBirthdayReminders(newBday);
+    const notificationIds = await scheduleBirthdayReminders(newBday);
     const finalBday = { ...newBday, notificationIds };
     if (effectiveSetBirthdays) {
       effectiveSetBirthdays((prev) => [...prev, finalBday]);

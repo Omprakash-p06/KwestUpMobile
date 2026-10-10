@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import * as Notifications from "expo-notifications";
-import { scheduleCustomBirthdayReminders } from "../utils/notifications";
+import {
+  scheduleBirthdayReminders,
+  cancelNotification,
+} from "../services/notificationService";
 
 const BirthdayContext = createContext(null);
 
@@ -25,18 +27,14 @@ export const BirthdayProvider = ({
       const existing = birthdays.find((b) => b.id === birthdayData.id);
       if (existing?.notificationIds && existing.notificationIds.length > 0) {
         for (const notifId of existing.notificationIds) {
-          try {
-            await Notifications.cancelScheduledNotificationAsync(notifId);
-          } catch {
-            // ignore
-          }
+          if (notifId) await cancelNotification(notifId);
         }
       }
     }
 
     const newId = birthdayData.id || Date.now().toString();
     const bdayToSchedule = { ...birthdayData, id: newId };
-    const notificationIds = await scheduleCustomBirthdayReminders(bdayToSchedule);
+    const notificationIds = await scheduleBirthdayReminders(bdayToSchedule);
     const finalBirthday = { ...bdayToSchedule, notificationIds };
 
     setBirthdays((prev) => {
@@ -57,11 +55,7 @@ export const BirthdayProvider = ({
       const existing = birthdays.find((b) => b.id === id);
       if (existing?.notificationIds && existing.notificationIds.length > 0) {
         for (const notifId of existing.notificationIds) {
-          try {
-            await Notifications.cancelScheduledNotificationAsync(notifId);
-          } catch {
-            // ignore
-          }
+          if (notifId) await cancelNotification(notifId);
         }
       }
       setBirthdays((prev) => prev.filter((b) => b.id !== id));

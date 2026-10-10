@@ -24,9 +24,9 @@ import {
   updateBillNotificationIds,
 } from "../utils/billingStorage";
 import {
-  scheduleRecurringBillReminder as scheduleBillReminder,
-  cancelRecurringBillReminders as cancelBillReminders,
-} from "../utils/billingNotifications";
+  scheduleBillReminder,
+  cancelNotifications as cancelBillReminders,
+} from "../services/notificationService";
 import { getLocalDateString, getLocalMonthString } from "../utils/dateUtils";
 
 

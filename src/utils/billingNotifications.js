@@ -80,7 +80,7 @@ export const scheduleRecurringBillReminder = async (bill, currency = "₹") => {
 
   try {
     return await serviceScheduleBillReminder(bill, currency);
-  } catch (_err) {
+  } catch {
     logger.warn('billingNotifications: failed to schedule bill reminder', {
       billId: bill?.id,
     });
@@ -99,7 +99,7 @@ export const cancelRecurringBillReminders = async (notificationIds = []) => {
     if (!id) continue;
     try {
       await serviceCancelNotification(id);
-    } catch (_err) {
+    } catch {
       logger.warn('billingNotifications: failed to cancel notification', { id });
     }
   }

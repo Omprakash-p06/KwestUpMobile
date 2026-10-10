@@ -13,10 +13,10 @@ import {
   deleteTaskList,
 } from "../utils/taskMutations";
 import {
-  scheduleDueDateNotification,
-  cancelDueDateNotification,
-  schedulePushNotification,
-} from "../utils/notifications";
+  scheduleDueDateReminder,
+  scheduleNotification,
+  cancelNotification,
+} from "../services/notificationService";
 import { STORAGE_VERSION } from "../utils/storage";
 import { logger } from "../utils/logger";
 
@@ -195,7 +195,7 @@ export const TaskProvider = ({
     setTasks((currentTasks) => {
       const { updatedTasks, spawnedTask } = toggleTask(currentTasks, id);
       if (spawnedTask && spawnedTask.dueDate) {
-        scheduleDueDateNotification(spawnedTask).then((notificationId) => {
+        scheduleDueDateReminder(spawnedTask).then((notificationId) => {
           if (notificationId) {
             setTasks((prev) =>
               prev.map((t) => (t.id === spawnedTask.id ? { ...t, notificationId } : t))
@@ -219,7 +219,11 @@ export const TaskProvider = ({
       // ignore
     }
 
-    schedulePushNotification({
+    scheduleNotification({
+      category: "system",
+      payloadKey: `task_complete_${taskId}_${Date.now()}`,
+      recurrence: "one-shot",
+      channelId: "kwestup_system",
       title: "Task Completed! ✨",
       body: "Great job! Another one bites the dust.",
     });
@@ -230,7 +234,7 @@ export const TaskProvider = ({
       setTasks((currentTasks) => {
         const { updatedTasks, deletedTask } = deleteTaskMutation(currentTasks, id);
         if (deletedTask?.notificationId) {
-          cancelDueDateNotification(deletedTask.notificationId);
+          cancelNotification(deletedTask.notificationId);
         }
         return updatedTasks;
       });
@@ -258,14 +262,14 @@ export const TaskProvider = ({
     if (taskToSave.id) {
       const existing = tasks.find((t) => t.id === taskToSave.id);
       if (existing?.notificationId && existing.dueDate !== taskToSave.dueDate) {
-        await cancelDueDateNotification(existing.notificationId);
+        await cancelNotification(existing.notificationId);
       }
     }
 
     // Schedule notification if due date is present
     let notificationId = taskToSave.notificationId || null;
     if (taskToSave.dueDate) {
-      const nid = await scheduleDueDateNotification(taskToSave);
+      const nid = await scheduleDueDateReminder(taskToSave);
       if (nid) notificationId = nid;
     }
 
@@ -312,7 +316,7 @@ export const TaskProvider = ({
       setTasks((currentTasks) => {
         currentTasks.forEach((task) => {
           if (task.listId === listId && task.notificationId) {
-            cancelDueDateNotification(task.notificationId);
+            cancelNotification(task.notificationId);
           }
         });
         return currentTasks.filter((task) => task.listId !== listId);

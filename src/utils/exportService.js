@@ -5,7 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { isUserDataKey, APP_VERSION, STORAGE_VERSION } from "./storage";
 import { getVaults, getVaultPath, ensureVaultsDir } from "./vaultService";
 import { loadBillingData, saveBillingData } from "./billingStorage";
-import { scheduleRecurringBillReminder, cancelRecurringBillReminders } from "./billingNotifications";
+import { scheduleBillReminder, cancelNotifications } from "../services/notificationService";
 import { logger } from "./logger";
 
 // ─── Encryption Helpers ───────────────────────────────────────────────────────
@@ -370,9 +370,9 @@ export const importArchive = async (filePath, passphrase, onProgress) => {
     const billingToRestore = payload.billing;
     // Cancel stale notification IDs from export device (they won't exist here)
     for (const bill of billingToRestore.recurringBills || []) {
-      await cancelRecurringBillReminders(bill.notificationIds || []);
+      await cancelNotifications(bill.notificationIds || []);
       // Reschedule fresh on this device
-      const notifId = await scheduleRecurringBillReminder(bill, billingToRestore.currency || "₹");
+      const notifId = await scheduleBillReminder(bill, billingToRestore.currency || "₹");
       bill.notificationIds = notifId ? [notifId] : [];
     }
     await saveBillingData(billingToRestore);
