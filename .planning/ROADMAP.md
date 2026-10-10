@@ -5,6 +5,7 @@
 The roadmap for KwestUp Mobile transitions the application into a highly performant, local-first productivity workspace. The phases are ordered logically to establish core modules first (Notes, Tasks, Birthdays), implement the Wi-Fi synchronization network next, integrate offline local AI, and finally containerize developer environments.
 
 ### Planning Governance: Mandatory Codebase Map Review
+
 Per workspace standard `GEMINI.md`, **all phase planning (`gsd-plan-phase`) must strictly read and cross-reference all 7 codebase map files in `.planning/codebase/`** (`ARCHITECTURE.md`, `CONCERNS.md`, `CONVENTIONS.md`, `INTEGRATIONS.md`, `STACK.md`, `STRUCTURE.md`, `TESTING.md`) before authoring any `PLAN.md` or `RESEARCH.md`. Every plan must explicitly incorporate a `## Codebase Map Alignment` section addressing architecture boundaries, known debt from `CONCERNS.md`, and test/mock patterns.
 
 ---
@@ -38,7 +39,7 @@ Per workspace standard `GEMINI.md`, **all phase planning (`gsd-plan-phase`) must
 
 - [x] **Phase 20: Repository Governance, Behavioral Rulebook & Architecture Foundation** - Establish Atomic Habits rulebook, governance contracts, and domain scaffolding. ✅ COMPLETE
 - [x] **Phase 21: Technology Platform Upgrade (Expo SDK 57, RN 0.86, Node 22)** - Upgrade runtime framework and verify native dependencies (`llama.rn`, `android-widget`). ✅ COMPLETE
-- [ ] **Phase 22: Unified Notification Service & Dispatch Engine** - Consolidate distributed notification mechanics and implement strict policy gates (rate limits, quiet hours).
+- [x] **Phase 22: Unified Notification Service & Dispatch Engine** - Consolidate distributed notification mechanics and implement strict policy gates (rate limits, quiet hours). (completed 2026-10-10)
 - [ ] **Phase 23: Domain Event Bus & Behavioral Telemetry** - Type-safe internal event bus instrumenting domain state transitions.
 - [ ] **Phase 24: Core Behavior Engine (Habits, Cues, Recovery & Rewards)** - Pure behavior engines (2-minute rule, never-miss-twice recovery) and `HabitContext`.
 - [ ] **Phase 25: Intervention Engine & Behavioral Home-Screen Widgets** - Multi-surface behavioral intervention delivery across notifications and interactive Android widgets.
@@ -246,7 +247,7 @@ Per workspace standard `GEMINI.md`, **all phase planning (`gsd-plan-phase`) must
 | 19. Observability & Logging | 2/2 | ✅ Complete | 2026-09-28 |
 | 20. Governance & Rulebook Foundation | 2/2 | ✅ Complete | 2026-10-01 |
 | 21. Technology Platform Upgrade | 0/2 | ⏳ Pending | - |
-| 22. Unified Notification Service | 1/2 | In Progress|  |
+| 22. Unified Notification Service | 2/2 | Complete    | 2026-10-10 |
 | 23. Domain Event Bus | 0/2 | ⏳ Pending | - |
 | 24. Core Behavior & Rule Engine | 0/2 | ⏳ Pending | - |
 | 25. Intervention & Widgets | 0/2 | ⏳ Pending | - |
@@ -420,8 +421,11 @@ Per workspace standard `GEMINI.md`, **all phase planning (`gsd-plan-phase`) must
 
 **Plans**:
 
-- [x] 22-01-PLAN.md — Unified `src/services/notificationService.ts` core engine (channels, permissions, and typed descriptors)
-- [ ] 22-02-PLAN.md — Policy gate enforcement, caller migration from `App.js` & contexts, and `logger.js` redaction expansion
+- [x] 22-01-PLAN.md
+
+2/2 plans executed
+
+- [x] 22-02-PLAN.md — Policy gate enforcement, caller migration from `App.js` & contexts, and `logger.js` redaction expansion
 
 ---
 
@@ -532,4 +536,3 @@ Per workspace standard `GEMINI.md`, **all phase planning (`gsd-plan-phase`) must
 
 - [ ] 28-01-PLAN.md — Behavior Analyst friction diagnosis and Language Generator weekly review engine
 - [ ] 28-02-PLAN.md — End-to-end test suite hardening, performance validation, and production release sign-off
-
