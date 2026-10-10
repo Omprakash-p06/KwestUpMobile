@@ -40,7 +40,7 @@ Per workspace standard `GEMINI.md`, **all phase planning (`gsd-plan-phase`) must
 - [x] **Phase 20: Repository Governance, Behavioral Rulebook & Architecture Foundation** - Establish Atomic Habits rulebook, governance contracts, and domain scaffolding. ✅ COMPLETE
 - [x] **Phase 21: Technology Platform Upgrade (Expo SDK 57, RN 0.86, Node 22)** - Upgrade runtime framework and verify native dependencies (`llama.rn`, `android-widget`). ✅ COMPLETE
 - [x] **Phase 22: Unified Notification Service & Dispatch Engine** - Consolidate distributed notification mechanics and implement strict policy gates (rate limits, quiet hours). (completed 2026-10-10)
-- [ ] **Phase 23: Domain Event Bus & Behavioral Telemetry** - Type-safe internal event bus instrumenting domain state transitions.
+- [x] **Phase 23: Domain Event Bus & Behavioral Telemetry** - Type-safe internal event bus instrumenting domain state transitions. ✅ COMPLETE
 - [ ] **Phase 24: Core Behavior Engine (Habits, Cues, Recovery & Rewards)** - Pure behavior engines (2-minute rule, never-miss-twice recovery) and `HabitContext`.
 - [ ] **Phase 25: Intervention Engine & Behavioral Home-Screen Widgets** - Multi-surface behavioral intervention delivery across notifications and interactive Android widgets.
 - [ ] **Phase 26: Type-Safe Command Registry & AI Sandboxing** - Schema-validated command execution isolating OS/storage APIs from direct AI writes.

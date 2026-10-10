@@ -59,7 +59,7 @@ Requirements for the behavioral execution system, technology platform upgrade, a
 
 ### Domain Events & Behavioral Telemetry
 
-- [ ] **EVT-01**: Implement type-safe in-memory domain event bus (`src/behavior/eventBus.ts`) instrumenting task, billing, birthday, and timer lifecycle events.
+- [x] **EVT-01**: Implement type-safe in-memory domain event bus (`src/behavior/eventBus.ts`) instrumenting task, billing, birthday, and timer lifecycle events.
 
 ### Core Behavior & Deterministic Rule Engine
 
@@ -110,7 +110,7 @@ Requirements for the behavioral execution system, technology platform upgrade, a
 | UPGD-01 | Phase 21 | Complete |
 | NOTIF-01| Phase 22 | Complete |
 | NOTIF-02| Phase 22 | Complete |
-| EVT-01  | Phase 23 | Pending |
+| EVT-01  | Phase 23 | Complete |
 | BEH-01  | Phase 24 | Pending |
 | BEH-02  | Phase 24 | Pending |
 | INTV-01 | Phase 25 | Pending |
