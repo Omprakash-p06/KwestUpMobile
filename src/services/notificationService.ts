@@ -159,6 +159,7 @@ export async function getNotificationHistory(): Promise<NotificationHistoryEntry
     }
     const cutoff = Date.now() - 48 * 60 * 60 * 1000;
     return parsed.filter((item) => {
+      if (!item || typeof item !== 'object') return false;
       const ts = new Date(item.dispatchedAt).getTime();
       return Number.isFinite(ts) && ts >= cutoff;
     });
@@ -341,12 +342,14 @@ export async function scheduleNotification(
   }
 
   const finalTriggerDateStr = evaluation.adjustedTriggerDate || request.triggerDate;
-  let trigger: any = null;
+  let trigger: any = request.channelId ? { channelId: request.channelId } : null;
 
   if (finalTriggerDateStr) {
     const d = new Date(finalTriggerDateStr);
     if (!isNaN(d.getTime())) {
-      trigger = d;
+      trigger = request.channelId
+        ? { date: d, channelId: request.channelId }
+        : d;
     }
   }
 
@@ -414,6 +417,7 @@ export async function scheduleDailyTaskReminder(task: {
       hour: hours,
       minute: minutes,
       repeats: true,
+      channelId: ANDROID_NOTIFICATION_CHANNELS.DAILY_TASKS.id,
     };
     const notificationId = await Notifications.scheduleNotificationAsync({
       content: {
@@ -524,7 +528,10 @@ export async function scheduleBirthdayReminders(birthday: {
       }
 
       if (targetBday > today) {
-        const trigger: any = targetBday;
+        const trigger: any = {
+          date: targetBday,
+          channelId: ANDROID_NOTIFICATION_CHANNELS.BIRTHDAYS.id,
+        };
         const notifId = await Notifications.scheduleNotificationAsync({
           content: {
             title: `🎂 Birthday Alert!`,
@@ -538,7 +545,7 @@ export async function scheduleBirthdayReminders(birthday: {
         await recordNotificationDispatch({
           id: notifId,
           category: 'birthday',
-          payloadKey: `birthday_${name}_${year}`,
+          payloadKey: `birthday_${birthday.id || name}_${year}`,
           recurrence: 'recurring',
           channelId: ANDROID_NOTIFICATION_CHANNELS.BIRTHDAYS.id,
           dispatchedAt: new Date().toISOString(),
@@ -558,7 +565,10 @@ export async function scheduleBirthdayReminders(birthday: {
         advanceTarget.setHours(hours, minutes, 0, 0);
 
         if (advanceTarget > today) {
-          const trigger: any = advanceTarget;
+          const trigger: any = {
+            date: advanceTarget,
+            channelId: ANDROID_NOTIFICATION_CHANNELS.BIRTHDAYS.id,
+          };
           const advId = await Notifications.scheduleNotificationAsync({
             content: {
               title: `🎁 Birthday Coming Up!`,
@@ -572,7 +582,7 @@ export async function scheduleBirthdayReminders(birthday: {
           await recordNotificationDispatch({
             id: advId,
             category: 'birthday',
-            payloadKey: `birthday_adv_${name}_${year}`,
+            payloadKey: `birthday_adv_${birthday.id || name}_${year}`,
             recurrence: 'recurring',
             channelId: ANDROID_NOTIFICATION_CHANNELS.BIRTHDAYS.id,
             dispatchedAt: new Date().toISOString(),
@@ -672,7 +682,10 @@ export async function scheduleBillReminder(
   const billName = bill.name || 'Recurring Bill';
 
   try {
-    const trigger: any = notifyDate;
+    const trigger: any = {
+      date: notifyDate,
+      channelId: ANDROID_NOTIFICATION_CHANNELS.BILLING.id,
+    };
     const notifId = await Notifications.scheduleNotificationAsync({
       content: {
         title: '🏦 Bill Due Soon!',

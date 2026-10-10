@@ -571,7 +571,10 @@ describe('notificationService', () => {
           sound: 'default',
           data: undefined,
         },
-        trigger: target,
+        trigger: {
+          date: target,
+          channelId: 'kwestup_behavior_cues',
+        },
       });
 
       // Verify history was saved
@@ -650,6 +653,7 @@ describe('notificationService', () => {
             hour: 8,
             minute: 30,
             repeats: true,
+            channelId: 'kwestup_daily_tasks',
           },
         });
       });
@@ -713,7 +717,8 @@ describe('notificationService', () => {
         // Check call arguments: target dates for non-leap years should be Feb 28 (month 1, day 28)
         const calls = (Notifications.scheduleNotificationAsync as jest.Mock).mock.calls;
         for (const call of calls) {
-          const trigger = call[0].trigger;
+          expect(call[0].trigger.channelId).toBe('kwestup_birthdays');
+          const trigger = call[0].trigger.date || call[0].trigger;
           if (trigger instanceof Date) {
             const yr = trigger.getFullYear();
             const isLeapYear = (yr % 4 === 0 && yr % 100 !== 0) || yr % 400 === 0;
@@ -795,6 +800,9 @@ describe('notificationService', () => {
               title: '🏦 Bill Due Soon!',
               body: expect.stringContaining('Apartment Rent (₹15000.00)'),
             }),
+            trigger: expect.objectContaining({
+              channelId: 'kwestup_billing',
+            }),
           })
         );
       });
@@ -835,6 +843,12 @@ describe('notificationService', () => {
 
     it('falls back to empty array on non-array history JSON', async () => {
       await AsyncStorage.setItem(NOTIFICATION_HISTORY_KEY, JSON.stringify({ not: 'an array' }));
+      const history = await getNotificationHistory();
+      expect(history).toEqual([]);
+    });
+
+    it('safely filters out non-object entries in history array', async () => {
+      await AsyncStorage.setItem(NOTIFICATION_HISTORY_KEY, JSON.stringify([null, 'bad', 42]));
       const history = await getNotificationHistory();
       expect(history).toEqual([]);
     });

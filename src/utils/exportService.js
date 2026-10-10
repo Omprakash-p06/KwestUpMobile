@@ -370,7 +370,11 @@ export const importArchive = async (filePath, passphrase, onProgress) => {
     const billingToRestore = payload.billing;
     // Cancel stale notification IDs from export device (they won't exist here)
     for (const bill of billingToRestore.recurringBills || []) {
-      await cancelNotifications(bill.notificationIds || []);
+      try {
+        await cancelNotifications(bill.notificationIds || []);
+      } catch {
+        // Safe ignore for foreign notification IDs
+      }
       // Reschedule fresh on this device
       const notifId = await scheduleBillReminder(bill, billingToRestore.currency || "₹");
       bill.notificationIds = notifId ? [notifId] : [];

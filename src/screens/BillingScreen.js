@@ -220,7 +220,11 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
 
   const handleDeleteBill = useCallback((bill) => {
     showConfirmation("Delete this recurring bill?", async () => {
-      await cancelBillReminders(bill.notificationIds || []);
+      try {
+        await cancelBillReminders(bill.notificationIds || []);
+      } catch {
+        // Safe degrade if notification was already cleared by OS
+      }
       const updated = await saveDeleteBill(bill.id);
       setBillingData((prev) => ({ ...prev, recurringBills: updated.recurringBills }));
     });
@@ -229,7 +233,11 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
   const handleMarkBillPaid = useCallback(async (bill) => {
     const paidDate = getLocalDateString();
     // Cancel old, reschedule new
-    await cancelBillReminders(bill.notificationIds || []);
+    try {
+      await cancelBillReminders(bill.notificationIds || []);
+    } catch {
+      // Safe degrade if notification was already cleared by OS
+    }
     const notifId = await scheduleBillReminder(bill, currency);
     const ids = notifId ? [notifId] : [];
     const updated1 = await saveMarkBillPaid(bill.id, paidDate);
