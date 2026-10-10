@@ -35,7 +35,7 @@ export const isDevelopment = () => {
  * A WeakSet cycle guard (not just the depth cap) prevents infinite recursion.
  */
 const SENSITIVE_KEYS =
-  /(content|body|note|title|text|message|passphrase|token|key|secret|password)/i;
+  /(content|body|note|title|text|message|passphrase|token|key|secret|password|habitTitle|cueText)/i;
 const MAX_STRING_CHARS = 1000;
 const MAX_ARRAY_ITEMS = 50;
 

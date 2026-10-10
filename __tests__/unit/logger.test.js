@@ -184,6 +184,8 @@ describe('src/utils/logger', () => {
         title: 'Secret meeting notes',
         content: 'User wrote private diary entry #42',
         token: 'abc123',
+        habitTitle: 'Quit smoking',
+        cueText: 'Craving after lunch',
         safeField: 'operational-status-ok',
       });
       const logs = getRecentLogs();
@@ -192,9 +194,13 @@ describe('src/utils/logger', () => {
       expect(details.title).toBe('[Redacted]');
       expect(details.content).toBe('[Redacted]');
       expect(details.token).toBe('[Redacted]');
+      expect(details.habitTitle).toBe('[Redacted]');
+      expect(details.cueText).toBe('[Redacted]');
       expect(details.safeField).toBe('operational-status-ok');
       expect(JSON.stringify(logs)).not.toContain('Secret meeting notes');
       expect(JSON.stringify(logs)).not.toContain('private diary entry #42');
+      expect(JSON.stringify(logs)).not.toContain('Quit smoking');
+      expect(JSON.stringify(logs)).not.toContain('Craving after lunch');
     });
 
     test('clearLogs clears the buffer entirely', () => {
