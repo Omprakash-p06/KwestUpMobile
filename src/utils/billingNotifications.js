@@ -1,14 +1,26 @@
-import * as Notifications from "expo-notifications";
+/**
+ * Billing Notifications Adapter (Deprecated)
+ *
+ * @deprecated Legacy adapter grandfathered from v3.5.0.
+ * All new scheduling and cancellation operations must use `src/services/notificationService.ts`.
+ */
 
-// ─── Schedule a Recurring Bill Reminder ──────────────────────────────────────
+import { logger } from './logger';
+import {
+  scheduleBillReminder as serviceScheduleBillReminder,
+  cancelNotification as serviceCancelNotification,
+} from '../services/notificationService';
+
+// ─── Pure Date Helpers (Preserved for tests) ──────────────────────────────────
 
 /**
  * Calculates the next due date for a recurring bill based on its dueDay.
  * Always targets the current or next month, depending on today vs dueDay.
+ * @deprecated Pure helper preserved for compatibility.
  * @param {number} dueDay - Day of month (1–31)
  * @returns {Date} Next due date object
  */
-const getNextDueDate = (dueDay) => {
+export const getNextDueDate = (dueDay) => {
   const today = new Date();
   const year = today.getFullYear();
   const month = today.getMonth();
@@ -35,11 +47,12 @@ const getNextDueDate = (dueDay) => {
 
 /**
  * Adjusts the trigger date backwards by notifyDaysBefore days.
+ * @deprecated Pure helper preserved for compatibility.
  * @param {Date} dueDate
  * @param {number} notifyDaysBefore
  * @returns {Date}
  */
-const getNotifyDate = (dueDate, notifyDaysBefore) => {
+export const getNotifyDate = (dueDate, notifyDaysBefore) => {
   const notify = new Date(dueDate);
   notify.setDate(dueDate.getDate() - notifyDaysBefore);
   return notify;
@@ -47,47 +60,47 @@ const getNotifyDate = (dueDate, notifyDaysBefore) => {
 
 /**
  * Schedules a native notification reminder for a recurring bill.
+ * @deprecated Use notificationService.scheduleBillReminder instead.
  * @param {Object} bill - Recurring bill object
  * @param {string} currency - Currency symbol (e.g. "₹")
- * @returns {Promise<string>} Notification ID
+ * @returns {Promise<string|null>} Notification ID
  */
 export const scheduleRecurringBillReminder = async (bill, currency = "₹") => {
-  const dueDate = getNextDueDate(bill.dueDay);
-  const notifyDate = getNotifyDate(dueDate, bill.notifyDaysBefore || 0);
-  const today = new Date();
-
-  // Only schedule if notification date is in the future
-  if (notifyDate <= today) return null;
-
-  const dueDateStr = dueDate.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  if (
+    typeof bill?.amount !== 'number' ||
+    !Number.isFinite(bill.amount) ||
+    bill.amount <= 0
+  ) {
+    logger.warn('billingNotifications: skipping bill reminder for invalid amount', {
+      billId: bill?.id,
+      reason: 'invalid-amount',
+    });
+    return null;
+  }
 
   try {
-    const notifId = await Notifications.scheduleNotificationAsync({
-      content: {
-        title: "🏦 Bill Due Soon!",
-        body: `${bill.name} (${currency}${bill.amount.toFixed(2)}) is due on ${dueDateStr}`,
-        sound: "default",
-      },
-      trigger: notifyDate,
+    return await serviceScheduleBillReminder(bill, currency);
+  } catch (_err) {
+    logger.warn('billingNotifications: failed to schedule bill reminder', {
+      billId: bill?.id,
     });
-    return notifId;
-  } catch (err) {
-    console.error("billingNotifications: failed to schedule bill reminder:", err);
     return null;
   }
 };
 
 /**
  * Cancels one or more scheduled bill reminder notifications.
+ * @deprecated Use notificationService.cancelNotifications instead.
  * @param {Array<string>} notificationIds
  */
 export const cancelRecurringBillReminders = async (notificationIds = []) => {
+  if (!Array.isArray(notificationIds)) return;
   for (const id of notificationIds) {
     if (!id) continue;
     try {
-      await Notifications.cancelScheduledNotificationAsync(id);
-    } catch (err) {
-      console.error("billingNotifications: failed to cancel notification:", id, err);
+      await serviceCancelNotification(id);
+    } catch (_err) {
+      logger.warn('billingNotifications: failed to cancel notification', { id });
     }
   }
 };
