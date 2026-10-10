@@ -1,219 +1,199 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-10-04
+**Analysis Date:** 2026-10-10
 
 ## Directory Layout
 
 ```
 KwestUpMobile/
-├── index.js                # Expo root: registers App + headless widget handler
-├── App.js                  # App shell: boot, theme, timer, persistence, providers (1078 lines)
-├── app.json                # Expo config: app id, 4 widgets, plugins, EAS project id
-├── eas.json                # EAS build profiles (development / preview / production)
-├── package.json            # Deps: expo ~57, RN 0.86, react 19.2.3, llama.rn 0.12.4, android-widget
-├── patch-llama-gradle.js   # Postinstall: idempotent llama.rn native patch + syntax assert
-├── babel.config.js         # Babel preset chain
+├── index.js                # Expo root: registers App + widget handler
+├── App.js                  # App shell: state, init, persistence, dialogs (1071 lines)
+├── app.json                # Expo config: name, icons, 4 Android widgets, EAS id
+├── package.json            # Deps + scripts (expo ~57, react 19, jest, eslint)
+├── tsconfig.json           # strict+allowJs, checkJs OFF, widgets excluded
+├── babel.config.js         # Babel preset (+ remove-console in release)
 ├── metro.config.js         # Metro bundler config
-├── jest.config.js          # Jest + jest-expo preset
-├── eslint.config.js / .eslintrc.js  # Lint (flat + legacy)
-├── tsconfig.json           # TypeScript (covers src/behavior|commands|services)
-├── assets/                 # Icons, splash, widget previews (incl. widget-preview/)
-├── android/                # Native Android shell (gradle.properties, app/build.gradle)
-├── src/                    # All application source
-│   ├── screens/            # 9 feature screens (drawer routes)
-│   ├── components/         # 15 shared UI primitives + overlays
-│   ├── navigation/         # Drawer router + drawer chrome
-│   ├── context/            # 4 domain state providers
-│   ├── utils/              # 14 service/engine modules
-│   ├── theme/              # Palette + global styles
-│   ├── behavior/           # 4.0 behavior type contracts (spec)
-│   ├── commands/           # 4.0 command type contracts (spec)
-│   ├── services/           # 4.0 notification/service contracts (spec)
-│   └── domains/            # 4.0 domain boundary placeholder (README only)
-├── widgets/                # 4 Android widgets + headless task handler (5 .tsx files)
-├── rulebook/               # 44-doc behavioral governance spec
-│   ├── atomic-habits/      # 24 principle specs
-│   ├── ai/                 # 5 AI interaction policies
-│   ├── rules/              # 8 deterministic business rules
-│   └── examples/           # 7 domain workflow examples
-├── 4.0/                    # 4.0 master plan (Phases 22-28 roadmap)
-├── __tests__/              # Jest suites (unit + widget logic)
-├── .planning/              # GSD planning docs (incl. this codebase map)
-├── .claude/ / .github/     # Agent + CI config
-└── build/ / coverage/      # Build output / coverage (generated)
+├── jest.config.js          # jest-expo preset
+├── eslint.config.js / .eslintrc.js  # Lint configs (flat + legacy)
+├── eas.json                # EAS build profiles
+├── patch-llama-gradle.js   # Postinstall native patch for llama.rn
+├── assets/                 # App logo, splash, favicon, widget previews, fonts
+├── android/                # Native Android shell (prebuild output)
+├── build/                  # Local build artifacts
+├── coverage/               # Jest coverage output
+├── src/
+│   ├── screens/            # 9 feature screens (largest: NotesScreen 2013 lines)
+│   ├── components/         # 15 reusable UI primitives + modals
+│   ├── context/            # 4 domain providers (Task/Vault/Billing/Birthday)
+│   ├── navigation/         # Drawer navigator + custom drawer chrome
+│   ├── services/           # Typed notification engine + policy types
+│   ├── utils/              # 15 modules: engines, storage, AI, sync, helpers
+│   ├── theme/              # colors.js (5×3 tokens) + styles.js (shared sheet)
+│   ├── behavior/           # 4.0 habit/identity/intervention types only
+│   ├── commands/           # 4.0 AI command registry types only
+│   └── domains/            # 4.0 placeholder (README only, no code yet)
+├── widgets/                # 4 Android widgets + headless task handler (.tsx)
+├── __tests__/              # Jest suites (unit/ + widget-logic + setup)
+├── rulebook/               # Product rules: ai/, atomic-habits/, rules/, machine/
+├── 4.0/                    # KwestUp_4.0_Master_Plan.md (Phase 22-28 roadmap)
+├── .planning/              # GSD planning docs (this codebase map lives here)
+├── .github/                # CI workflows
+└── Gemfile-free zone: no ios/ dir (Android-first; iOS via Expo prebuild)
 ```
 
 ## Directory Purposes
 
-**`src/screens/`:**
-- Purpose: One file per drawer route; thin view layer fed by props from `AppNavigator`.
-- Contains: 9 screens — `DashboardScreen.js`, `DailyTasksScreen.js`, `BirthdaysScreen.js`, `TaskListScreen.js`, `FocusTimerScreen.js`, `NotesScreen.js`, `BillingScreen.js`, `SearchScreen.js`, `SettingsScreen.js`
-- Key files: `src/screens/NotesScreen.js` (vault-aware notes + task/birthday extraction callbacks), `src/screens/SettingsScreen.js` (theme, sync, telemetry, reset), `src/screens/DashboardScreen.js` (aggregated overview)
+**`src/screens`:**
+- Purpose: One full-screen feature surface per route; containers that compose components + context hooks.
+- Contains: 9 `*Screen.js` files, all `PascalCase` + `Screen` suffix.
+- Key files: `src/screens/NotesScreen.js` (2013 lines — vault browser + markdown editor, the largest file in the repo), `src/screens/SettingsScreen.js` (1101 lines — theme/sync/telemetry/reset), `src/screens/BillingScreen.js` (823), `src/screens/TaskListScreen.js` (803), `src/screens/DailyTasksScreen.js` (698), `src/screens/BirthdaysScreen.js` (575), `src/screens/FocusTimerScreen.js` (496), `src/screens/DashboardScreen.js` (445), `src/screens/SearchScreen.js` (265).
 
-**`src/components/`:**
-- Purpose: Reusable primitives + app-wide overlays/modals.
-- Contains: 15 JS modules — buttons, inputs, cards, pickers, switches, badges, boundaries, backgrounds, task UI, AI overlay.
-- Key files: `src/components/AIAssistant.js` (on-device AI chat overlay), `src/components/TaskEditModal.js` (single shared editor, mounted in `AppNavigator`), `src/components/ErrorBoundary.js`, `src/components/LiquidGlassBackground.js`, `src/components/QRScannerModal.js`, `src/components/TimerLockoutOverlay.js`
+**`src/components`:**
+- Purpose: Reusable presentational primitives and globally-mounted modals/overlays.
+- Contains: 15 `PascalCase.js` files; dumb UI + two stateful islands (`AIAssistant`, `TaskEditModal`).
+- Key files: `src/components/AIAssistant.js` (1096 lines — chat UI over `aiService`), `src/components/TaskEditModal.js` (519 — mounted once in `AppNavigator`, bound to `TaskContext`), `src/components/QRScannerModal.js` (512 — LAN-sync pairing), `src/components/ErrorBoundary.js` (409), `src/components/CustomDateTimePicker.js` (397), `src/components/TaskCard.js` (294), `src/components/LiquidGlassCard.js` (210), `src/components/CustomButton.js` (105), `src/components/LiquidGlassBackground.js` (73), `src/components/TimerLockoutOverlay.js` (40), plus `CustomBadge`/`CustomCard`/`CustomSegmentedButtons`/`CustomSwitch`/`CustomTextInput`.
 
-**`src/navigation/`:**
-- Purpose: Routing only — no business logic beyond state resolution.
+**`src/context`:**
+- Purpose: Runtime owner of each domain slice; the only sanctioned mutation + persistence path for its keys.
+- Contains: 4 `*Context.js` providers, each exporting `XProvider` + `useX` hook.
+- Key files: `src/context/TaskContext.js` (370 lines — sole writer of tasks/taskLists/dailyTasks), `src/context/BillingContext.js` (133), `src/context/VaultContext.js` (99), `src/context/BirthdayContext.js` (91).
+
+**`src/navigation`:**
+- Purpose: Route table + drawer chrome.
 - Contains: Exactly 2 files.
-- Key files: `src/navigation/AppNavigator.js` (drawer route table + effective-state resolution + global overlays), `src/navigation/CustomDrawerContent.js` (sidebar chrome)
+- Key files: `src/navigation/AppNavigator.js` (397 lines — `createDrawerNavigator` with 9 routes, context-vs-prop resolution, global modal mounts, notification channel init), `src/navigation/CustomDrawerContent.js` (279 lines — 9 drawer items, theme cycler, user header).
 
-**`src/context/`:**
-- Purpose: One provider per domain slice; sole persistence writers for their keys.
-- Contains: 4 providers, no nesting among themselves (nested only in `App.js`).
-- Key files: `src/context/TaskContext.js` (tasks/taskLists/dailyTasks + debounced merge-write), `src/context/VaultContext.js` (vaults/activeVault/notes/activeNote), `src/context/BillingContext.js`, `src/context/BirthdayContext.js`
+**`src/services`:**
+- Purpose: Typed service layer (the only fully TypeScript-checked runtime code besides widgets).
+- Contains: 2 `.ts` files.
+- Key files: `src/services/notificationService.ts` (767 lines — unified dispatch engine + behavioral policy), `src/services/types.ts` (99 lines — channels, categories, policy, history types).
 
-**`src/utils/`:**
-- Purpose: Engines, device services, persistence — the largest layer (14 modules).
-- Contains: Pure logic + Expo/AsyncStorage facades.
-- Key files: `src/utils/taskMutations.js` (pure task engine shared with widgets), `src/utils/aiService.js` (llama.rn lifecycle), `src/utils/fileStorage.js` (vault markdown CRUD), `src/utils/vaultService.js` (vault registry), `src/utils/storage.js` (`APP_VERSION v3.5.0`, `STORAGE_VERSION v7.0`, migration), `src/utils/notifications.js`, `src/utils/billingStorage.js`, `src/utils/syncService.js`, `src/utils/exportService.js`, `src/utils/diagnostics.js`, `src/utils/dateUtils.js`, `src/utils/logger.js`, `src/utils/vaultImport.js`, `src/utils/billingNotifications.js`
+**`src/utils`:**
+- Purpose: Engines, persistence adapters, and cross-cutting helpers callable from any layer.
+- Contains: 15 flat `.js` modules (no subdirectories).
+- Key files: `src/utils/aiService.js` (1064 lines — llama.rn lifecycle), `src/utils/exportService.js` (385), `src/utils/fileStorage.js` (299 — vault markdown CRUD), `src/utils/taskMutations.js` (293 — pure engine), `src/utils/vaultService.js` (237 — vault registry), `src/utils/syncService.js` (195 — LAN sync), `src/utils/logger.js` (194), `src/utils/storage.js` (188 — version keys + migration), `src/utils/dateUtils.js` (174 — local wall-clock helpers), `src/utils/billingStorage.js` (158), `src/utils/diagnostics.js` (150), `src/utils/notifications.js` (134 — legacy/task helpers), `src/utils/vaultImport.js` (113), `src/utils/billingNotifications.js` (106).
 
-**`src/theme/`:**
-- Purpose: Design tokens + global stylesheet.
+**`src/theme`:**
+- Purpose: Single theming source of truth.
 - Contains: 2 files.
-- Key files: `src/theme/colors.js` (`themes`: 5 names × 3 modes), `src/theme/styles.js` (shared StyleSheet)
+- Key files: `src/theme/colors.js` (81 lines — `themes` 5 names × 3 modes), `src/theme/styles.js` (895 lines — shared `StyleSheet`).
 
-**`src/behavior/` + `src/commands/` + `src/services/`:**
-- Purpose: 4.0 contract stubs — TypeScript interfaces only, zero runtime code, zero tests yet.
+**`src/behavior`, `src/commands`:**
+- Purpose: Frozen 4.0 type contracts; no runtime code.
 - Contains: One `types.ts` each.
-- Key files: `src/behavior/types.ts` (Habit, Cue, Intervention, BehaviorEvent, FrictionDiagnosis, FactualReward), `src/commands/types.ts` (11 `CommandAction`s + idempotent `DispatchedCommand`), `src/services/types.ts` (`DEFAULT_BEHAVIORAL_NOTIFICATION_POLICY`)
+- Key files: `src/behavior/types.ts` (180 lines — Habit/Identity/Cue/Intervention/BehaviorEvent/Reward), `src/commands/types.ts` (118 lines — CommandAction union + per-action payloads + idempotency).
 
-**`src/domains/`:**
-- Purpose: Reserved boundary for Phases 22–28 engines; currently a README describing planned subfolders and the no-cross-import rule.
-- Contains: `src/domains/README.md` only — `src/domains/habits|identity|events|interventions|ai` do not exist yet.
-- Key files: `src/domains/README.md`
+**`src/domains`:**
+- Purpose: Reserved directory for Phase 22-28 domain isolation (habits/identity/events/interventions/ai).
+- Contains: `src/domains/README.md` only — boundary rules documented, no code yet.
 
-**`widgets/`:**
-- Purpose: Android home-screen widgets + headless background handler (no dependency on React tree at runtime; Old Arch bridge, never imports contexts).
+**`widgets`:**
+- Purpose: Android home-screen surface + headless background logic (TypeScript/TSX only).
 - Contains: 5 `.tsx` files.
-- Key files: `widgets/widget-task-handler.tsx` (headless entry: tab switch, task toggle via `toggleTask` from `src/utils/taskMutations.js`, render fan-out), `widgets/TasksListWidget.tsx` (interactive list), `widgets/ImportantTasksWidget.tsx` (top-5 important unfinished slice), `widgets/DailyTasksWidget.tsx` (counts only), `widgets/FocusTimerWidget.tsx` (remaining + isRunning only)
+- Key files: `widgets/widget-task-handler.tsx` (273 lines — tab switch, task toggle, render fan-out), `widgets/TasksListWidget.tsx` (275 — interactive list, the richest widget), `widgets/ImportantTasksWidget.tsx` (163), `widgets/DailyTasksWidget.tsx` (95), `widgets/FocusTimerWidget.tsx` (80).
 
-**`android/`:**
-- Purpose: Native Android shell (Expo prebuild output, checked in with deliberate hand-maintained flags).
-- Contains: `android/gradle.properties` (`newArchEnabled=false`, `hermesEnabled=true`, `reactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64`, `expo.useLegacyPackaging=true`, `expo.edgeToEdgeEnabled=true`), `android/app/build.gradle` (applicationId `com.omprakashp06.kwestupmobile`, versionCode 7, legacy-packaging wiring), `android/build.gradle` (`-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON` for Android 16 16 KB page-size support), `android/settings.gradle`, `android/gradle/`, `android/gradlew(.bat)`
-- Key files: `android/gradle.properties` (read before touching any native bridge choice — the `newArchEnabled=false` comment block is the decision record), `android/app/build.gradle`, `android/build.gradle`
+**`__tests__`:**
+- Purpose: Jest suites run under the `jest-expo` preset.
+- Contains: `__tests__/unit/` (per-module unit tests), `__tests__/phase12-widget-logic.test.js` (widget engine tests), `__tests__/setup/` (test bootstrap).
+- Key files: `jest.config.js` (preset + setup mapping), `coverage/` (generated output, not committed source).
 
-**`rulebook/`:**
-- Purpose: Immutable behavioral specification; every future engine path must trace to a doc here.
-- Contains: `README.md` (invariants, precedence, grandfathering, compliance matrix), `manifest.json` (44-doc index), `CHANGELOG.md`, `rules/` (8), `ai/` (5), `atomic-habits/` (24), `examples/` (7).
-- Key files: `rulebook/README.md`, `rulebook/manifest.json`, `rulebook/rules/reminders.md`, `rulebook/rules/privacy.md`, `rulebook/ai/intent-parser.md`
+**`rulebook`, `4.0`:**
+- Purpose: Product specification, not code. `rulebook/rules/`, `rulebook/ai/`, `rulebook/atomic-habits/`, `rulebook/machine/`, `rulebook/manifest.json` define reminder/behavior/AI rules cited by type comments; `4.0/KwestUp_4.0_Master_Plan.md` is the Phase 22-28 roadmap.
+- Generated: No. Committed: Yes.
 
-**`4.0/`:**
-- Purpose: Single master-plan doc for the 4.0 Atomic Behavior Engine roadmap.
-- Contains: `4.0/KwestUp_4.0_Master_Plan.md`
-- Key files: `4.0/KwestUp_4.0_Master_Plan.md`
-
-**`__tests__/`:**
-- Purpose: Jest suites mirroring engines and widget logic.
-- Contains: `__tests__/unit/`, `__tests__/phase12-widget-logic.test.js`, `__tests__/setup/`
-- Key files: `__tests__/phase12-widget-logic.test.js`, `jest.config.js` (root config)
+**`assets`, `android`, `build`:**
+- Purpose: `assets/` holds bundled images/fonts consumed via `app.json` (`app-logo`, `splash-icon`, `favicon`, `widget-preview/*`); `android/` is the Expo prebuild native shell; `build/` holds local build outputs.
 
 ## Key File Locations
 
 **Entry Points:**
-- `index.js`: Expo root — `registerRootComponent(App)` + `registerWidgetTaskHandler(widgetTaskHandler)`
-- `App.js`: App shell — boot/hydration/providers/timer/widgets/modals (start here for any app-wide change)
-- `src/navigation/AppNavigator.js`: Route table — add/remove/reorder drawer screens here
-- `widgets/widget-task-handler.tsx`: Headless widget runtime — all background widget logic lives here
+- `index.js`: Expo root — `registerRootComponent(App)` + `registerWidgetTaskHandler`.
+- `App.js`: Shell mount — init, hydration, providers, dialogs.
+- `widgets/widget-task-handler.tsx`: Headless OS entry — widget render + tap actions.
+- `src/navigation/AppNavigator.js`: Navigation entry — route table + global mounts.
 
 **Configuration:**
-- `app.json`: Expo + widget plugin registrations (4 widgets: FocusTimer, DailyTasks, ImportantTasks, TasksList), package `com.omprakashp06.kwestupmobile`, EAS project id
-- `eas.json`: Build profiles — `development` (dev-client APK), `preview` (internal), `production` (APK + raised Node heap)
-- `android/gradle.properties`: Native bridge + packaging flags — `newArchEnabled=false` (Old Arch + JSI), `hermesEnabled=true`, `expo.useLegacyPackaging=true` (Android 16 install-time lib extraction), ABIs, edge-to-edge
-- `android/app/build.gradle` / `android/build.gradle`: App id/versionCode, legacy-packaging wiring, 16 KB page-size cmake flag
-- `package.json`: Scripts (`start`, `android`, `lint`, `typecheck`, `test`), expo `~57.0.0` / RN `0.86.0` / react `19.2.3` / `llama.rn@0.12.4` / `react-native-android-widget`, `postinstall: node patch-llama-gradle.js`, `engines: node >=22.13`
-- `tsconfig.json`: TS scope (covers the three `src/*/types.ts` contracts)
-- `babel.config.js`, `metro.config.js`: Transpile/bundle
-- `jest.config.js`: `jest-expo` preset, test match
-- `eslint.config.js`, `.eslintrc.js`: Lint rules
+- `app.json`: Expo/app identity, icons/splash, camera/build-properties/widget plugins, EAS project id.
+- `package.json`: Deps, scripts (`start`, `android`, `lint`, `typecheck`, `test`), node `>=22.13`.
+- `tsconfig.json`: `strict`, `allowJs`, `checkJs: false`; includes `src/**`, `__tests__/**`, root configs; excludes `widgets/**` from program (still type-checked on direct open).
+- `babel.config.js` / `metro.config.js`: Transpile + bundler config.
+- `jest.config.js`: `jest-expo` preset, test match, setup files.
+- `eslint.config.js` + `.eslintrc.js`: Flat (current) + legacy (compat) lint configs.
+- `eas.json`: EAS build profiles.
 
 **Core Logic:**
-- `src/utils/taskMutations.js`: All task math — edit here to change toggle/recurrence/subtask/list behavior for both app and widgets
-- `src/context/TaskContext.js`: Task state + persistence — edit here to change save cadence or foreground sync
-- `src/utils/fileStorage.js` + `src/utils/vaultService.js`: Notes/vault persistence — edit here for vault layout or filename rules
-- `src/utils/aiService.js`: Model lifecycle — edit here for model version, idle/background unload, inference params
-- `src/utils/storage.js`: Key versioning/migration — bump `STORAGE_VERSION` here when the stored schema changes
+- `src/utils/taskMutations.js`: Authoritative task transitions — start here for any task behavior change.
+- `src/services/notificationService.ts`: Authoritative scheduling/policy — start here for any reminder change.
+- `src/utils/aiService.js`: Authoritative AI lifecycle — start here for any assistant/model change.
+- `src/utils/fileStorage.js` + `src/utils/vaultService.js`: Authoritative notes persistence — start here for any notes/vault change.
+- `src/context/TaskContext.js`: Authoritative runtime task state — start here for state-shape changes.
 
 **Testing:**
-- `jest.config.js`: Runner config at repo root
-- `__tests__/unit/`: Engine unit tests
-- `__tests__/phase12-widget-logic.test.js`: Widget handler logic tests
-- `__tests__/setup/`: Jest setup files
+- `__tests__/unit/`: Per-module unit suites.
+- `__tests__/phase12-widget-logic.test.js`: Widget engine suite.
+- `__tests__/setup/`: Jest bootstrap (mocks for native modules).
+- `jest.config.js`: Runner config.
 
 ## Naming Conventions
 
 **Files:**
-- Screens: `<Feature>Screen.js` — e.g. `src/screens/TaskListScreen.js`, `src/screens/FocusTimerScreen.js` (note: Tasks route file is singular `TaskListScreen.js`)
-- Shared UI: `Custom<Button|TextInput|Card|Badge|Switch|...>.js` or `<Purpose><Kind>.js` — e.g. `src/components/TaskCard.js`, `src/components/TaskEditModal.js`, `src/components/TimerLockoutOverlay.js`, `src/components/LiquidGlassBackground.js`
-- Contexts: `<Domain>Context.js` exporting `<Domain>Provider` + `use<Domain>` — e.g. `src/context/TaskContext.js` → `TaskProvider`/`useTasks`
-- Utils: `<domain><Concern>.js` camelCase — e.g. `src/utils/taskMutations.js`, `src/utils/fileStorage.js`, `src/utils/billingStorage.js`, `src/utils/dateUtils.js`
-- Widgets: `<Name>Widget.tsx` + single `widget-task-handler.tsx` — e.g. `widgets/TasksListWidget.tsx`
-- 4.0 contracts: Always `types.ts` inside `src/behavior/`, `src/commands/`, `src/services/`
-- Rulebook: kebab-case `.md` grouped by folder — e.g. `rulebook/rules/missed-habit.md`, `rulebook/atomic-habits/two-minute-rule.md`
-- Tests: `*.test.js(x)` / `*.test.ts` under `__tests__/` mirroring source names
+- Screens: `PascalCase` + `Screen` suffix — e.g. `src/screens/TaskListScreen.js`, `src/screens/BirthdaysScreen.js`.
+- Components: Bare `PascalCase` — e.g. `src/components/TaskCard.js`, `src/components/LiquidGlassBackground.js`.
+- Contexts: Domain + `Context` suffix — e.g. `src/context/TaskContext.js`, `src/context/VaultContext.js`.
+- Utils/services: `camelCase` domain nouns — e.g. `src/utils/taskMutations.js`, `src/utils/fileStorage.js`, `src/services/notificationService.ts`.
+- Type contracts: Always `types.ts` — `src/behavior/types.ts`, `src/commands/types.ts`, `src/services/types.ts`.
+- Widgets: `PascalCase` + `Widget` suffix + one kebab handler — `widgets/TasksListWidget.tsx`, `widgets/widget-task-handler.tsx`.
+- Tests: Mirror source name + `.test.js` — e.g. `__tests__/phase12-widget-logic.test.js`.
 
 **Directories:**
-- Lowercase plural for code collections: `src/screens/`, `src/components/`, `src/utils/`, `src/context/`, `widgets/`
-- Lowercase singular for concept groups: `src/behavior/`, `src/commands/`, `src/services/`, `src/domains/`, `src/navigation/`, `src/theme/`
-- Lowercase with hyphens for spec groups: `rulebook/atomic-habits/`, `rulebook/ai/`, `rulebook/rules/`, `rulebook/examples/`
+- All lowercase plural nouns: `screens`, `components`, `context`, `utils`, `services`, `widgets`, `assets`, `theme`, `navigation`, `behavior`, `commands`, `domains`. Exception: `__tests__` (jest convention, dunder-wrapped).
 
 ## Where to Add New Code
 
-**New Feature (e.g. new drawer screen):**
-- Primary code: New file `src/screens/<Feature>Screen.js`, register route in `src/navigation/AppNavigator.js:214-355`, add drawer label in `src/navigation/CustomDrawerContent.js`
-- Tests: `__tests__/unit/<feature>.test.js` (mirror engine logic; keep screen files thin)
+**New Feature:**
+- Primary code: New screen in `src/screens/<Name>Screen.js` + route entry in `src/navigation/AppNavigator.js` + drawer item in `src/navigation/CustomDrawerContent.js`.
+- Tests: New suite in `__tests__/unit/<name>.test.js` mirroring the engine file under test.
 
 **New Component/Module:**
-- Implementation: `src/components/<Name>.js` for UI; `src/utils/<domain><Concern>.js` for logic
-- Overlay/modals shared across screens: Mount once in `src/navigation/AppNavigator.js:358-387` following the `TaskEditModal` precedent — never mount per-screen duplicates
+- Implementation: Reusable UI → `src/components/<PascalCase>.js`; pure logic → `src/utils/<camelCase>.js`; typed service → `src/services/<camelCase>.ts` with types in `src/services/types.ts`.
+- Globally-mounted UI (modals/assistants): Mount once in `src/navigation/AppNavigator.js` following the `TaskEditModal`/`AIAssistant` precedent — never per-screen.
 
 **Utilities:**
-- Shared helpers: `src/utils/` — pure functions in `src/utils/<domain>.js`; date helpers specifically in `src/utils/dateUtils.js`; logging only via `src/utils/logger.js` (never raw `console.*` in new code, per `rulebook/rules/privacy.md` redaction duty)
-- Theming: Extend `src/theme/colors.js` (`themes` map) + `src/theme/styles.js`; resolve via `resolveThemeMode/resolveThemeName` pattern in `App.js:76-77`
+- Shared helpers: Flat in `src/utils/` (no subfolders by convention). Date/wall-clock helpers → `src/utils/dateUtils.js`; storage keys/migration → `src/utils/storage.js`; logging → `src/utils/logger.js` (never raw `console` in app runtime).
 
-**New 4.0 Domain Engine (Phases 22–28):**
-- Implementation: `src/domains/<name>/` per `src/domains/README.md` (planned: `habits/`, `identity/`, `events/`, `interventions/`, `ai/`)
-- Types: Extend `src/behavior/types.ts` / `src/commands/types.ts` / `src/services/types.ts` — never define domain types inline in engine files
-- Rules: Cross-domain calls go through events, never direct domain-to-domain imports (`src/domains/README.md` rule); add/adjust spec in `rulebook/` + `rulebook/manifest.json` + `rulebook/CHANGELOG.md` before changing engine code
+**New 4.0 Domain (Phase 22+):**
+- Implementation: New folder `src/domains/<name>/` per `src/domains/README.md` rules — isolated state/mutations/services, cross-domain calls via `BehaviorEvent`s (`src/behavior/types.ts`) only, never direct imports; command surface via `src/commands/types.ts`.
 
 **New Widget:**
-- Implementation: `widgets/<Name>Widget.tsx`, register in `app.json` plugin `widgets` array (copy a `FocusTimer` block: name/label/description/minWidth/minHeight/previewImage), map in `nameToWidget` in `widgets/widget-task-handler.tsx:13-18`, add render branch in `widgets/widget-task-handler.tsx:242-271`
-- Follow the slice + stagger + `active`-only discipline in `App.js:558-648` and headless AsyncStorage reads (never import contexts into `widgets/`)
-
-**Native / Build Changes:**
-- Bridge flags: Edit `android/gradle.properties` only — read the `newArchEnabled=false` decision comment first; do not enable New Arch without the two gating conditions (non-NothingOS validation + llama.rn `getJSCallInvoker` migration)
-- 16 KB / packaging flags: `android/build.gradle` (flexible page sizes) + `expo.useLegacyPackaging` in `android/gradle.properties`; verify via a release APK install on Android 16
-- Build flavors: Edit `eas.json` profiles; version bumps touch `app.json` + `android/app/build.gradle` versionCode + `package.json` + `src/utils/storage.js` `APP_VERSION` together
+- Implementation: Render component `widgets/<Name>Widget.tsx` + `nameToWidget` entry + render branch in `widgets/widget-task-handler.tsx` + `widgets` array entry in `app.json` (name/label/description/sizing/preview). Keep payloads sliced (top-N) per the Binder budget.
 
 ## Special Directories
 
-**`rulebook/`:**
-- Purpose: Governance spec, not runtime code — do not import at runtime; reference in comments/specs only
-- Generated: No (hand-authored, versioned via `rulebook/manifest.json` + `rulebook/CHANGELOG.md`)
-- Committed: Yes
+**`node_modules`:**
+- Purpose: Installed dependencies.
+- Generated: Yes (npm install).
+- Committed: No (gitignored).
 
-**`src/domains/`:**
-- Purpose: Empty boundary placeholder (README only) reserving Phase 22–28 engine homes
-- Generated: No
-- Committed: Yes (`src/domains/README.md`)
+**`android`:**
+- Purpose: Expo prebuild native shell for custom dev client + widgets.
+- Generated: Yes (via `expo prebuild`), then hand-patched by `patch-llama-gradle.js` on postinstall.
+- Committed: Yes (checked in for reproducible native builds).
 
-**`android/`:**
-- Purpose: Native shell with hand-maintained bridge/packaging flags (Old Arch, Hermes, 16 KB page-size, legacy packaging)
-- Generated: Partially (Expo prebuild output + manual flag edits — treat `gradle.properties` comment block as decision record)
-- Committed: Yes
+**`build`, `coverage`:**
+- Purpose: Local build outputs / jest coverage reports.
+- Generated: Yes.
+- Committed: No.
 
-**`build/` + `coverage/` + `node_modules/`:**
-- Purpose: Build artifacts / coverage output / installed deps
-- Generated: Yes
-- Committed: No (gitignored)
+**`rulebook`, `4.0`:**
+- Purpose: Normative product specs (reminder policy, habit rules, AI contracts, master plan) referenced by code comments as `Source:`.
+- Generated: No.
+- Committed: Yes — treat as read-only requirements, not implementation.
 
-**`.planning/`:**
-- Purpose: GSD roadmap, phases, and this codebase map (`.planning/codebase/`)
-- Generated: Partially (agent-written docs)
-- Committed: Yes (planning history)
+**`.planning`:**
+- Purpose: GSD planning state (roadmap, phases, this codebase map).
+- Generated: Partially (agent-written docs).
+- Committed: Yes.
 
 ---
 
-*Structure analysis: 2026-10-04*
+*Structure analysis: 2026-10-10*
