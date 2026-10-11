@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Modal as RNModal,
   View,
@@ -24,6 +24,15 @@ export const WeeklyReviewModal = ({ visible, onClose, currentTheme }) => {
   const [appliedAdjustments, setAppliedAdjustments] = useState(new Set());
   const [confirmDialog, setConfirmDialog] = useState(null);
 
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const theme = currentTheme || {
     primary: "#FFFFFF",
     background: "#121212",
@@ -32,6 +41,9 @@ export const WeeklyReviewModal = ({ visible, onClose, currentTheme }) => {
     secondaryText: "#A0A0A0",
     border: "#333333",
   };
+
+  const getAdjustmentKey = (adj) =>
+    adj ? `${adj.habitId}_${adj.action}_${adj.ruleId || adj.description}` : "";
 
   const loadWeeklyReview = useCallback(async () => {
     setLoading(true);
@@ -42,11 +54,15 @@ export const WeeklyReviewModal = ({ visible, onClose, currentTheme }) => {
         identities || [],
         { forceHeuristic: false }
       );
-      setReport(generatedReport);
+      if (isMountedRef.current) {
+        setReport(generatedReport);
+      }
     } catch (err) {
       logger.debug("Failed to generate weekly review report:", err);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
   }, [habits, behaviorEvents, identities]);
 
@@ -60,12 +76,17 @@ export const WeeklyReviewModal = ({ visible, onClose, currentTheme }) => {
 
   const handleApplyAdjustment = async (adjustment) => {
     try {
-      await dispatchCommand(adjustment.action, adjustment.payload);
-      setAppliedAdjustments((prev) => new Set([...prev, adjustment.description]));
-      try {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } catch {
-        // Safe no-op in headless / unmocked envs
+      const result = await dispatchCommand(adjustment.action, adjustment.payload);
+      if (result?.success) {
+        const key = getAdjustmentKey(adjustment);
+        setAppliedAdjustments((prev) => new Set([...prev, key]));
+        try {
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } catch {
+          // Safe no-op in headless / unmocked envs
+        }
+      } else {
+        logger.warn("Adjustment dispatch was unsuccessful:", result?.error);
       }
       setConfirmDialog(null);
     } catch (err) {
@@ -200,10 +221,11 @@ export const WeeklyReviewModal = ({ visible, onClose, currentTheme }) => {
                     <MaterialCommunityIcons name="tune-vertical" size={20} color={theme.primary} />
                     <Text style={[styles.sectionTitle, { color: theme.text }]}>Recommended System Adaptations</Text>
                   </View>
-                  {report.suggestedAdjustments.map((adj) => {
-                    const isApplied = appliedAdjustments.has(adj.description);
+                  {report.suggestedAdjustments.map((adj, index) => {
+                    const adjKey = getAdjustmentKey(adj);
+                    const isApplied = appliedAdjustments.has(adjKey);
                     return (
-                      <View key={adj.description} style={[styles.adjustmentItem, { borderColor: theme.border }]}>
+                      <View key={`${adjKey}_${index}`} style={[styles.adjustmentItem, { borderColor: theme.border }]}>
                         <Text style={[styles.adjustmentDesc, { color: theme.text }]}>
                           {adj.description}
                         </Text>

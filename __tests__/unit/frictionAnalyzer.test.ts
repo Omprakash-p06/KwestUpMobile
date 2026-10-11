@@ -141,6 +141,19 @@ describe('frictionAnalyzer', () => {
       expect(intervention.action).toBe('ADJUST_DIFFICULTY');
       expect(intervention.ruleId).toBe('RECOVERY_CONSECUTIVE_MISS_002');
     });
+
+    it('clamps behavior and minimumAction updates to commandValidator schema caps', () => {
+      const longHabit: Habit = {
+        ...dummyHabit,
+        behavior: 'X'.repeat(300),
+        minimumAction: 'Y'.repeat(200),
+      };
+      const setupIntervention = mapFrictionToIntervention(longHabit, 'setup');
+      expect((setupIntervention.payload as any).updates.behavior.length).toBeLessThanOrEqual(200);
+
+      const effortIntervention = mapFrictionToIntervention(longHabit, 'effort');
+      expect((effortIntervention.payload as any).newMinimumAction.length).toBeLessThanOrEqual(100);
+    });
   });
 
   describe('diagnoseFriction (LLM + Fallback)', () => {

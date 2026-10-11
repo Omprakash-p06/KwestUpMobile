@@ -39,6 +39,12 @@ export function generateWeeklyReviewHeuristic(
   userName?: string
 ): string {
   const greeting = userName ? `Hello ${userName}. ` : '';
+
+  // Zero habits tracked edge case
+  if (reportData.totalHabitsTracked === 0) {
+    return `${greeting}No active habits were tracked during this period. Start by defining your core identity statement and creating a 2-minute starter habit.\n\nRemember James Clear's principle: Every action you take is a vote for the type of person you wish to become.`;
+  }
+
   const consistencyPct = Math.round(reportData.overallConsistencyRate * 100);
   const recoveryPct = Math.round(reportData.recoveryAdherenceRate * 100);
 

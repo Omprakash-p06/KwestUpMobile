@@ -125,6 +125,29 @@ describe('weeklyReviewEngine', () => {
       expect(summary).toContain('fall to the level of your systems');
       expect(summary).toContain('suggested system adaptations');
     });
+
+    it('generates an encouraging welcoming summary when zero habits are tracked', () => {
+      const summary = generateWeeklyReviewHeuristic(
+        {
+          periodStart: '2026-10-05',
+          periodEnd: '2026-10-11',
+          totalHabitsTracked: 0,
+          overallConsistencyRate: 0,
+          totalCompletions: 0,
+          totalMisses: 0,
+          recoveryAdherenceRate: 1.0,
+          identityVotes: {},
+          topFrictionCategories: [],
+          suggestedAdjustments: [],
+        },
+        'Om'
+      );
+
+      expect(summary).toContain('Hello Om.');
+      expect(summary).toContain('No active habits were tracked during this period');
+      expect(summary).toContain('Every action you take is a vote');
+      expect(summary).not.toContain('0%');
+    });
   });
 
   describe('generateWeeklyReviewNarrative (LLM + Fallback)', () => {

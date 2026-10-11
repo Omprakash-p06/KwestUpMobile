@@ -46,7 +46,7 @@ export function mapFrictionToIntervention(
       payload: {
         habitId: habit.id,
         direction: 'easier',
-        newMinimumAction: habit.minimumAction || '2-minute version',
+        newMinimumAction: (habit.minimumAction || '2-minute version').slice(0, 100),
       },
       description: 'Never miss twice: downscale habit to 2-minute minimum gateway action',
       ruleId: 'RECOVERY_CONSECUTIVE_MISS_002',
@@ -61,7 +61,7 @@ export function mapFrictionToIntervention(
         payload: {
           habitId: habit.id,
           direction: 'easier',
-          newMinimumAction: habit.minimumAction || '2-minute version',
+          newMinimumAction: (habit.minimumAction || '2-minute version').slice(0, 100),
         },
         description: 'Reduce physical effort: scale down session to 2-minute gateway action',
         ruleId: 'MINIMUM_ACTION_001',
@@ -74,7 +74,7 @@ export function mapFrictionToIntervention(
         payload: {
           habitId: habit.id,
           updates: {
-            normalTarget: habit.minimumAction || '10 minutes',
+            normalTarget: (habit.minimumAction || '10 minutes').slice(0, 100),
           },
         },
         description: 'Reduce duration friction: adjust target to fit available schedule',
@@ -88,7 +88,7 @@ export function mapFrictionToIntervention(
         payload: {
           habitId: habit.id,
           updates: {
-            behavior: `Prime environment: prepare tools before ${habit.behavior}`,
+            behavior: `Prime environment: prepare tools before ${habit.behavior}`.slice(0, 200),
           },
         },
         description: 'Eliminate setup friction: add environmental priming routine',
@@ -102,7 +102,7 @@ export function mapFrictionToIntervention(
         payload: {
           habitId: habit.id,
           direction: 'easier',
-          newMinimumAction: habit.minimumAction || '1-minute starting action',
+          newMinimumAction: (habit.minimumAction || '1-minute starting action').slice(0, 100),
         },
         description: 'Overcome emotional friction: focus on showing up with a micro step',
         ruleId: 'HABIT_IDENTITY_ANCHOR_001',
@@ -115,7 +115,7 @@ export function mapFrictionToIntervention(
         payload: {
           habitId: habit.id,
           updates: {
-            minimumAction: habit.minimumAction || 'Define clear first line or step',
+            minimumAction: (habit.minimumAction || 'Define clear first line or step').slice(0, 100),
           },
         },
         description: 'Clarify ambiguity: specify immediate first step',
@@ -129,7 +129,7 @@ export function mapFrictionToIntervention(
         payload: {
           habitId: habit.id,
           updates: {
-            normalTarget: habit.minimumAction || 'Portable travel routine',
+            normalTarget: (habit.minimumAction || 'Portable travel routine').slice(0, 100),
           },
         },
         description: 'Context adaptation: establish portable routine for alternate locations',
@@ -143,7 +143,7 @@ export function mapFrictionToIntervention(
         payload: {
           habitId: habit.id,
           direction: 'easier',
-          newMinimumAction: habit.minimumAction || '2-minute version',
+          newMinimumAction: (habit.minimumAction || '2-minute version').slice(0, 100),
         },
         description: 'Simplify habit to reduce activation energy',
         ruleId: 'MINIMUM_ACTION_001',
