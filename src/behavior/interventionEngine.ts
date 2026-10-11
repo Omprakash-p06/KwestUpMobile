@@ -222,7 +222,7 @@ export function arbitrateNotificationIntervention(
     targetSurface: 'notification',
     action: 'DISPATCH_NOTIFICATION',
     reason: 'approved',
-    rulesApplied: [],
+    rulesApplied,
   };
 }
 
