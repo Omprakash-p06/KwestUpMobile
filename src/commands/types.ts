@@ -26,7 +26,7 @@ export type CommandAction =
 export type CommandPayload<A extends CommandAction> =
   A extends 'CREATE_HABIT'
     ? {
-        identityId: string;
+        identityId?: string;
         title: string;
         behavior: string;
         minimumAction: string;
@@ -44,7 +44,7 @@ export type CommandPayload<A extends CommandAction> =
         // NOTE: 'status' is engine-owned (midnight-rollover state machine in
         // rulebook/rules/missed-habit.md) and never AI-settable. Use
         // PAUSE_HABIT / ARCHIVE_HABIT / RESUME_HABIT with actor + reason.
-        updates: Partial<Pick<Habit, 'title' | 'behavior' | 'minimumAction' | 'normalTarget'>>;
+        updates: Partial<Pick<Habit, 'title' | 'behavior' | 'minimumAction' | 'normalTarget' | 'stretchTarget'>>;
       }
     : A extends 'LOG_HABIT'
     ? {

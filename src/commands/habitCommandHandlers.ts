@@ -34,7 +34,15 @@ export function createHabitCommandHandlers(
 ): HabitCommandHandlerMap {
   return {
     CREATE_HABIT: async (payload: CommandPayload<'CREATE_HABIT'>) => {
-      const result = await ops.createHabit(payload);
+      const habitInput = {
+        ...payload,
+        cue: {
+          type: payload.cueType || 'manual',
+          time: payload.cueTime,
+          location: payload.cueLocation,
+        },
+      };
+      const result = await ops.createHabit(habitInput);
       const entityId = result?.habit?.id || result?.id || generateEntityId('habit');
       return {
         entityId,
@@ -158,19 +166,33 @@ export function createHabitCommandHandlers(
   };
 }
 
+let defaultHandlerRefCount = 0;
+
+/**
+ * Resets the default handler reference count (primarily for testing isolation).
+ */
+export function resetDefaultHabitHandlerRefCount(): void {
+  defaultHandlerRefCount = 0;
+}
+
 /**
  * Registers default domain handlers for all 11 CommandAction types into the Command Executor.
- * Returns an unregister cleanup function.
+ * Returns an unregister cleanup function that uses reference counting to prevent premature
+ * teardown when multiple components consume the command gateway.
  */
 export function registerDefaultHabitHandlers(ops: HabitOperations): () => void {
   const handlers = createHabitCommandHandlers(ops);
+  defaultHandlerRefCount++;
   for (const [action, handler] of Object.entries(handlers)) {
     registerCommandHandler(action as CommandAction, handler);
   }
 
   return () => {
-    for (const action of Object.keys(handlers)) {
-      unregisterCommandHandler(action as CommandAction);
+    defaultHandlerRefCount = Math.max(0, defaultHandlerRefCount - 1);
+    if (defaultHandlerRefCount === 0) {
+      for (const action of Object.keys(handlers)) {
+        unregisterCommandHandler(action as CommandAction);
+      }
     }
   };
 }

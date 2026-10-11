@@ -138,6 +138,9 @@ export function validateCommand(
   switch (command.action) {
     case 'CREATE_HABIT': {
       const p = payload as any;
+      if (p.identityId !== undefined && (typeof p.identityId !== 'string' || p.identityId.trim().length === 0 || p.identityId.length > 100)) {
+        errors.push('CREATE_HABIT: identityId must be a non-empty string up to 100 characters');
+      }
       if (typeof p.title !== 'string' || p.title.trim().length === 0 || p.title.length > 100) {
         errors.push('CREATE_HABIT: title must be a non-empty string up to 100 characters');
       }
@@ -202,6 +205,12 @@ export function validateCommand(
         }
 
         const allowedKeys = ['title', 'behavior', 'minimumAction', 'normalTarget', 'stretchTarget'];
+        for (const key of Object.keys(p.updates)) {
+          if (!allowedKeys.includes(key) && !FORBIDDEN_UPDATE_KEYS.includes(key as any)) {
+            errors.push(`UPDATE_HABIT: Field "${key}" is not a permitted update field`);
+          }
+        }
+
         const presentAllowed = Object.keys(p.updates).filter((k) => allowedKeys.includes(k));
         if (presentAllowed.length === 0) {
           errors.push('UPDATE_HABIT: updates must contain at least one modifiable field');
@@ -218,6 +227,9 @@ export function validateCommand(
         }
         if (p.updates.normalTarget !== undefined && (typeof p.updates.normalTarget !== 'string' || p.updates.normalTarget.trim().length === 0 || p.updates.normalTarget.length > 100)) {
           errors.push('UPDATE_HABIT: normalTarget must be a non-empty string up to 100 characters');
+        }
+        if (p.updates.stretchTarget !== undefined && (typeof p.updates.stretchTarget !== 'string' || p.updates.stretchTarget.length > 100)) {
+          errors.push('UPDATE_HABIT: stretchTarget must be a string up to 100 characters');
         }
       }
       break;

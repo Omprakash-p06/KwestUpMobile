@@ -17,7 +17,9 @@ import {
   clearCommandHandlers,
   clearIdempotencyCache,
   getIdempotencyCacheSize,
+  purgeExpiredEntries,
   MAX_IDEMPOTENCY_CACHE_SIZE,
+  IDEMPOTENCY_TTL_MS,
 } from '../../src/commands/commandExecutor';
 import { DispatchedCommand } from '../../src/commands/types';
 import { eventBus } from '../../src/behavior/eventBus';
@@ -136,10 +138,31 @@ describe('commandGateway', () => {
           customSchedule: { weekdays: [1, 7] }, // 7 is invalid (0..6)
         },
       };
-      expect(validateCommand(invalidCustomCmd).valid).toBe(false);
+      // Optional identityId validation
+      const withoutIdentityCmd: DispatchedCommand<'CREATE_HABIT'> = {
+        ...validCmd,
+        payload: {
+          title: 'Daily Meditation',
+          behavior: 'Meditate for 10 minutes',
+          minimumAction: 'Sit quietly for 1 minute',
+          normalTarget: 'Meditate 10 minutes',
+          frequency: 'daily',
+          cueType: 'morning',
+        },
+      };
+      expect(validateCommand(withoutIdentityCmd).valid).toBe(true);
+
+      const emptyIdentityCmd: DispatchedCommand<'CREATE_HABIT'> = {
+        ...withoutIdentityCmd,
+        payload: {
+          ...withoutIdentityCmd.payload,
+          identityId: '   ',
+        },
+      };
+      expect(validateCommand(emptyIdentityCmd).valid).toBe(false);
     });
 
-    it('strictly forbids engine-owned fields in UPDATE_HABIT', () => {
+    it('strictly forbids engine-owned fields and unknown fields in UPDATE_HABIT', () => {
       const forbiddenFields = [
         'status',
         'streakCount',
@@ -167,6 +190,35 @@ describe('commandGateway', () => {
         expect(res.errors.some((e) => e.includes(`Field "${field}" is engine-owned`))).toBe(true);
       }
 
+      // Rejects unknown arbitrary fields
+      const unknownFieldCmd: DispatchedCommand<'UPDATE_HABIT'> = {
+        action: 'UPDATE_HABIT',
+        idempotencyKey: 'upd-unknown-1234',
+        payload: {
+          habitId: 'h-1',
+          updates: {
+            title: 'New Title',
+            unknownKey: 'rogue',
+          } as any,
+        },
+      };
+      const resUnknown = validateCommand(unknownFieldCmd);
+      expect(resUnknown.valid).toBe(false);
+      expect(resUnknown.errors.some((e) => e.includes('Field "unknownKey" is not a permitted update field'))).toBe(true);
+
+      // Validates stretchTarget
+      const invalidStretchCmd: DispatchedCommand<'UPDATE_HABIT'> = {
+        action: 'UPDATE_HABIT',
+        idempotencyKey: 'upd-stretch-1234',
+        payload: {
+          habitId: 'h-1',
+          updates: {
+            stretchTarget: 's'.repeat(101),
+          },
+        },
+      };
+      expect(validateCommand(invalidStretchCmd).valid).toBe(false);
+
       // Valid update with allowed keys passes
       const validUpdCmd: DispatchedCommand<'UPDATE_HABIT'> = {
         action: 'UPDATE_HABIT',
@@ -176,6 +228,7 @@ describe('commandGateway', () => {
           updates: {
             title: 'Refined Writing Habit',
             minimumAction: 'Write 2 sentences',
+            stretchTarget: 'Write 1000 words',
           },
         },
       };
@@ -394,6 +447,67 @@ describe('commandGateway', () => {
 
       // Handler MUST NOT be executed a second time
       expect(mockHandler).toHaveBeenCalledTimes(1);
+    });
+
+    it('expires idempotency entries past IDEMPOTENCY_TTL_MS allowing re-execution', async () => {
+      const mockHandler = jest.fn().mockImplementation((payload) => ({
+        entityId: payload.habitId,
+        message: 'Logged habit',
+      }));
+      registerCommandHandler('LOG_HABIT', mockHandler);
+
+      const cmd: DispatchedCommand<'LOG_HABIT'> = {
+        action: 'LOG_HABIT',
+        idempotencyKey: 'cmd-ttl-test-1234',
+        payload: {
+          habitId: 'habit-ttl-1',
+          completedAt: '2026-10-11T12:00:00.000Z',
+        },
+      };
+
+      const now = Date.now();
+      const dateSpy = jest.spyOn(Date, 'now').mockReturnValue(now);
+
+      await executeCommand(cmd);
+      expect(mockHandler).toHaveBeenCalledTimes(1);
+
+      // Advance time beyond TTL
+      dateSpy.mockReturnValue(now + IDEMPOTENCY_TTL_MS + 1000);
+
+      // Re-executing same idempotencyKey should purge stale entry and invoke handler again
+      const resultAfterTtl = await executeCommand(cmd);
+      expect(resultAfterTtl.success).toBe(true);
+      expect(mockHandler).toHaveBeenCalledTimes(2);
+
+      dateSpy.mockRestore();
+    });
+
+    it('purgeExpiredEntries purges expired cache records', async () => {
+      const mockHandler = jest.fn().mockReturnValue({ message: 'Success' });
+      registerCommandHandler('CREATE_IDENTITY', mockHandler);
+
+      const now = Date.now();
+      const dateSpy = jest.spyOn(Date, 'now').mockReturnValue(now);
+
+      await executeCommand({
+        action: 'CREATE_IDENTITY',
+        idempotencyKey: 'key-to-expire-1',
+        payload: { statement: 'Identity 1' },
+      });
+      await executeCommand({
+        action: 'CREATE_IDENTITY',
+        idempotencyKey: 'key-to-expire-2',
+        payload: { statement: 'Identity 2' },
+      });
+
+      expect(getIdempotencyCacheSize()).toBe(2);
+
+      // Advance time beyond TTL
+      const purged = purgeExpiredEntries(now + IDEMPOTENCY_TTL_MS + 5000);
+      expect(purged).toBe(2);
+      expect(getIdempotencyCacheSize()).toBe(0);
+
+      dateSpy.mockRestore();
     });
 
     it('evicts oldest cache entries when reaching MAX_IDEMPOTENCY_CACHE_SIZE', async () => {

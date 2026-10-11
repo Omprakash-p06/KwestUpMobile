@@ -75,13 +75,30 @@ export function getIdempotencyCacheSize(): number {
   return idempotencyCache.size;
 }
 
+/**
+ * Purges expired idempotency records from memory based on IDEMPOTENCY_TTL_MS.
+ */
+export function purgeExpiredEntries(now: number = Date.now()): number {
+  let purged = 0;
+  for (const [key, item] of idempotencyCache.entries()) {
+    if (now - item.timestamp > IDEMPOTENCY_TTL_MS) {
+      idempotencyCache.delete(key);
+      purged++;
+    }
+  }
+  return purged;
+}
+
 function setInCache(key: string, result: CommandExecutionResult): void {
   if (idempotencyCache.has(key)) {
     idempotencyCache.delete(key);
   } else if (idempotencyCache.size >= MAX_IDEMPOTENCY_CACHE_SIZE) {
-    const oldestKey = idempotencyCache.keys().next().value;
-    if (oldestKey !== undefined) {
-      idempotencyCache.delete(oldestKey);
+    purgeExpiredEntries();
+    if (idempotencyCache.size >= MAX_IDEMPOTENCY_CACHE_SIZE) {
+      const oldestKey = idempotencyCache.keys().next().value;
+      if (oldestKey !== undefined) {
+        idempotencyCache.delete(oldestKey);
+      }
     }
   }
   idempotencyCache.set(key, {
@@ -135,23 +152,27 @@ export async function executeCommand<A extends CommandAction = CommandAction>(
   // 2. Idempotency Check (SYS_IDEMPOTENT_COMMAND_001)
   const cached = idempotencyCache.get(command.idempotencyKey);
   const now = Date.now();
-  if (cached && now - cached.timestamp <= IDEMPOTENCY_TTL_MS) {
-    const systemRules = loadMachineRules('system');
-    const evalResult = evaluateRules(systemRules, {
-      command: 'DISPATCH',
-      isDuplicateKey: true,
-    });
-    const rulesApplied = Array.from(
-      new Set([
-        ...(cached.result.rulesApplied || []),
-        ...evalResult.rulesApplied,
-        'SYS_IDEMPOTENT_COMMAND_001',
-      ])
-    );
-    return {
-      ...cached.result,
-      rulesApplied,
-    };
+  if (cached) {
+    if (now - cached.timestamp <= IDEMPOTENCY_TTL_MS) {
+      const systemRules = loadMachineRules('system');
+      const evalResult = evaluateRules(systemRules, {
+        command: 'DISPATCH',
+        isDuplicateKey: true,
+      });
+      const rulesApplied = Array.from(
+        new Set([
+          ...(cached.result.rulesApplied || []),
+          ...evalResult.rulesApplied,
+          'SYS_IDEMPOTENT_COMMAND_001',
+        ])
+      );
+      return {
+        ...cached.result,
+        rulesApplied,
+      };
+    } else {
+      idempotencyCache.delete(command.idempotencyKey);
+    }
   }
 
   // 3. Handler Resolution

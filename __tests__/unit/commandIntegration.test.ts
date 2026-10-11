@@ -7,6 +7,7 @@
 
 import {
   registerDefaultHabitHandlers,
+  resetDefaultHabitHandlerRefCount,
   HabitOperations,
 } from '../../src/commands/habitCommandHandlers';
 import { executeCommand, clearCommandHandlers, clearIdempotencyCache } from '../../src/commands/commandExecutor';
@@ -21,6 +22,7 @@ describe('commandIntegration', () => {
   let unregisterHandlers: () => void;
 
   beforeEach(() => {
+    resetDefaultHabitHandlerRefCount();
     clearCommandHandlers();
     clearIdempotencyCache();
     eventBus.clearListeners();
@@ -146,6 +148,16 @@ describe('commandIntegration', () => {
     expect(result.entityId).toMatch(/^habit-/);
     expect(result.rulesApplied).toContain('HABIT_CONCURRENT_CAP_001');
     expect(habitOperations.createHabit).toHaveBeenCalledTimes(1);
+    expect(habitOperations.createHabit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Evening Reading',
+        cue: {
+          type: 'evening',
+          time: undefined,
+          location: undefined,
+        },
+      })
+    );
     expect(inMemoryHabits).toHaveLength(2);
 
     expect(executedEvents).toHaveLength(1);
@@ -303,5 +315,49 @@ describe('commandIntegration', () => {
     expect(result.success).toBe(true);
     expect(result.entityId).toMatch(/^habit-/);
     expect(habitOperations.createHabit).toHaveBeenCalledTimes(1);
+  });
+
+  it('manages handler lifecycle with reference counting across multiple consumers', async () => {
+    // Reset reference count and clear handlers
+    resetDefaultHabitHandlerRefCount();
+    clearCommandHandlers();
+
+    // Consumer A mounts
+    const unregisterA = registerDefaultHabitHandlers(habitOperations);
+    // Consumer B mounts
+    const unregisterB = registerDefaultHabitHandlers(habitOperations);
+
+    // Command should succeed
+    const cmd: DispatchedCommand<'PAUSE_HABIT'> = {
+      action: 'PAUSE_HABIT',
+      idempotencyKey: 'cmd-pause-ref-count-1',
+      payload: { habitId: 'habit-101', actor: 'user', reason: 'Vacation' },
+    };
+    const resA = await executeCommand(cmd);
+    expect(resA.success).toBe(true);
+
+    // Consumer A unmounts
+    unregisterA();
+
+    // Consumer B is still mounted, so handler must still be active!
+    const cmd2: DispatchedCommand<'RESUME_HABIT'> = {
+      action: 'RESUME_HABIT',
+      idempotencyKey: 'cmd-resume-ref-count-2',
+      payload: { habitId: 'habit-101', actor: 'user', reason: 'Returned' },
+    };
+    const resB = await executeCommand(cmd2);
+    expect(resB.success).toBe(true);
+
+    // Consumer B unmounts, ref count drops to 0, handlers are finally unregistered
+    unregisterB();
+
+    const cmd3: DispatchedCommand<'PAUSE_HABIT'> = {
+      action: 'PAUSE_HABIT',
+      idempotencyKey: 'cmd-pause-ref-count-3',
+      payload: { habitId: 'habit-101', actor: 'user', reason: 'Sick leave' },
+    };
+    const resC = await executeCommand(cmd3);
+    expect(resC.success).toBe(false);
+    expect(resC.error).toContain('No handler registered');
   });
 });

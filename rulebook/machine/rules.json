@@ -51,6 +51,21 @@
         "error": "UNSUPPORTED_CAPABILITY"
       },
       "priority": 900
+    },
+    {
+      "id": "SYS_AI_CONFIRMATION_GATE_001",
+      "description": "Destructive actions initiated by AI require explicit user confirmation before execution.",
+      "when": {
+        "command": "DISPATCH",
+        "actor": "ai",
+        "isDestructive": true,
+        "isConfirmed": false
+      },
+      "then": {
+        "action": "REQUIRE_CONFIRMATION",
+        "error": "DESTRUCTIVE_CONFIRMATION_REQUIRED"
+      },
+      "priority": 980
     }
   ]
 }

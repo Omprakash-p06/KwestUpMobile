@@ -14,7 +14,9 @@ import { logger } from '../utils/logger';
 
 const PROHIBITED_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 const STORAGE_KEY_PATTERN = /kwestup_[a-z0-9_]*/i;
-const PATH_TRAVERSAL_PATTERN = /(\.\.\/|\.\.\\|file:\/\/|^\/[a-z0-9_]+)/i;
+const PATH_TRAVERSAL_PATTERN =
+  /(\.\.\/|\.\.\\|file:\/\/|^[a-zA-Z]:[/\\]|^\\\\[a-zA-Z0-9_]+|^\/(etc|data|system|proc|sys|dev|root|var|tmp|usr|bin|storage)\b)/i;
+
 
 const DESTRUCTIVE_ACTIONS: readonly CommandAction[] = ['DELETE_HABIT', 'ARCHIVE_HABIT'];
 
@@ -159,7 +161,8 @@ export async function executeAiCommand(
     };
   }
 
-  const isConfirmed = options.confirmed === true || parsed.confirmed === true;
+  // Strict authorization: Untrusted AI input cannot self-authorize destructive actions
+  const isConfirmed = options.confirmed === true;
   const idempotencyKey =
     options.idempotencyKey ||
     (typeof parsed.idempotencyKey === 'string' && parsed.idempotencyKey.trim().length >= 4

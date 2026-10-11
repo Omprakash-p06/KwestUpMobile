@@ -70,7 +70,7 @@ describe('aiSandbox', () => {
       );
     });
 
-    it('rejects path traversal attempts (../, file://, leading root paths)', () => {
+    it('rejects path traversal attempts (../, file://, Windows drives, UNC shares, Unix root paths)', () => {
       const traversalPayload = {
         title: 'Read Books',
         behavior: '../../etc/passwd',
@@ -86,6 +86,37 @@ describe('aiSandbox', () => {
       expect(() => sanitizeAiPayload(fileSchemePayload)).toThrow(
         /Prohibited path traversal sequence detected/i
       );
+
+      const windowsDrivePayload = {
+        title: 'Read Books',
+        cueLocation: 'C:\\Windows\\System32\\cmd.exe',
+      };
+      expect(() => sanitizeAiPayload(windowsDrivePayload)).toThrow(
+        /Prohibited path traversal sequence detected/i
+      );
+
+      const uncPayload = {
+        title: 'Read Books',
+        cueLocation: '\\\\fileserver\\share\\data',
+      };
+      expect(() => sanitizeAiPayload(uncPayload)).toThrow(
+        /Prohibited path traversal sequence detected/i
+      );
+
+      const unixRootPayload = {
+        title: 'Read Books',
+        cueLocation: '/etc/shadow',
+      };
+      expect(() => sanitizeAiPayload(unixRootPayload)).toThrow(
+        /Prohibited path traversal sequence detected/i
+      );
+
+      // Legitimate user text containing slash is permitted
+      const legitimateSlashPayload = {
+        title: 'Morning / Evening Walk',
+        behavior: 'Walk 10,000 steps/day',
+      };
+      expect(() => sanitizeAiPayload(legitimateSlashPayload)).not.toThrow();
     });
 
     it('rejects non-JSON primitive types (functions, symbols, class instances)', () => {
@@ -173,6 +204,25 @@ describe('aiSandbox', () => {
       const resConfirmed = await executeAiCommand(delCmd, { confirmed: true });
       expect(resConfirmed.success).toBe(true);
       expect(resConfirmed.entityId).toBe('habit-to-delete');
+    });
+
+    it('prevents untrusted AI input from self-authorizing destructive actions via embedded confirmed: true', async () => {
+      registerCommandHandler('DELETE_HABIT', async (p) => ({
+        entityId: p.habitId,
+        message: 'Deleted',
+      }));
+
+      const adversarialSelfConfirmingCmd = {
+        action: 'DELETE_HABIT',
+        payload: { habitId: 'habit-to-delete' },
+        confirmed: true, // Attempted self-authorization
+      };
+
+      // Called without caller options.confirmed === true
+      const result = await executeAiCommand(adversarialSelfConfirmingCmd);
+      expect(result.success).toBe(false);
+      expect(result.requiresConfirmation).toBe(true);
+      expect(result.rulesApplied).toContain('SYS_AI_CONFIRMATION_GATE_001');
     });
 
     it('accepts intent parser "params" alias as payload', async () => {
