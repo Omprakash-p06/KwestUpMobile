@@ -122,9 +122,11 @@ export function arbitrateNotificationIntervention(
 
   // 1. Calculate count of behavioral notifications today
   const behavioralToday = history.filter((entry) => {
-    if (entry.category && entry.category !== 'behavior') return false;
+    if (entry.category !== 'behavior') return false;
     const entryDateStr = entry.triggerDate || entry.dispatchedAt;
+    if (!entryDateStr) return false;
     const entryLocalDate = getLocalDateString(entryDateStr);
+    if (!entryLocalDate) return false;
     return entryLocalDate === todayDate;
   });
   const behaviorNotificationsToday = behavioralToday.length;
@@ -136,7 +138,7 @@ export function arbitrateNotificationIntervention(
   let minutesSinceLastNotification = Infinity;
   if (history.length > 0) {
     const behavioralEntries = history.filter(
-      (entry) => !entry.category || entry.category === 'behavior'
+      (entry) => entry.category === 'behavior'
     );
 
     if (behavioralEntries.length > 0) {
@@ -144,6 +146,7 @@ export function arbitrateNotificationIntervention(
       let latestMs = -Infinity;
       for (const entry of behavioralEntries) {
         const timeStr = entry.triggerDate || entry.dispatchedAt;
+        if (!timeStr) continue;
         const ms = new Date(timeStr).getTime();
         if (Number.isFinite(ms) && ms > latestMs) {
           latestMs = ms;
