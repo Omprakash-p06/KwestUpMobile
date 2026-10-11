@@ -250,10 +250,10 @@ Per workspace standard `GEMINI.md`, **all phase planning (`gsd-plan-phase`) must
 | 22. Unified Notification Service | 2/2 | ✅ Complete | 2026-10-10 |
 | 23. Domain Event Bus | 2/2 | ✅ Complete | 2026-10-10 |
 | 24. Core Behavior & Rule Engine | 2/2 | ✅ Complete | 2026-10-11 |
-| 25. Intervention & Widgets | 0/2 | ⏳ Pending | - |
-| 26. Command Gateway & Sandboxing | 0/2 | ⏳ Pending | - |
-| 27. Intent Parser & Compiler | 0/2 | ⏳ Pending | - |
-| 28. Behavioral Adaptation & Review | 0/2 | ⏳ Pending | - |
+| 25. Intervention & Widgets | 2/2 | ✅ Complete | 2026-10-11 |
+| 26. Command Gateway & Sandboxing | 2/2 | ✅ Complete | 2026-10-11 |
+| 27. Intent Parser & Compiler | 2/2 | ✅ Complete | 2026-10-11 |
+| 28. Behavioral Adaptation & Review | 2/2 | ✅ Complete | 2026-10-12 |
 
 ---
 
@@ -534,5 +534,5 @@ Per workspace standard `GEMINI.md`, **all phase planning (`gsd-plan-phase`) must
 
 **Plans**:
 
-- [ ] 28-01-PLAN.md — Behavior Analyst friction diagnosis and Language Generator weekly review engine
-- [ ] 28-02-PLAN.md — End-to-end test suite hardening, performance validation, and production release sign-off
+- [x] 28-01-PLAN.md — Behavior Analyst friction diagnosis and Language Generator weekly review engine ✅
+- [x] 28-02-PLAN.md — Weekly Review UI modal, end-to-end integration test suite, and production release sign-off ✅

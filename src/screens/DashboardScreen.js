@@ -99,6 +99,7 @@ export const DashboardScreen = ({
   setSelectedTask,
   setModalVisible,
   toggleTaskComplete,
+  onOpenWeeklyReview,
 }) => {
   const navigation = useNavigation();
 
@@ -137,6 +138,29 @@ export const DashboardScreen = ({
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       <View style={styles.gridStack}>
+
+        {/* Weekly Behavioral Reflection Card */}
+        {onOpenWeeklyReview && (
+          <LiquidGlassCard theme={currentTheme} style={styles.listCard}>
+            <View style={styles.listCardHeader}>
+              <View style={styles.listTitleContainer}>
+                <MaterialCommunityIcons name="calendar-check-outline" size={18} color={currentTheme.primary} style={{ marginRight: 6 }} />
+                <Text style={[styles.listCardTitle, { color: currentTheme.text }]}>WEEKLY_REFLECTION</Text>
+              </View>
+              <TouchableOpacity
+                onPress={onOpenWeeklyReview}
+                style={[styles.badgeSmall, { backgroundColor: currentTheme.primary + "18", borderColor: currentTheme.primary }]}
+              >
+                <Text style={[styles.badgeSmallText, { color: currentTheme.primary }]}>REVIEW NOW</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ paddingTop: 8 }}>
+              <Text style={[styles.taskItemMeta, { color: currentTheme.secondaryText }]}>
+                Reflect on identity votes, Never-Miss-Twice resilience, and friction adaptations.
+              </Text>
+            </View>
+          </LiquidGlassCard>
+        )}
 
         {/* 1. Upcoming Tasks (Priority Queue) */}
         <LiquidGlassCard theme={currentTheme} style={styles.listCard}>

@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { useWindowDimensions, View } from "react-native";
 import { AIAssistant } from "../components/AIAssistant";
 import { TaskEditModal } from "../components/TaskEditModal";
+import { WeeklyReviewModal } from "../components/WeeklyReviewModal";
 import { createDrawerNavigator } from "@react-navigation/drawer";
 import { CustomDrawerContent } from "./CustomDrawerContent";
 import { DashboardScreen } from "../screens/DashboardScreen";
@@ -66,6 +67,7 @@ export const AppNavigator = ({
   setTelemetryEnabled,
 }) => {
   const { width } = useWindowDimensions();
+  const [weeklyReviewVisible, setWeeklyReviewVisible] = React.useState(false);
   const taskCtx = useTasks();
   const vaultCtx = useVaults();
   const billingCtx = useBilling();
@@ -228,6 +230,7 @@ export const AppNavigator = ({
               setSelectedTask={effectiveSetSelectedTask}
               setModalVisible={effectiveSetModalVisible}
               toggleTaskComplete={effectiveToggleTaskComplete}
+              onOpenWeeklyReview={() => setWeeklyReviewVisible(true)}
             />
           )}
         </Drawer.Screen>
@@ -371,6 +374,12 @@ export const AppNavigator = ({
         onSave={(taskData) => taskCtx?.handleSaveTask(taskData)}
         theme={currentTheme}
         taskLists={effectiveTaskLists}
+      />
+
+      <WeeklyReviewModal
+        visible={weeklyReviewVisible}
+        onClose={() => setWeeklyReviewVisible(false)}
+        currentTheme={currentTheme}
       />
 
       {!effectiveActiveNote && activeRouteName !== "Settings" && (
