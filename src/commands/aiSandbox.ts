@@ -75,7 +75,7 @@ function sanitizeValue(value: unknown): unknown {
   }
 
   if (Array.isArray(value)) {
-    return value.map(sanitizeValue);
+    return value.filter((v) => v !== undefined).map(sanitizeValue);
   }
 
   if (typeof value === 'object') {

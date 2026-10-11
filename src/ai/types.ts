@@ -31,6 +31,7 @@ export interface IntentParserOptions {
   forceHeuristic?: boolean;
   temperature?: number;
   contextPrompt?: string;
+  timeoutMs?: number;
 }
 
 export interface RulePacket {

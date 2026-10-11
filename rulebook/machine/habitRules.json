@@ -78,6 +78,43 @@
         "reason": "Habit consistency is below 80% over the last 14 days. Consolidate before progressing."
       },
       "priority": 90
+    },
+    {
+      "id": "CUE_STACK_001",
+      "description": "Implementation Intentions: Anchor target habit to an existing daily routine or anchor event.",
+      "when": {
+        "action": "COMPILE_HABIT",
+        "cue.anchor": "!=null"
+      },
+      "then": {
+        "action": "ESTABLISH_HABIT_STACK",
+        "relationship": "anchor-routine"
+      },
+      "priority": 82
+    },
+    {
+      "id": "HABIT_IDENTITY_ANCHOR_001",
+      "description": "Identity-Based Habits: Ground habit in a declared or derived identity belief statement.",
+      "when": {
+        "action": "COMPILE_HABIT",
+        "identityStatement": "!=null"
+      },
+      "then": {
+        "action": "ATTACH_IDENTITY_ANCHOR"
+      },
+      "priority": 78
+    },
+    {
+      "id": "HABIT_PAUSE_001",
+      "description": "Temporary Hold: Preserves streaks and identity belief during illness, travel, or deliberate pause.",
+      "when": {
+        "action": "PAUSE_HABIT"
+      },
+      "then": {
+        "action": "TRANSITION_STATUS_PAUSED",
+        "preserveStreak": true
+      },
+      "priority": 85
     }
   ]
 }

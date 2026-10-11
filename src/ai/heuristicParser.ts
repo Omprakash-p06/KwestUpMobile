@@ -132,9 +132,15 @@ export function parseIntentHeuristic(rawInput: string): ExtractedIntent {
   let anchor: string | undefined;
   let location: string | undefined;
 
-  // Explicit time (e.g. "at 7:30 am", "at 8pm", "by 10:00")
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+  // Explicit time (e.g. "at 7:30 am", "at 8pm", "by 10:00", "at 7")
   const explicitTimeMatch = lower.match(/(?:at|by)\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\b/i);
+  let explicitHadPeriod = false;
   if (explicitTimeMatch && explicitTimeMatch[1]) {
+    explicitHadPeriod = /(?:am|pm)/i.test(explicitTimeMatch[1]);
     const normalized = normalizeTimeString(explicitTimeMatch[1]);
     if (normalized) {
       time = normalized;
@@ -143,14 +149,35 @@ export function parseIntentHeuristic(rawInput: string): ExtractedIntent {
   }
 
   // Time-of-day phrases
-  if (/\b(?:morning|in the morning)\b/i.test(lower)) {
-    cueType = cueType || 'morning';
-    time = time || '08:00';
-  } else if (/\b(?:evening|in the evening|night|at night|before bed)\b/i.test(lower)) {
-    cueType = cueType || 'evening';
-    time = time || '20:00';
-  } else if (/\b(?:afternoon)\b/i.test(lower)) {
-    time = time || '14:00';
+  const isEvening = /\b(?:evening|in the evening|night|at night|before bed)\b/i.test(lower);
+  const isMorning = /\b(?:morning|in the morning)\b/i.test(lower);
+  const isAfternoon = /\b(?:afternoon)\b/i.test(lower);
+
+  if (time && !explicitHadPeriod) {
+    // Adjust hour if explicit time lacked AM/PM
+    const [hStr, mStr] = time.split(':');
+    let h = parseInt(hStr, 10);
+    if (isEvening && h < 12) {
+      h += 12;
+      time = `${h.toString().padStart(2, '0')}:${mStr}`;
+      cueType = cueType || 'evening';
+    } else if (isAfternoon && h < 12 && h <= 5) {
+      h += 12;
+      time = `${h.toString().padStart(2, '0')}:${mStr}`;
+    } else if (isMorning && h === 12) {
+      time = `00:${mStr}`;
+      cueType = cueType || 'morning';
+    }
+  } else if (!time) {
+    if (isMorning) {
+      cueType = cueType || 'morning';
+      time = '08:00';
+    } else if (isEvening) {
+      cueType = cueType || 'evening';
+      time = '20:00';
+    } else if (isAfternoon) {
+      time = '14:00';
+    }
   }
 
   // Habit stacking anchor (e.g. "after dinner", "before breakfast", "when I wake up")
@@ -192,7 +219,8 @@ export function parseIntentHeuristic(rawInput: string): ExtractedIntent {
   behavior = behavior.replace(/\b(?:at|by)\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)?\b/gi, '');
   behavior = behavior.replace(/\b(?:in the morning|in the evening|at night|every morning|every evening)\b/gi, '');
   if (anchor) {
-    behavior = behavior.replace(new RegExp(`(?:after|before|following|right after|when I)\\s+${anchor}`, 'gi'), '');
+    const escapedAnchor = escapeRegex(anchor);
+    behavior = behavior.replace(new RegExp(`(?:after|before|following|right after|when I)\\s+${escapedAnchor}`, 'gi'), '');
   }
 
   behavior = behavior.replace(/\s{2,}/g, ' ').replace(/^[\s,.-]+|[\s,.-]+$/g, '').trim();

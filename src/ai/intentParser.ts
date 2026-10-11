@@ -17,6 +17,7 @@ import { logger } from '../utils/logger';
 
 export const MAX_USER_INPUT_LENGTH = 500;
 export const MAX_OUTPUT_TOKENS = 120;
+export const DEFAULT_INFERENCE_TIMEOUT_MS = 15000;
 
 /**
  * Parses user natural language into structured ExtractedIntent.
@@ -95,22 +96,43 @@ Output a single JSON object ONLY with properties:
 
   try {
     const ctx = await loadModel();
-    await ctx.completion(
-      {
-        prompt,
-        n_predict: MAX_OUTPUT_TOKENS,
-        temperature: options.temperature ?? 0.1,
-        top_p: 0.9,
-        stop: ['<|im_end|>', '<|im_start|>', '```', '\n\n'],
-      },
-      (data: { token?: string }) => {
-        if (data?.token) {
-          rawOutput += data.token;
-        }
+
+    let timeoutId: any = null;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error('Inference timeout exceeded'));
+      }, options.timeoutMs ?? DEFAULT_INFERENCE_TIMEOUT_MS);
+    });
+
+    try {
+      const completionResult: any = await Promise.race([
+        ctx.completion(
+          {
+            prompt,
+            n_predict: MAX_OUTPUT_TOKENS,
+            temperature: options.temperature ?? 0.1,
+            top_p: 0.9,
+            stop: ['<|im_end|>', '<|im_start|>', '```', '\n\n'],
+          },
+          (data: { token?: string }) => {
+            if (data?.token) {
+              rawOutput += data.token;
+            }
+          }
+        ),
+        timeoutPromise,
+      ]);
+
+      if (!rawOutput && completionResult?.text) {
+        rawOutput = completionResult.text;
       }
-    );
-  } catch (err) {
-    logger.debug('Native LLM inference error; falling back to heuristic parser');
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
+  } catch (err: any) {
+    logger.debug('Native LLM inference error or timeout; falling back to heuristic parser:', err?.message || err);
     const heuristic = parseIntentHeuristic(clampedInput);
     heuristic.rulesRetrieved = rulePacket.ruleIds;
     return heuristic;

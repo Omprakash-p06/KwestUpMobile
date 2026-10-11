@@ -32,8 +32,12 @@ const ARCHETYPE_IDENTITIES: Array<{ keywords: string[]; identity: string }> = [
     identity: 'I am an active, disciplined runner',
   },
   {
-    keywords: ['code', 'program', 'dsa', 'study', 'algorithm', 'software'],
+    keywords: ['code', 'program', 'programming', 'software', 'developer', 'dsa', 'algorithm', 'leetcode'],
     identity: 'I am a disciplined software engineer and continuous learner',
+  },
+  {
+    keywords: ['study', 'learn', 'student', 'research', 'language', 'spanish', 'french', 'exam'],
+    identity: 'I am a curious, disciplined, and lifelong learner',
   },
   {
     keywords: ['meditate', 'meditation', 'mindful', 'breathe', 'breathwork'],
@@ -151,6 +155,38 @@ export function compileIntentToHabitPlan(
 }
 
 /**
+ * Resolves the target habit from active habits for non-creation commands.
+ * If activeHabits is non-empty and no habit matches, returns a descriptive error.
+ */
+export function resolveTargetHabitId(
+  behavior: string,
+  activeHabits: Habit[]
+): { habitId?: string; error?: string } {
+  const clean = (behavior || '').trim().toLowerCase();
+  if (!clean) {
+    return { error: 'Target habit name cannot be empty' };
+  }
+
+  const matchingHabit = activeHabits.find((h) => {
+    const titleLower = h.title.toLowerCase();
+    return titleLower.includes(clean) || clean.includes(titleLower);
+  });
+
+  if (matchingHabit) {
+    return { habitId: matchingHabit.id };
+  }
+
+  if (activeHabits.length > 0) {
+    return {
+      error: `No active habit found matching "${behavior}". Available habits: ${activeHabits.map((h) => `"${h.title}"`).join(', ')}`,
+    };
+  }
+
+  // Fallback when active habits have not been loaded by caller (e.g. dry-run)
+  return { habitId: generateEntityId('habit') };
+}
+
+/**
  * Translates an extracted intent into a typed DispatchedCommand proposal.
  */
 export function compileIntentToCommand(
@@ -212,20 +248,53 @@ export function compileIntentToCommand(
       };
     }
 
+    case 'UPDATE_HABIT': {
+      const resolved = resolveTargetHabitId(intent.behavior, activeHabits);
+      if (resolved.error || !resolved.habitId) {
+        return {
+          success: false,
+          errors: [resolved.error || 'Failed to resolve habit ID'],
+          rulesApplied: Array.from(rulesAppliedSet),
+        };
+      }
+
+      const updates: Partial<Pick<Habit, 'title' | 'behavior' | 'minimumAction' | 'normalTarget' | 'stretchTarget'>> = {};
+      if (intent.minimumAction) updates.minimumAction = intent.minimumAction;
+      if (intent.target) updates.normalTarget = intent.target;
+
+      const command: DispatchedCommand<'UPDATE_HABIT'> = {
+        action: 'UPDATE_HABIT',
+        idempotencyKey,
+        actor: 'ai',
+        payload: {
+          habitId: resolved.habitId,
+          updates,
+        },
+      };
+
+      return {
+        success: true,
+        command,
+        rulesApplied: Array.from(rulesAppliedSet),
+      };
+    }
+
     case 'LOG_HABIT': {
-      // Find matching habit if possible
-      const matchingHabit = activeHabits.find((h) =>
-        h.title.toLowerCase().includes(intent.behavior.toLowerCase()) ||
-        intent.behavior.toLowerCase().includes(h.title.toLowerCase())
-      );
-      const habitId = matchingHabit?.id || generateEntityId('habit');
+      const resolved = resolveTargetHabitId(intent.behavior, activeHabits);
+      if (resolved.error || !resolved.habitId) {
+        return {
+          success: false,
+          errors: [resolved.error || 'Failed to resolve habit ID'],
+          rulesApplied: Array.from(rulesAppliedSet),
+        };
+      }
 
       const command: DispatchedCommand<'LOG_HABIT'> = {
         action: 'LOG_HABIT',
         idempotencyKey,
         actor: 'ai',
         payload: {
-          habitId,
+          habitId: resolved.habitId,
           completedAt: new Date().toISOString(),
         },
       };
@@ -238,17 +307,21 @@ export function compileIntentToCommand(
     }
 
     case 'PAUSE_HABIT': {
-      const matchingHabit = activeHabits.find((h) =>
-        h.title.toLowerCase().includes(intent.behavior.toLowerCase())
-      );
-      const habitId = matchingHabit?.id || generateEntityId('habit');
+      const resolved = resolveTargetHabitId(intent.behavior, activeHabits);
+      if (resolved.error || !resolved.habitId) {
+        return {
+          success: false,
+          errors: [resolved.error || 'Failed to resolve habit ID'],
+          rulesApplied: Array.from(rulesAppliedSet),
+        };
+      }
 
       const command: DispatchedCommand<'PAUSE_HABIT'> = {
         action: 'PAUSE_HABIT',
         idempotencyKey,
         actor: 'ai',
         payload: {
-          habitId,
+          habitId: resolved.habitId,
           actor: 'user',
           reason: intent.reason || 'User requested pause via assistant',
         },
@@ -262,17 +335,21 @@ export function compileIntentToCommand(
     }
 
     case 'RESUME_HABIT': {
-      const matchingHabit = activeHabits.find((h) =>
-        h.title.toLowerCase().includes(intent.behavior.toLowerCase())
-      );
-      const habitId = matchingHabit?.id || generateEntityId('habit');
+      const resolved = resolveTargetHabitId(intent.behavior, activeHabits);
+      if (resolved.error || !resolved.habitId) {
+        return {
+          success: false,
+          errors: [resolved.error || 'Failed to resolve habit ID'],
+          rulesApplied: Array.from(rulesAppliedSet),
+        };
+      }
 
       const command: DispatchedCommand<'RESUME_HABIT'> = {
         action: 'RESUME_HABIT',
         idempotencyKey,
         actor: 'ai',
         payload: {
-          habitId,
+          habitId: resolved.habitId,
           actor: 'user',
           reason: intent.reason || 'User requested resume via assistant',
         },
@@ -286,10 +363,14 @@ export function compileIntentToCommand(
     }
 
     case 'DELETE_HABIT': {
-      const matchingHabit = activeHabits.find((h) =>
-        h.title.toLowerCase().includes(intent.behavior.toLowerCase())
-      );
-      const habitId = matchingHabit?.id || generateEntityId('habit');
+      const resolved = resolveTargetHabitId(intent.behavior, activeHabits);
+      if (resolved.error || !resolved.habitId) {
+        return {
+          success: false,
+          errors: [resolved.error || 'Failed to resolve habit ID'],
+          rulesApplied: Array.from(rulesAppliedSet),
+        };
+      }
 
       const command: DispatchedCommand<'DELETE_HABIT'> = {
         action: 'DELETE_HABIT',
@@ -297,7 +378,7 @@ export function compileIntentToCommand(
         actor: 'ai',
         confirmed: false, // Requires explicit user confirmation
         payload: {
-          habitId,
+          habitId: resolved.habitId,
         },
       };
 
@@ -310,10 +391,14 @@ export function compileIntentToCommand(
     }
 
     case 'ARCHIVE_HABIT': {
-      const matchingHabit = activeHabits.find((h) =>
-        h.title.toLowerCase().includes(intent.behavior.toLowerCase())
-      );
-      const habitId = matchingHabit?.id || generateEntityId('habit');
+      const resolved = resolveTargetHabitId(intent.behavior, activeHabits);
+      if (resolved.error || !resolved.habitId) {
+        return {
+          success: false,
+          errors: [resolved.error || 'Failed to resolve habit ID'],
+          rulesApplied: Array.from(rulesAppliedSet),
+        };
+      }
 
       const command: DispatchedCommand<'ARCHIVE_HABIT'> = {
         action: 'ARCHIVE_HABIT',
@@ -321,7 +406,7 @@ export function compileIntentToCommand(
         actor: 'ai',
         confirmed: false, // Requires explicit user confirmation
         payload: {
-          habitId,
+          habitId: resolved.habitId,
           actor: 'user',
           reason: intent.reason || 'User requested archive',
         },
@@ -336,10 +421,14 @@ export function compileIntentToCommand(
     }
 
     case 'ADJUST_DIFFICULTY': {
-      const matchingHabit = activeHabits.find((h) =>
-        h.title.toLowerCase().includes(intent.behavior.toLowerCase())
-      );
-      const habitId = matchingHabit?.id || generateEntityId('habit');
+      const resolved = resolveTargetHabitId(intent.behavior, activeHabits);
+      if (resolved.error || !resolved.habitId) {
+        return {
+          success: false,
+          errors: [resolved.error || 'Failed to resolve habit ID'],
+          rulesApplied: Array.from(rulesAppliedSet),
+        };
+      }
 
       const simplerAction = intent.minimumAction || `Do 1 minute of ${intent.behavior}`;
       const command: DispatchedCommand<'ADJUST_DIFFICULTY'> = {
@@ -347,7 +436,7 @@ export function compileIntentToCommand(
         idempotencyKey,
         actor: 'ai',
         payload: {
-          habitId,
+          habitId: resolved.habitId,
           direction: 'easier',
           newMinimumAction: simplerAction,
         },
@@ -361,17 +450,21 @@ export function compileIntentToCommand(
     }
 
     case 'START_RECOVERY': {
-      const matchingHabit = activeHabits.find((h) =>
-        h.title.toLowerCase().includes(intent.behavior.toLowerCase())
-      );
-      const habitId = matchingHabit?.id || generateEntityId('habit');
+      const resolved = resolveTargetHabitId(intent.behavior, activeHabits);
+      if (resolved.error || !resolved.habitId) {
+        return {
+          success: false,
+          errors: [resolved.error || 'Failed to resolve habit ID'],
+          rulesApplied: Array.from(rulesAppliedSet),
+        };
+      }
 
       const command: DispatchedCommand<'START_RECOVERY'> = {
         action: 'START_RECOVERY',
         idempotencyKey,
         actor: 'ai',
         payload: {
-          habitId,
+          habitId: resolved.habitId,
           reason: 'effort',
         },
       };

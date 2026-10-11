@@ -248,5 +248,41 @@ describe('intentParser', () => {
       expect(intent.time).toBe('07:00');
       expect(intent.frequency).toBe('daily');
     });
+
+    it('gracefully falls back to heuristic parser when inference times out', async () => {
+      jest.spyOn(aiService, 'isModelDownloaded').mockResolvedValue(true);
+      jest.spyOn(aiService, 'loadModel').mockResolvedValue(mockLlamaContext);
+
+      // Simulate a stalled LLM completion that does not resolve in time
+      mockLlamaContext.completion.mockImplementation(() => new Promise(() => {}));
+
+      const intent = await parseUserIntent('Meditate at 8:00 AM daily', { timeoutMs: 50 });
+
+      expect(intent.source).toBe('heuristic');
+      expect(intent.action).toBe('CREATE_HABIT');
+      expect(intent.behavior.toLowerCase()).toContain('meditate');
+      expect(intent.time).toBe('08:00');
+    });
+  });
+
+  describe('Heuristic Edge Cases & Defenses', () => {
+    it('safely escapes regex metacharacters in habit stack anchor without crashing', () => {
+      const input = 'Do stretching after workout (heavy leg day)?';
+      const intent = parseIntentHeuristic(input);
+
+      expect(intent.action).toBe('CREATE_HABIT');
+      expect(intent.behavior.toLowerCase()).toContain('stretching');
+      expect(intent.anchor).toBe('workout (heavy leg day)?');
+      expect(intent.cueType).toBe('after-habit');
+    });
+
+    it('adjusts AM/PM-less hour to evening 24h format when utterance mentions evening', () => {
+      const input = 'Study at 7 in the evening every day';
+      const intent = parseIntentHeuristic(input);
+
+      expect(intent.action).toBe('CREATE_HABIT');
+      expect(intent.time).toBe('19:00');
+      expect(intent.cueType).toBe('time');
+    });
   });
 });

@@ -55,6 +55,7 @@ describe('behaviorCompiler', () => {
       expect(deriveIdentityStatement('read 20 pages')).toContain('reader');
       expect(deriveIdentityStatement('go running in park')).toContain('runner');
       expect(deriveIdentityStatement('study DSA on laptop')).toContain('continuous learner');
+      expect(deriveIdentityStatement('study Spanish daily')).toContain('lifelong learner');
       expect(deriveIdentityStatement('meditate every morning')).toContain('mindful practitioner');
       expect(deriveIdentityStatement('do 50 pushups')).toContain('athlete');
       expect(deriveIdentityStatement('write daily journal')).toContain('writer');
@@ -220,6 +221,41 @@ describe('behaviorCompiler', () => {
       const archResult = compileIntentToCommand(archiveIntent, activeHabitsFixture);
       expect(archResult.success).toBe(true);
       expect(archResult.requiresConfirmation).toBe(true);
+    });
+
+    it('compiles UPDATE_HABIT intent with minimumAction and target updates', () => {
+      const intent: ExtractedIntent = {
+        action: 'UPDATE_HABIT',
+        behavior: 'Morning Yoga',
+        minimumAction: 'Do 2 downward dogs',
+        target: '20 minutes of yoga',
+        confidence: 0.9,
+        source: 'heuristic',
+      };
+
+      const result = compileIntentToCommand(intent, activeHabitsFixture);
+
+      expect(result.success).toBe(true);
+      expect(result.command?.action).toBe('UPDATE_HABIT');
+      const cmd = result.command as DispatchedCommand<'UPDATE_HABIT'>;
+      expect(cmd.payload.habitId).toBe('habit-1');
+      expect(cmd.payload.updates.minimumAction).toBe('Do 2 downward dogs');
+      expect(cmd.payload.updates.normalTarget).toBe('20 minutes of yoga');
+    });
+
+    it('returns a clean error when active habits exist but none match the requested behavior', () => {
+      const intent: ExtractedIntent = {
+        action: 'LOG_HABIT',
+        behavior: 'Underwater Basket Weaving',
+        confidence: 0.9,
+        source: 'heuristic',
+      };
+
+      const result = compileIntentToCommand(intent, activeHabitsFixture);
+
+      expect(result.success).toBe(false);
+      expect(result.errors?.[0]).toMatch(/No active habit found matching "Underwater Basket Weaving"/);
+      expect(result.errors?.[0]).toMatch(/Morning Yoga/);
     });
   });
 
