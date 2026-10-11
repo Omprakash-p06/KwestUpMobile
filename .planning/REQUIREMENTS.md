@@ -74,7 +74,7 @@ Requirements for the behavioral execution system, technology platform upgrade, a
 ### Command Gateway & Behavior Compiler
 
 - [x] **CMD-01**: Implement finite type-safe Command Gateway with schema validation, capability checks, and execution sandboxing isolating storage/OS APIs from direct AI writes.
-- [ ] **AI-03**: Implement on-device AI Intent Parser (extracting bare facts) and deterministic Behavior Compiler (expanding intent into verified habit contracts using the rule engine).
+- [x] **AI-03**: Implement on-device AI Intent Parser (extracting bare facts) and deterministic Behavior Compiler (expanding intent into verified habit contracts using the rule engine).
 - [ ] **AI-04**: Build adaptive review engine combining semantic Behavior Analyst (friction diagnosis) and Language Generator (weekly reflection) mapped to deterministic interventions.
 
 ## Out of Scope
@@ -116,16 +116,16 @@ Requirements for the behavioral execution system, technology platform upgrade, a
 | INTV-01 | Phase 25 | Complete |
 | WIDG-03 | Phase 25 | Complete |
 | CMD-01  | Phase 26 | Complete |
-| AI-03   | Phase 27 | Pending |
+| AI-03   | Phase 27 | Complete |
 | AI-04   | Phase 28 | Pending |
 
 **Coverage:**
 
-- Active requirements: 2 total (Milestone 3 remaining: AI-03, AI-04)
-- Completed requirements: 25 total (Milestone 2 + Phases 20-26)
-- Mapped to phases: 27
+- Active requirements: 1 total (Milestone 3 remaining: AI-04)
+- Completed requirements: 26 total (Milestone 2 + Phases 20-27)
+- Mapped to phases: 28
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-09-27*
-*Last updated: 2026-10-11 after Phase 26 execution*
+*Last updated: 2026-10-11 after Phase 27 execution & Phase 28 planning*

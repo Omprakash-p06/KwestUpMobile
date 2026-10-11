@@ -57,6 +57,32 @@
         "reason": "Overload protection"
       },
       "priority": 80
+    },
+    {
+      "id": "FRICTION_DIAGNOSIS_001",
+      "description": "Behavior Analyst: categorize obstacles into 6 friction categories and map to deterministic system adjustments.",
+      "when": {
+        "action": "DIAGNOSE_FRICTION",
+        "hasReflection": true
+      },
+      "then": {
+        "action": "MAP_TO_INTERVENTION",
+        "supportedCategories": ["effort", "time", "setup", "emotional", "mental", "location"]
+      },
+      "priority": 75
+    },
+    {
+      "id": "REVIEW_WEEKLY_001",
+      "description": "Weekly Review & Reflection: synthesize 7-day factual identity evidence votes, Never-Miss-Twice adherence, and non-punitive system adjustments.",
+      "when": {
+        "action": "GENERATE_WEEKLY_REVIEW",
+        "windowDays": 7
+      },
+      "then": {
+        "action": "SYNTHESIZE_REVIEW_REPORT",
+        "enforceNonPunitive": true
+      },
+      "priority": 70
     }
   ]
 }
