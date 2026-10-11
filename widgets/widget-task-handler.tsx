@@ -261,6 +261,19 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
               todayDate,
             });
 
+            // Idempotency guard: completeHabit returns completedToday=false
+            // when lastCompletedDate is already today. A rapid double-tap
+            // must not fabricate a duplicate HABIT_COMPLETED event.
+            if (!completionResult.completedToday) {
+              logger.debug('[WidgetTaskHandler] Habit already completed today, ignoring:', habitId);
+              const nextTouchpoint = selectWidgetTouchpoint(parsedHabits);
+              await safeRequestWidgetUpdate({
+                widgetName: 'HabitWidget',
+                renderWidget: () => <HabitWidget touchpoint={nextTouchpoint} />,
+              });
+              return;
+            }
+
             const updatedHabits = parsedHabits.map((h) =>
               h.id === habitId ? completionResult.updatedHabit : h
             );
