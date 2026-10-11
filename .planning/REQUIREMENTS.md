@@ -63,8 +63,8 @@ Requirements for the behavioral execution system, technology platform upgrade, a
 
 ### Core Behavior & Deterministic Rule Engine
 
-- [ ] **BEH-01**: Implement deterministic behavior engines (habit, cue, 2-minute minimum action, never-miss-twice recovery, factual rewards) evaluating machine rules and logging `rulesApplied` audit traces.
-- [ ] **BEH-02**: Build `HabitContext` with isolated versioned storage (`kwestup_habits_v1`, `kwestup_behavior_events_v1`) and migration safeguards.
+- [x] **BEH-01**: Implement deterministic behavior engines (habit, cue, 2-minute minimum action, never-miss-twice recovery, factual rewards) evaluating machine rules and logging `rulesApplied` audit traces.
+- [x] **BEH-02**: Build `HabitContext` with isolated versioned storage (`kwestup_habits_v1`, `kwestup_behavior_events_v1`) and migration safeguards.
 
 ### Multi-Surface Intervention & Behavioral Widgets
 
@@ -111,8 +111,8 @@ Requirements for the behavioral execution system, technology platform upgrade, a
 | NOTIF-01| Phase 22 | Complete |
 | NOTIF-02| Phase 22 | Complete |
 | EVT-01  | Phase 23 | Complete |
-| BEH-01  | Phase 24 | Pending |
-| BEH-02  | Phase 24 | Pending |
+| BEH-01  | Phase 24 | Complete |
+| BEH-02  | Phase 24 | Complete |
 | INTV-01 | Phase 25 | Pending |
 | WIDG-03 | Phase 25 | Pending |
 | CMD-01  | Phase 26 | Pending |
@@ -121,8 +121,8 @@ Requirements for the behavioral execution system, technology platform upgrade, a
 
 **Coverage:**
 
-- Active requirements: 10 total (Milestone 3 remaining)
-- Completed requirements: 17 total (Milestone 2 + Phase 20, 21)
+- Active requirements: 5 total (Milestone 3 remaining)
+- Completed requirements: 22 total (Milestone 2 + Phases 20, 21, 22, 23, 24)
 - Mapped to phases: 27
 - Unmapped: 0 ✓
 

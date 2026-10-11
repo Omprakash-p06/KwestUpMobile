@@ -41,7 +41,7 @@ Per workspace standard `GEMINI.md`, **all phase planning (`gsd-plan-phase`) must
 - [x] **Phase 21: Technology Platform Upgrade (Expo SDK 57, RN 0.86, Node 22)** - Upgrade runtime framework and verify native dependencies (`llama.rn`, `android-widget`). ✅ COMPLETE
 - [x] **Phase 22: Unified Notification Service & Dispatch Engine** - Consolidate distributed notification mechanics and implement strict policy gates (rate limits, quiet hours). (completed 2026-10-10)
 - [x] **Phase 23: Domain Event Bus & Behavioral Telemetry** - Type-safe internal event bus instrumenting domain state transitions. ✅ COMPLETE
-- [ ] **Phase 24: Core Behavior Engine (Habits, Cues, Recovery & Rewards)** - Pure behavior engines (2-minute rule, never-miss-twice recovery) and `HabitContext`.
+- [x] **Phase 24: Core Behavior Engine (Habits, Cues, Recovery & Rewards)** - Pure behavior engines (2-minute rule, never-miss-twice recovery) and `HabitContext`. ✅ COMPLETE
 - [ ] **Phase 25: Intervention Engine & Behavioral Home-Screen Widgets** - Multi-surface behavioral intervention delivery across notifications and interactive Android widgets.
 - [ ] **Phase 26: Type-Safe Command Registry & AI Sandboxing** - Schema-validated command execution isolating OS/storage APIs from direct AI writes.
 - [ ] **Phase 27: On-Device AI Intent Parser & Habit Compiler** - Natural-language intent translation into structured behavioral routines using local LLM.
@@ -249,7 +249,7 @@ Per workspace standard `GEMINI.md`, **all phase planning (`gsd-plan-phase`) must
 | 21. Technology Platform Upgrade | 2/2 | ✅ Complete | 2026-10-04 |
 | 22. Unified Notification Service | 2/2 | ✅ Complete | 2026-10-10 |
 | 23. Domain Event Bus | 2/2 | ✅ Complete | 2026-10-10 |
-| 24. Core Behavior & Rule Engine | 0/2 | ⏳ Pending | - |
+| 24. Core Behavior & Rule Engine | 2/2 | ✅ Complete | 2026-10-11 |
 | 25. Intervention & Widgets | 0/2 | ⏳ Pending | - |
 | 26. Command Gateway & Sandboxing | 0/2 | ⏳ Pending | - |
 | 27. Intent Parser & Compiler | 0/2 | ⏳ Pending | - |
