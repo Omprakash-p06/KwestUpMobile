@@ -87,6 +87,8 @@ function HabitWidgetSync({ appState, isInitialized }) {
         requestWidgetUpdate({
           widgetName: 'HabitWidget',
           renderWidget: () => <HabitWidget touchpoint={touchpoint} />,
+        }).catch((err) => {
+          logger.warn('Failed to update HabitWidget from app:', err);
         });
       } catch (err) {
         logger.warn('Failed to update HabitWidget from app:', err);
