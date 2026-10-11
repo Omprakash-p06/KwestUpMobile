@@ -230,6 +230,17 @@ export function arbitrateNotificationIntervention(
 }
 
 /**
+ * Maximum subtitle length rendered to the lock-screen-visible widget surface.
+ * Bounds Binder transaction size and limits PII exposure on the home screen.
+ */
+export const WIDGET_SUBTITLE_MAX_LENGTH = 80;
+
+export function truncateWidgetSubtitle(subtitle: string): string {
+  if (subtitle.length <= WIDGET_SUBTITLE_MAX_LENGTH) return subtitle;
+  return subtitle.slice(0, WIDGET_SUBTITLE_MAX_LENGTH);
+}
+
+/**
  * Selects the highest priority behavioral touchpoint for Android home-screen widgets
  * governed by WIDGET_PRIORITY_001 (Recovery > Today Habit > Next Action).
  *
@@ -263,7 +274,9 @@ export function selectWidgetTouchpoint(
       type: 'recovery',
       habitId: recoveryHabit.id,
       title: "DON'T MISS TWICE",
-      subtitle: `${recoveryHabit.title}: You missed yesterday. 2-min version ready.`,
+      subtitle: truncateWidgetSubtitle(
+        `${recoveryHabit.title}: You missed yesterday. 2-min version ready.`
+      ),
       actionLabel: '[ 2-MIN VERSION ]',
       actionType: 'COMPLETE_HABIT',
       rulesApplied,
@@ -282,7 +295,9 @@ export function selectWidgetTouchpoint(
       type: 'today_due',
       habitId: todayDueHabit.id,
       title: 'TODAY OBJECTIVE',
-      subtitle: `${todayDueHabit.title}: ${todayDueHabit.normalTarget || todayDueHabit.behavior}`,
+      subtitle: truncateWidgetSubtitle(
+        `${todayDueHabit.title}: ${todayDueHabit.normalTarget || todayDueHabit.behavior}`
+      ),
       actionLabel: '[ COMPLETE ]',
       actionType: 'COMPLETE_HABIT',
       rulesApplied,
@@ -300,7 +315,9 @@ export function selectWidgetTouchpoint(
       type: 'next_action',
       habitId: nextActionHabit.id,
       title: 'NEXT ACTION',
-      subtitle: `${nextActionHabit.title}: ${nextActionHabit.minimumAction}`,
+      subtitle: truncateWidgetSubtitle(
+        `${nextActionHabit.title}: ${nextActionHabit.minimumAction}`
+      ),
       actionLabel: '[ START ]',
       actionType: 'START_HABIT_ACTION',
       rulesApplied,
@@ -350,4 +367,6 @@ export default {
   arbitrateNotificationIntervention,
   selectWidgetTouchpoint,
   arbitrateInAppIntervention,
+  truncateWidgetSubtitle,
+  WIDGET_SUBTITLE_MAX_LENGTH,
 };
