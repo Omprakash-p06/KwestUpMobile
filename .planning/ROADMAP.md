@@ -496,8 +496,8 @@ Per workspace standard `GEMINI.md`, **all phase planning (`gsd-plan-phase`) must
 
 **Plans**:
 
-- [ ] 26-01-PLAN.md — Command Gateway validation, capability checks, and sandboxed executor
-- [ ] 26-02-PLAN.md — AI sandboxing layer and command dispatch integration with domain contexts
+- [x] 26-01-PLAN.md — Command Gateway validation, capability checks, and sandboxed executor ✅
+- [x] 26-02-PLAN.md — AI sandboxing layer and command dispatch integration with domain contexts ✅
 
 ---
 

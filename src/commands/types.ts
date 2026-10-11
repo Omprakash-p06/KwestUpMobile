@@ -97,9 +97,12 @@ export type CommandPayload<A extends CommandAction> =
       }
     : never;
 
+export type CommandActor = 'ai' | 'user' | 'widget' | 'engine';
+
 export interface CommandValidationResult {
   valid: boolean;
   errors: string[]; // always present; empty when valid
+  rulesApplied?: string[];
 }
 
 export interface CommandExecutionResult {
@@ -115,4 +118,6 @@ export interface DispatchedCommand<A extends CommandAction = CommandAction> {
   action: A;
   payload: CommandPayload<A>;
   idempotencyKey: string; // required — widget/notification callers must send; executor dedups double-tap
+  actor?: CommandActor;
+  confirmed?: boolean;
 }

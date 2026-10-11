@@ -157,7 +157,10 @@ export type BehaviorEventType =
   | 'RECOVERY_STARTED'
   | 'REMINDER_DISMISSED'
   | 'REMINDER_IGNORED'
-  | 'CHECK_IN_COMPLETED';
+  | 'CHECK_IN_COMPLETED'
+  // Command execution lifecycle
+  | 'COMMAND_EXECUTED'
+  | 'COMMAND_FAILED';
 
 export type DomainEventType = BehaviorEventType;
 
@@ -168,7 +171,7 @@ export interface BehaviorEvent {
   timestamp: string;
   metadata?: Record<string, unknown>;
   payload?: Record<string, unknown>;
-  source: 'app' | 'widget' | 'notification' | 'system';
+  source: 'app' | 'widget' | 'notification' | 'system' | 'ai';
 }
 
 export type DomainEvent<T extends DomainEventType = DomainEventType> = BehaviorEvent & {
