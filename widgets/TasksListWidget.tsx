@@ -179,7 +179,7 @@ export function TasksListWidget({
               />
             </FlexWidget>
           ) : (
-            <ListWidget style={{ flex: 1, width: 'match_parent' }}>
+            <ListWidget style={{ height: 'match_parent', width: 'match_parent' }}>
               {activeTasks.slice(0, 12).map((task, idx) => {
                 const isDoneOrTicking = task.completed || task.isTicking;
                 return (
@@ -239,16 +239,18 @@ export function TasksListWidget({
                       </FlexWidget>
 
                       {/* Task Title */}
-                      <TextWidget
-                        text={task.important && !isDoneOrTicking ? `* ${task.title}` : task.title}
-                        style={{
-                          flex: 1,
-                          fontSize: 10,
-                          fontFamily: 'monospace',
-                          color: isDoneOrTicking ? '#8E7BEF' : '#ffffff',
-                          fontWeight: task.important && !isDoneOrTicking ? 'bold' : 'normal',
-                        }}
-                      />
+                      <FlexWidget style={{ flex: 1 }}>
+                        <TextWidget
+                          text={task.important && !isDoneOrTicking ? `* ${task.title}` : task.title}
+                          style={{
+                            width: 'match_parent',
+                            fontSize: 10,
+                            fontFamily: 'monospace',
+                            color: isDoneOrTicking ? '#8E7BEF' : '#ffffff',
+                            fontWeight: task.important && !isDoneOrTicking ? 'bold' : 'normal',
+                          }}
+                        />
+                      </FlexWidget>
 
                       {/* Recurrence Repeat Marker */}
                       {task.recurrence && task.recurrence !== 'none' && !isDoneOrTicking && (

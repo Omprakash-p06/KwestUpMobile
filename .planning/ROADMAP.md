@@ -478,8 +478,8 @@ Per workspace standard `GEMINI.md`, **all phase planning (`gsd-plan-phase`) must
 
 **Plans**:
 
-- [ ] 25-01-PLAN.md — Multi-surface `interventionEngine.ts` with anti-spam and quiet-hour arbitration
-- [ ] 25-02-PLAN.md — Behavioral widget renderers (Today, Next Action, Recovery cues) and widget typecheck inclusion
+- [x] 25-01-PLAN.md — Multi-surface `interventionEngine.ts` with anti-spam and quiet-hour arbitration ✅
+- [x] 25-02-PLAN.md — Behavioral widget renderers (Today, Next Action, Recovery cues) and widget typecheck inclusion ✅
 
 ---
 

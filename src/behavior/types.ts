@@ -85,6 +85,48 @@ export interface Intervention {
   status: InterventionStatus;
 }
 
+export interface InterventionCandidate {
+  id?: string;
+  habitId: string;
+  type: InterventionType;
+  surface: InterventionSurface;
+  priority?: InterventionPriority;
+  title: string;
+  message: string;
+  targetTime?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export type InterventionAction =
+  | 'DISPATCH_NOTIFICATION'
+  | 'DEFER_NOTIFICATION_UNTIL_MORNING'
+  | 'THROTTLE_NOTIFICATION'
+  | 'BLOCK_BEHAVIOR_NOTIFICATION'
+  | 'RENDER_WIDGET_TOUCHPOINT'
+  | 'SHOW_IN_APP_BANNER'
+  | 'DISMISS';
+
+export interface InterventionDecision {
+  approved: boolean;
+  targetSurface: InterventionSurface;
+  action: InterventionAction;
+  scheduledFor?: string;
+  reason: string;
+  rulesApplied: string[];
+}
+
+export type WidgetTouchpointType = 'recovery' | 'today_due' | 'next_action' | 'standby';
+
+export interface WidgetTouchpoint {
+  type: WidgetTouchpointType;
+  habitId?: string;
+  title: string;
+  subtitle: string;
+  actionLabel: string;
+  actionType: 'COMPLETE_HABIT' | 'START_HABIT_ACTION' | 'STANDBY';
+  rulesApplied: string[];
+}
+
 export type BehaviorEventType =
   // Task lifecycle
   | 'TASK_CREATED'

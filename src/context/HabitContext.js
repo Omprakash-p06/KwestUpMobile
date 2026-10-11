@@ -9,6 +9,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   generateEntityId,
@@ -110,6 +111,49 @@ export const HabitProvider = ({
       if (storageWriteTimerRef.current) {
         clearTimeout(storageWriteTimerRef.current);
       }
+    };
+  }, []);
+
+  // 1b. Foreground Return Convergence (AppState active)
+  useEffect(() => {
+    const handleAppStateChange = async (nextState) => {
+      if (nextState === 'active') {
+        try {
+          const [storedHabits, storedIdentities, storedEvents, storedRewards] = await Promise.all([
+            AsyncStorage.getItem(HABITS_STORAGE_KEY),
+            AsyncStorage.getItem(IDENTITIES_STORAGE_KEY),
+            AsyncStorage.getItem(BEHAVIOR_EVENTS_STORAGE_KEY),
+            AsyncStorage.getItem(REWARDS_STORAGE_KEY),
+          ]);
+
+          if (storedHabits) {
+            const parsed = JSON.parse(storedHabits);
+            if (Array.isArray(parsed)) setHabits(parsed);
+          }
+          if (storedIdentities) {
+            const parsed = JSON.parse(storedIdentities);
+            if (Array.isArray(parsed)) setIdentities(parsed);
+          }
+          if (storedEvents) {
+            const parsed = JSON.parse(storedEvents);
+            if (Array.isArray(parsed)) {
+              setBehaviorEvents(parsed.slice(-MAX_PERSISTED_BEHAVIOR_EVENTS));
+            }
+          }
+          if (storedRewards) {
+            const parsed = JSON.parse(storedRewards);
+            if (Array.isArray(parsed)) setRewards(parsed);
+          }
+          logger.debug('🔄 Re-hydrated habit domain state on foreground return');
+        } catch (err) {
+          logger.warn('Failed to refresh habit state on foreground:', err);
+        }
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => {
+      subscription?.remove();
     };
   }, []);
 

@@ -6,6 +6,15 @@ import { FocusTimerWidget } from './FocusTimerWidget';
 import { DailyTasksWidget } from './DailyTasksWidget';
 import { ImportantTasksWidget } from './ImportantTasksWidget';
 import { TasksListWidget } from './TasksListWidget';
+import { HabitWidget } from './HabitWidget';
+import { selectWidgetTouchpoint } from '../src/behavior/interventionEngine';
+import { completeHabit } from '../src/behavior/habitEngine';
+import {
+  HABITS_STORAGE_KEY,
+  BEHAVIOR_EVENTS_STORAGE_KEY,
+  MAX_PERSISTED_BEHAVIOR_EVENTS,
+} from '../src/context/HabitContext';
+import type { Habit, BehaviorEvent } from '../src/behavior/types';
 import { STORAGE_VERSION } from '../src/utils/storage';
 import { getLocalDateString } from '../src/utils/dateUtils';
 import { toggleTask } from '../src/utils/taskMutations';
@@ -28,6 +37,7 @@ const nameToWidget = {
   DailyTasks: DailyTasksWidget,
   ImportantTasks: ImportantTasksWidget,
   TasksList: TasksListWidget,
+  HabitWidget: HabitWidget,
 } as const;
 
 type WidgetName = keyof typeof nameToWidget;
@@ -228,6 +238,100 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
         logger.warn('[WidgetTaskHandler] Failed to toggle task state:', err);
       }
     }
+
+    // 3. COMPLETE_HABIT or START_HABIT_ACTION action
+    if (
+      (props.clickAction === 'COMPLETE_HABIT' || props.clickAction === 'START_HABIT_ACTION') &&
+      props.clickActionData?.habitId
+    ) {
+      const habitId = props.clickActionData.habitId as string;
+      try {
+        const [rawHabits, rawEvents] = await Promise.all([
+          AsyncStorage.getItem(HABITS_STORAGE_KEY),
+          AsyncStorage.getItem(BEHAVIOR_EVENTS_STORAGE_KEY),
+        ]);
+
+        if (rawHabits) {
+          const parsedHabits: Habit[] = JSON.parse(rawHabits);
+          const targetHabit = parsedHabits.find((h) => h.id === habitId);
+
+          if (targetHabit) {
+            const now = new Date().toISOString();
+            const todayDate = getLocalDateString(now);
+
+            // Execute pure completeHabit
+            const completionResult = completeHabit(targetHabit, {
+              now,
+              todayDate,
+            });
+
+            const updatedHabits = parsedHabits.map((h) =>
+              h.id === habitId ? completionResult.updatedHabit : h
+            );
+
+            // Write back to isolated habit storage
+            await AsyncStorage.setItem(HABITS_STORAGE_KEY, JSON.stringify(updatedHabits));
+            logger.info('[WidgetTaskHandler] Habit completed via widget click:', habitId);
+
+            // Bounded behavior event log FIFO cap (max 500)
+            let existingEvents: BehaviorEvent[] = [];
+            if (rawEvents) {
+              try {
+                const parsed = JSON.parse(rawEvents);
+                if (Array.isArray(parsed)) existingEvents = parsed;
+              } catch (e) {
+                logger.warn('[WidgetTaskHandler] Failed to parse existing behavior events:', e);
+              }
+            }
+
+            const habitCompletedEvent: BehaviorEvent = {
+              id: `bevt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+              type: 'HABIT_COMPLETED',
+              entityId: habitId,
+              timestamp: now,
+              source: 'widget',
+              payload: {
+                habitId,
+                completedToday: completionResult.completedToday,
+                streakCount: completionResult.updatedHabit.streakCount,
+                totalEvidenceVotes: completionResult.updatedHabit.totalEvidenceVotes,
+                rulesApplied: completionResult.rulesApplied,
+              },
+            };
+
+            const boundedEvents = [...existingEvents, habitCompletedEvent].slice(
+              -MAX_PERSISTED_BEHAVIOR_EVENTS
+            );
+            await AsyncStorage.setItem(
+              BEHAVIOR_EVENTS_STORAGE_KEY,
+              JSON.stringify(boundedEvents)
+            );
+
+            // Emit telemetry on local eventBus
+            eventBus.emit({
+              type: 'WIDGET_ACTION',
+              entityId: `widget_${widgetId}`,
+              source: 'widget',
+              payload: {
+                action: props.clickAction,
+                habitId,
+                widgetName,
+              },
+            });
+            eventBus.emit(habitCompletedEvent);
+
+            // Re-render HabitWidget with the next touchpoint
+            const nextTouchpoint = selectWidgetTouchpoint(updatedHabits);
+            await safeRequestWidgetUpdate({
+              widgetName: 'HabitWidget',
+              renderWidget: () => <HabitWidget touchpoint={nextTouchpoint} />,
+            });
+          }
+        }
+      } catch (err) {
+        logger.warn('[WidgetTaskHandler] Failed to process habit widget click:', err);
+      }
+    }
   }
 
   if (
@@ -322,6 +426,20 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
             activeTab={activeTab === 'persistent' ? 'persistent' : 'all'}
           />
         );
+      } else if (widgetName === 'HabitWidget') {
+        let habitTouchpoint = undefined;
+        try {
+          const rawHabits = await AsyncStorage.getItem(HABITS_STORAGE_KEY);
+          if (rawHabits) {
+            const parsedHabits: Habit[] = JSON.parse(rawHabits);
+            habitTouchpoint = selectWidgetTouchpoint(parsedHabits);
+          } else {
+            habitTouchpoint = selectWidgetTouchpoint([]);
+          }
+        } catch (err) {
+          logger.warn('[WidgetTaskHandler] Failed to prepare HabitWidget data:', err);
+        }
+        props.renderWidget(<WidgetComponent touchpoint={habitTouchpoint} />);
       }
     }
   }

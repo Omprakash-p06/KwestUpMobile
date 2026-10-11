@@ -97,6 +97,18 @@
               "resizeMode": "horizontal|vertical",
               "previewImage": "./assets/widget-preview/important-tasks-preview.png",
               "updatePeriodMillis": 1800000
+            },
+            {
+              "name": "HabitWidget",
+              "label": "Habit & Recovery",
+              "description": "Shows actionable behavioral cues, 2-minute actions, and Never Miss Twice recovery",
+              "minWidth": "250dp",
+              "minHeight": "100dp",
+              "targetCellWidth": 3,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "previewImage": "./assets/widget-preview/daily-tasks-preview.png",
+              "updatePeriodMillis": 1800000
             }
           ]
         }

@@ -44,7 +44,7 @@ import { TaskProvider } from "./src/context/TaskContext";
 import { VaultProvider } from "./src/context/VaultContext";
 import { BillingProvider } from "./src/context/BillingContext";
 import { BirthdayProvider } from "./src/context/BirthdayContext";
-import { HabitProvider } from "./src/context/HabitContext";
+import { HabitProvider, useHabits } from "./src/context/HabitContext";
 import { initNotesFolder, getAllNotesFromFilesystem, wipeNotesFilesystem, saveNoteFile } from "./src/utils/fileStorage";
 import { migrateToVaultSystem, getVaults, getActiveVaultId, setActiveVaultId } from "./src/utils/vaultService";
 
@@ -59,6 +59,8 @@ import { FocusTimerWidget } from './widgets/FocusTimerWidget';
 import { DailyTasksWidget } from './widgets/DailyTasksWidget';
 import { ImportantTasksWidget } from './widgets/ImportantTasksWidget';
 import { TasksListWidget } from './widgets/TasksListWidget';
+import { HabitWidget } from './widgets/HabitWidget';
+import { selectWidgetTouchpoint } from './src/behavior/interventionEngine';
 import { getLocalDateString, getYesterdayLocalDateString } from './src/utils/dateUtils';
 import { subscribeAppState, unsubscribeAppState } from "./src/utils/aiService";
 import { eventBus } from "./src/behavior/eventBus";
@@ -71,6 +73,31 @@ const VALID_THEME_NAMES = ["clean", "blue", "green", "purple", "dribbble"];
 
 const resolveThemeMode = (value) => (VALID_THEME_MODES.includes(value) ? value : "light");
 const resolveThemeName = (value) => (VALID_THEME_NAMES.includes(value) ? value : "dribbble");
+
+function HabitWidgetSync({ appState, isInitialized }) {
+  const { habits, isHydrated } = useHabits();
+
+  useEffect(() => {
+    if (!isInitialized || !isHydrated || Platform.OS !== 'android') return;
+    if (appState.current !== 'active') return;
+
+    const timer = setTimeout(() => {
+      try {
+        const touchpoint = selectWidgetTouchpoint(habits);
+        requestWidgetUpdate({
+          widgetName: 'HabitWidget',
+          renderWidget: () => <HabitWidget touchpoint={touchpoint} />,
+        });
+      } catch (err) {
+        logger.warn('Failed to update HabitWidget from app:', err);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [habits, isHydrated, isInitialized, appState]);
+
+  return null;
+}
 
 const App = () => {
   logger.debug("🚀 KWESTUP MAIN APP COMPONENT LOADING...");
@@ -882,6 +909,7 @@ const App = () => {
                       showConfirmationDialog={showConfirmation}
                     >
                       <HabitProvider>
+                        <HabitWidgetSync appState={appState} isInitialized={isInitialized} />
                         <NavigationContainer theme={{ colors: { background: "transparent" } }}>
                           <AppNavigator
                             currentTheme={currentTheme}

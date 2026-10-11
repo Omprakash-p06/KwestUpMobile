@@ -14,11 +14,7 @@
   },
   "include": [
     "src/**/*",
-    // NOTE: App.js and index.js are intentionally NOT in scope yet: they import
-    // ./widgets/*, which carries 2 pre-existing style-type errors ('flex'
-    // excess props). Any glob matching them (even "*.js") pulls widgets/ into
-    // the program via import (exclude cannot block imports) and reds the gate.
-    // Tracked for Phase 25 widget-engine hardening (see CR-08 in 20-REVIEW.md).
+    "widgets/**/*",
     "__tests__/**/*",
     "patch-llama-gradle.js",
     "babel.config.js",
@@ -27,11 +23,6 @@
     "eslint.config.js"
   ],
   "exclude": [
-    "node_modules",
-    // widgets/ excluded: headless widget surface carries 2 pre-existing
-    // style-type errors (TasksListWidget 'flex' excess props) and is
-    // behavior-critical per Master Plan §9 — tracked for Phase 25
-    // widget-engine hardening, not exempt by design.
-    "widgets/**/*"
+    "node_modules"
   ]
 }
