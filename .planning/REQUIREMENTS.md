@@ -68,8 +68,8 @@ Requirements for the behavioral execution system, technology platform upgrade, a
 
 ### Multi-Surface Intervention & Behavioral Widgets
 
-- [ ] **INTV-01**: Implement `interventionEngine.ts` governing multi-surface delivery across Notifications, Widgets, and In-App surfaces under `interventionRules.json` policy limits.
-- [ ] **WIDG-03**: Upgrade Android home-screen widgets to render actionable behavioral cues (Today, Next, Don't Miss Twice recovery).
+- [x] **INTV-01**: Implement `interventionEngine.ts` governing multi-surface delivery across Notifications, Widgets, and In-App surfaces under `interventionRules.json` policy limits.
+- [x] **WIDG-03**: Upgrade Android home-screen widgets to render actionable behavioral cues (Today, Next, Don't Miss Twice recovery).
 
 ### Command Gateway & Behavior Compiler
 
@@ -113,8 +113,8 @@ Requirements for the behavioral execution system, technology platform upgrade, a
 | EVT-01  | Phase 23 | Complete |
 | BEH-01  | Phase 24 | Complete |
 | BEH-02  | Phase 24 | Complete |
-| INTV-01 | Phase 25 | Pending |
-| WIDG-03 | Phase 25 | Pending |
+| INTV-01 | Phase 25 | Complete |
+| WIDG-03 | Phase 25 | Complete |
 | CMD-01  | Phase 26 | Pending |
 | AI-03   | Phase 27 | Pending |
 | AI-04   | Phase 28 | Pending |
