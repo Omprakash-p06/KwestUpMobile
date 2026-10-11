@@ -30,13 +30,15 @@ describe('interventionEngine Unit Tests', () => {
       const d1130pm = new Date('2026-10-11T23:30:00');
       const dMidnight = new Date('2026-10-11T00:00:00');
       const d4am = new Date('2026-10-11T04:15:00');
-      const d800am = new Date('2026-10-11T08:00:00');
 
       expect(isInQuietHours(d10pm)).toBe(true);
       expect(isInQuietHours(d1130pm)).toBe(true);
       expect(isInQuietHours(dMidnight)).toBe(true);
       expect(isInQuietHours(d4am)).toBe(true);
-      expect(isInQuietHours(d800am)).toBe(true);
+    });
+
+    it('treats exactly 08:00:00 as daytime (half-open [22:00,08:00) contract)', () => {
+      expect(isInQuietHours(new Date('2026-10-11T08:00:00'))).toBe(false);
     });
 
     it('defers late-night triggers to 08:15 next calendar morning', () => {

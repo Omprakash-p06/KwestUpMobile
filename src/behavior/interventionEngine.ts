@@ -24,7 +24,7 @@ import { logger } from '../utils/logger';
 
 /**
  * Checks if a target time falls within local quiet hours [22:00, 08:00).
- * 22:00 through 07:59:59 (and 08:00:00) is quiet; 08:01+ is daytime.
+ * 22:00 through 07:59:59 is quiet; 08:00+ is daytime.
  *
  * @param {Date} date - Local Date instance
  * @returns {boolean} True if within quiet hours window
@@ -37,8 +37,8 @@ export function isInQuietHours(date: Date): boolean {
   const startMinutes = 22 * 60; // 22:00 -> 1320
   const endMinutes = 8 * 60; // 08:00 -> 480
 
-  // Window: [22:00, 24:00) U [00:00, 08:00]
-  return totalMinutes >= startMinutes || totalMinutes <= endMinutes;
+  // Window: [22:00, 24:00) U [00:00, 08:00)
+  return totalMinutes >= startMinutes || totalMinutes < endMinutes;
 }
 
 /**
