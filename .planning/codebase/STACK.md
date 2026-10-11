@@ -4,64 +4,65 @@
 
 ## Languages & Runtimes
 
-- **JavaScript (JSX, no TS in app code)** — all app code under `src/` is `.js`; only `src/services/*.ts`, `src/behavior/*.ts`, `src/commands/*.ts` are TypeScript (`src/services/notificationService.ts:1`, `src/behavior/eventBus.ts:1`). `tsconfig.json:12` keeps `checkJs: false`.
-- **TypeScript ~5.8.3** (dev only) — `package.json:67`.
-- **Hermes (enabled)** — JS engine is Hermes, not JSC — `android/gradle.properties:64` (`hermesEnabled=true`).
-- **Node >=22.13** required — `package.json:70-72`.
+- **JavaScript (mixed JS + TS)** — `allowJs: true`, `strict: true`, `checkJs: false` (`tsconfig.json:3-13`); most `src/context`, `src/utils` are `.js`, new `src/ai/*`, `src/commands/*` are `.ts`.
+- **JS engine: Hermes** — `hermesEnabled=true` (`android/gradle.properties:64`).
+- **React Native architecture: Old Architecture (Paper/bridge)** — `newArchEnabled=false` (`android/gradle.properties:60`); llama.rn uses Old-Arch bridge `getCatalystInstance().getJSCallInvokerHolder()` (comment `android/gradle.properties:42-60`).
+- **Node `>=22.13`** — `package.json:70-72`. **TypeScript `~5.8.3`** (`package.json:67`).
 
 ## Frameworks
 
-- **Expo (managed + dev-client + prebuild)** — `expo-dev-client ~5.2.4` (`package.json:32`), `expo/metro-config` (`metro.config.js:1`), `babel-preset-expo` (`babel.config.js:23`), jest preset `jest-expo/android` (`jest.config.js:1-4`).
-- **React 19.2.3 + React Native 0.86.0** — `package.json:42-43` (exact pins, no caret).
-- **React Navigation v6** — `@react-navigation/native ^6.1.9`, `drawer ^6.6.6` (`package.json:25-26`); host in `App.js:915`.
-- **React Native Paper ^5.10.5** (Material UI kit) — `package.json:48`, provider in `App.js:892`.
-- **Reanimated ~3.17.4 + Gesture Handler ~2.24.0 + Screens ~4.11.1 + Safe-area 5.4.0** — `package.json:46,49,51`; reanimated babel plugin must stay last (`babel.config.js:19-20`); root wrapped in `GestureHandlerRootView` (`App.js:889`).
+- **Expo `~57.0.0`** — managed workflow + prebuild (`android/` committed), entry `index.js:1-11` (`registerRootComponent` + `registerWidgetTaskHandler`).
+- **React `19.2.3` + React Native `0.86.0`** (`package.json:42-43`).
+- **Navigation:** `@react-navigation/native ^6.1.9`, `@react-navigation/drawer ^6.6.6` (`package.json:25-26`); navigator at `src/navigation/AppNavigator.js`.
+- **UI:** `react-native-paper ^5.10.5`, `@expo/vector-icons ^14.0.0`, `expo-linear-gradient ~14.1.5`, `react-native-modal ^13.0.1`, `react-native-confetti-cannon ^1.5.2` (`package.json:22,37,45,47-48`).
+- **Animation/gesture:** `react-native-reanimated ~3.17.4` (Babel plugin must be last, `babel.config.js:19-20`), `react-native-gesture-handler ~2.24.0`, `react-native-screens ~4.11.1`, `react-native-safe-area-context 5.4.0` (`package.json:46,49-51`).
 
 ## Key Dependencies
 
-| Package | Version | Purpose |
+| package | version | purpose |
 |---|---|---|
-| `expo` | `~57.0.0` | Managed workflow, config plugins, Metro |
-| `react` / `react-native` | `19.2.3` / `0.86.0` (exact) | UI runtime |
-| `llama.rn` | `0.12.4` (exact) | On-device LLM (llama.cpp JSI, Old-Arch bridge) — `src/utils/aiService.js:10` |
-| `@react-native-async-storage/async-storage` | `2.1.2` (exact) | Primary KV store — `src/utils/storage.js:1`, `App.js:178-193` |
-| `expo-file-system` | `~18.1.11` | Vault markdown files on disk — `src/utils/fileStorage.js:1` |
-| `expo-notifications` | `~0.31.4` | Local reminders (5 channels) — `src/services/notificationService.ts:20,35-73` |
-| `expo-camera` | `~16.1.11` | QR sync scanner — `src/components/QRScannerModal.js:14` |
-| `expo-document-picker` | `~13.1.6` | Backup-restore + markdown import — `src/utils/vaultImport.js:1`, `src/screens/SettingsScreen.js:6` |
-| `expo-sharing` | `~13.1.5` | Share backup/model files — `src/utils/exportService.js:3,245-249` |
-| `expo-clipboard` | `~7.0.1` | Copy crash reports — `src/components/ErrorBoundary.js:13,103-104` |
-| `expo-font` + `@expo-google-fonts/{inter,hanken-grotesk,jetbrains-mono}` | `~13.3.2` / `^0.4.x` | 14 font faces loaded in `App.js:107-119` |
-| `expo-haptics` | `~14.1.4` | Touch/sync feedback — `App.js:832,839` |
-| `expo-build-properties` | `~0.14.8` | Native build props (iOS static frameworks) — `app.json:40-47` |
-| `react-native-android-widget` | `^0.16.1` | 5 Android home-screen widgets — `app.json:48-115`, `index.js:2,11` |
-| `crypto-js` | `^4.2.0` | AES-256 + PBKDF2 backup encryption, SHA-256 model hash — `src/utils/exportService.js:1,21-47`, `src/utils/aiService.js:13` |
-| `@react-native-community/datetimepicker` | `8.4.1` (exact) | Date/time pickers — `src/components/CustomDateTimePicker.js` |
-| `expo-linear-gradient` / `expo-status-bar` | `~14.1.5` / `~2.2.3` | Visual chrome — `App.js:8,890` |
-| `react-native-modal` / `react-native-confetti-cannon` / `@expo/vector-icons` | `^13.0.1` / `^1.5.2` / `^14.0.0` | Dialogs, celebrations, icons — `App.js:5-6,963` |
+| `expo` | `~57.0.0` | managed runtime, config plugins (`package.json:28`) |
+| `react` / `react-native` | `19.2.3` / `0.86.0` | UI runtime (`package.json:42-43`) |
+| `llama.rn` | `0.12.4` (pinned, no `~^`) | on-device LLM inference via `initLlama` (`package.json:41`, `src/utils/aiService.js:10`) |
+| `Qwen2.5-0.5B-Instruct Q4_K_M GGUF` | file `qwen2.5-0.5b-instruct-q4_k_m.gguf`, ~468 MB | offline intent-parser model (`src/utils/aiService.js:23-30`) |
+| `@react-native-async-storage/async-storage` | `2.1.2` (pinned) | primary KV persistence for habits/vaults/notif history (`package.json:23`) |
+| `expo-file-system` | `~18.1.11` | model download, vault/note files, backup I/O (`package.json:34`) |
+| `expo-notifications` | `~0.31.4` | local scheduled reminders, 5 Android channels (`package.json:38`, `src/services/notificationService.ts:35-73`) |
+| `expo-camera` | `~16.1.11` | QR sync-code scanning, permission in `app.json:34-39` |
+| `expo-document-picker` / `expo-sharing` | `~13.1.6` / `~13.1.5` | vault import / backup export share sheet (`src/utils/vaultImport.js:1-2`, `src/utils/exportService.js:2-3`) |
+| `expo-clipboard` | `~7.0.1` | copy sync tokens / backup text |
+| `expo-font` + `@expo-google-fonts/{inter,hanken-grotesk,jetbrains-mono}` | `~13.3.2` | bundled fonts loaded in `App.js:12-29` |
+| `expo-haptics` | `~14.1.4` | tactile feedback |
+| `expo-dev-client` | `~5.2.4` | dev builds (`eas.json:6-12`) |
+| `expo-build-properties` | `~0.14.8` | iOS `useFrameworks: static` (`app.json:40-47`) |
+| `react-native-android-widget` | `^0.16.1` | 5 home-screen widgets (`app.json:48-115`, `widgets/*.tsx`) |
+| `crypto-js` | `^4.2.0` | AES-256/PBKDF2 backup encryption, SHA-256 model hash (`src/utils/exportService.js:1`, `src/utils/aiService.js:13`) |
+| `@react-native-community/datetimepicker` | `8.4.1` (pinned) | reminder/time pickers |
+| `use-latest-callback` | `^0.2.4` | hook helper |
+| `jest-expo` / `jest` / `babel-jest` | `~57.0.0` / `^29.7.0` | Android jest preset (`jest.config.js:1-4`) |
 
 ## Tooling (build/test/lint)
 
-- **Build:** EAS CLI `>=3.10.0` (`eas.json:2-4`); profiles `development` (dev-client APK), `preview` (internal), `production` (APK + `NODE_OPTIONS=--max-old-space-size=4096`) (`eas.json:5-23`). `postinstall: node patch-llama-gradle.js` (`package.json:16`) patches `llama.rn` Old-Arch JSI + widget sizing fallbacks (`patch-llama-gradle.js:1-165`).
-- **Babel:** `babel-preset-expo` + production `transform-remove-console` (keeps error/warn) + reanimated last (`babel.config.js:15-20`).
-- **Metro:** default Expo config, no customization (`metro.config.js:1-5`).
-- **Test:** Jest `^29.7.0` + `jest-expo ~57.0.0` + `babel-jest` (`package.json:58,64-66`); suites under `__tests__/**/*.test.js` (`jest.config.js:24`); scripts `test` / `test:watch` / `test:coverage` (`package.json:13-15`).
-- **Lint/typecheck:** ESLint `^9.39.4` flat config + react/react-hooks/react-native plugins (`eslint.config.js:1-48`); `tsc --noEmit` via `typecheck` script (`package.json:12`).
+- **Babel:** `babel-preset-expo` + prod-only `transform-remove-console` (keeps `error`/`warn`) + `react-native-reanimated/plugin` last (`babel.config.js:15-20`); cache keyed on `NODE_ENV` (`babel.config.js:6-10`).
+- **Metro:** default Expo config (`metro.config.js:1-5`).
+- **Tests:** Jest `^29.7.0` with `jest-expo/android` preset, setup `__tests__/setup/jest.setup.js`, `transformIgnorePatterns` covers `llama.rn` + `react-native-android-widget` (`jest.config.js:1-11`); scripts `test`, `test:watch`, `test:coverage` (`package.json:13-15`).
+- **Lint:** ESLint 9 flat config `eslint.config.js:6-48` (react, react-native, hooks plugins; `no-console: warn`); legacy `.eslintrc.js` also present; `lint` / `lint:report` scripts (`package.json:10-11`).
+- **Typecheck:** `tsc --noEmit` (`package.json:12`).
+- **Native patches (postinstall):** `node patch-llama-gradle.js` (`package.json:16`) unwraps `isNewArchitectureEnabled()` guards in `llama.rn/android/build.gradle` and injects `getFallbackSize` into `RNWidgetUtil.java` (`patch-llama-gradle.js:6-165`).
+- **EAS:** CLI `>=3.10.0`; `development` (dev-client, internal APK), `preview` (internal), `production` (APK + `NODE_OPTIONS=--max-old-space-size=4096`) (`eas.json:1-24`); projectId `9b029b06-...` (`app.json:117-120`).
 
 ## Platform Targets
 
-- **Android (primary):** package `com.omprakashp06.kwestupmobile`, `versionCode 7` (`app.json:25-26`); ABIs `armeabi-v7a,arm64-v8a,x86,x86_64` (`android/gradle.properties:34`); 16 KB page-size flags injected for Android 16 (`android/build.gradle:41-53`); `expo.useLegacyPackaging=true`, edge-to-edge on (`android/gradle.properties:79,84`); widgets Android-only, guarded by `Platform.OS !== 'android'` (`App.js:598,637`).
-- **iOS (secondary):** tablet supported (`app.json:17-19`); static frameworks (`app.json:43-45`).
-- **Web:** favicon only (`app.json:28-30`); `expo start --web` script present (`package.json:9`) but not a target.
+- **Android (primary):** package `com.omprakashp06.kwestupmobile`, `versionCode 7` (`app.json:20-27`); ABIs `armeabi-v7a,arm64-v8a,x86,x86_64`, AndroidX, `expo.useLegacyPackaging=true` (Android 16 16KB pages), `edgeToEdgeEnabled=true` (`android/gradle.properties:34,26,79,84`); Gradle JVM 4 GB, parallel + caching (`android/gradle.properties:13-20`).
+- **iOS:** tablet support, static frameworks (`app.json:17-19`, `app.json:40-47`).
+- **Web:** favicon only (`app.json:28-30`).
 
 ## Pins/Notes
 
-- **Old Architecture forced OFF-new-arch:** `newArchEnabled=false` (`android/gradle.properties:60`) — deliberate: Fabric crashes on NothingOS + `llama.rn` uses Old-Arch `getCatalystInstance()` bridge (`android/gradle.properties:42-60`).
-- **Hermes ON:** `hermesEnabled=true` (`android/gradle.properties:64`).
-- **Exact native pins (do not float):** `react 19.2.3`, `react-native 0.86.0`, `llama.rn 0.12.4`, `async-storage 2.1.2`, `datetimepicker 8.4.1`, `safe-area-context 5.4.0` (`package.json:23-52`).
-- **SDK version drift (known):** `package.json` declares Expo `~57.0.0` but `app.json:31` still stamps `sdkVersion: 53.0.0`, installed `node_modules/expo` resolves to `53.0.20`, and `README.md:3-4,50` badges claim Expo 53 / RN 0.79. Treat `package.json` as intent; `app.json` + README are stale — reconcile before release.
-- **AI model pin:** Qwen2.5-0.5B Q4_K_M GGUF, HF commit `9217f5db…`, SHA-256 + 491,400,032-byte size gate (`src/utils/aiService.js:23-30`).
-- **EAS project:** ID `9b029b06-…` (`app.json:117-119`), owner `omprakash-p06` (`app.json:122`).
+- **Exact native pins (no range):** `llama.rn 0.12.4`, `async-storage 2.1.2`, `datetimepicker 8.4.1`, `safe-area-context 5.4.0`, `react-native 0.86.0`, `react 19.2.3` (`package.json:23-24,41-43,50`).
+- **`newArchEnabled=false` — do not flip** without non-NothingOS stability proof + llama.rn New-Arch API migration (`android/gradle.properties:42-60`).
+- **SDK drift:** `app.json:31` declares `sdkVersion: 53.0.0` while installed `expo ~57.0.0` / `jest-expo ~57.0.0` — treat 57 as truth, stale field is technical debt.
+- **Model pin:** commit `9217f5db79a29953eb74d5343926648285ec7e67`, SHA-256 `74a4da8c…7a9db`, size `491400032` B, URL `https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/...` (`src/utils/aiService.js:23-28`).
 
 ---
 *Stack analysis: 2026-10-11*

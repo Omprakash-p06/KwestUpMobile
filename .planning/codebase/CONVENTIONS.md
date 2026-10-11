@@ -4,101 +4,68 @@
 
 ## Code Style
 
-**Formatter:** No Prettier config in repo (no `.prettierrc*` / `prettier.config.*`). Style is enforced by ESLint + human convention, not auto-format.
+**Formatter:** No Prettier/Biome config detected — formatting is by hand (2-space indent, single quotes, trailing semicolons, ~100-col soft limit).
 
-**Linter:** ESLint 9 flat config is authoritative — `eslint.config.js:6-48`. Legacy `.eslintrc.js:1-34` is retained for tooling compat; keep both in sync if you touch rules. Run via `package.json:10` (`npm run lint` → `eslint .`).
-
-**Key rules (`eslint.config.js:31-46`):**
-- `react-hooks/rules-of-hooks: error` — never call hooks conditionally.
-- `react-hooks/exhaustive-deps: warn`, `react-native/no-unused-styles: warn`, `react-native/no-inline-styles: warn`, `react-native/no-color-literals: warn` — warnings, not errors; fix new ones, tolerate pre-existing (~849 warnings per `.github/workflows/ci.yml:33-35`).
-- `react/prop-types: off`, `react-native/no-raw-text: off`, `react-native/sort-styles: off`.
-- `no-unused-vars: warn` with `argsIgnorePattern: ^_` (`eslint.config.js:42`) — prefix intentionally unused args with `_`.
-- `no-console: warn` (`eslint.config.js:46`, deferred escalation per WR-09 comment) — never add raw `console.*` in `src/`; use `src/utils/logger.js`.
-- `babel.config.js:15-17` strips `console.log/info/debug` in production builds (keeps `error`/`warn`).
-
-**JS/JSX idiom:** 2-space indent, double quotes, semicolons, CommonJS only in config files (`jest.config.js:1`, `babel.config.js:1`). `src/` is ESM (`import`/`export`). Functional components as arrow consts with named exports, e.g. `src/components/CustomButton.js:6`.
-
-**Styles:** Every component defines `StyleSheet.create` at file bottom (e.g. `src/components/CustomButton.js:68-105`, `src/components/ErrorBoundary.js:301-407`). Inline style arrays for theme overrides only: `style={[styles.safeArea, { backgroundColor }]}` (`src/components/ErrorBoundary.js:164`).
+**Linter:** ESLint 9 flat config is authoritative — `eslint.config.js:6-65`. Legacy `.eslintrc.js:1-34` is a stale mirror (same rules); do not edit it for new rules.
+- `npm run lint` → `eslint .` (`package.json:10`); `npm run lint:report` emits `eslint-report.json` (`package.json:11`).
+- Key rules (`eslint.config.js:31-47`): `react/react-in-jsx-scope: off`, `react/prop-types: off`, `react-hooks/rules-of-hooks: error`, `react-hooks/exhaustive-deps: warn`, `react-native/no-unused-styles: warn`, `react-native/no-inline-styles: warn`, `react-native/no-color-literals: warn`, `react-native/no-raw-text: off`, `react-native/sort-styles: off`, `no-unused-vars: warn (argsIgnorePattern ^_)`, `no-console: warn` (kept at warn per WR-09 partial, `eslint.config.js:43-46` — ~100 pre-existing `console` calls untriaged).
+- Ignores (`eslint.config.js:8`): `node_modules, .expo, dist, web-build, android, ios, assets, KwestUpPC, coverage, eslint-report.json`.
+- Test-file override (`eslint.config.js:49-64`): declares Jest globals (`describe/it/expect/beforeEach/...`) for `__tests__/**/*` and `*.test.js` — do not add `/* global */` comments in tests.
+- Production `console` stripping is a Babel concern, not ESLint: `babel.config.js:15-17` pushes `transform-remove-console {exclude: [error, warn]}` only when `NODE_ENV=production`; verified by `__tests__/unit/logger.test.js:230-261`.
 
 ## Naming
 
 **Files:**
-- Components: `PascalCase.js` matching export — `CustomButton.js`, `TaskCard.js`, `ErrorBoundary.js` in `src/components/`.
-- Screens: `*Screen.js` — `src/screens/DashboardScreen.js`, `TaskListScreen.js`.
-- Contexts: `*Context.js` — `src/context/TaskContext.js`, `HabitContext.js`.
-- Utils/services: `camelCase.js` — `src/utils/dateUtils.js`, `taskMutations.js`, `vaultService.js`.
-- Typed domains: `camelCase.ts` colocated — `src/behavior/eventBus.ts`, `cueEngine.ts`, `src/services/notificationService.ts`.
-- Tests: `*.test.js` / `*.test.ts` mirroring module name — `dateUtils.test.js`, `eventBus.test.ts` (see TESTING.md).
+- Components (JS): `PascalCase.js` — `src/components/AIAssistant.js`, `src/components/TaskCard.js`, `src/components/ErrorBoundary.js`, `src/components/LiquidGlassCard.js`.
+- Engines / services / utils: `camelCase.{js,ts}` — `src/utils/aiService.js`, `src/utils/dateUtils.js`, `src/utils/taskMutations.js`, `src/commands/commandExecutor.ts`, `src/behavior/habitEngine.ts` (inferred).
+- New TypeScript modules: `camelCase.ts` — `src/ai/intentParser.ts:1`, `src/ai/behaviorCompiler.ts:1`, `src/commands/types.ts:1`, `src/commands/aiSandbox.ts:1`.
+- Tests: `__tests__/unit/<module>.test.{js,ts}` matching source basename (`intentParser.test.ts`, `behaviorCompiler.test.ts`, `logger.test.js`); one outlier at `__tests__/phase12-widget-logic.test.js:1` (top-level, not under `unit/`).
 
-**Components:** `PascalCase` (`CustomButton`, `ErrorBoundary`, `TaskCard`). Props destructured inline (`src/components/CustomButton.js:6`).
+**Components:** PascalCase function/const matching filename (`TaskCard`, `LiquidGlassCard`, `ErrorBoundary` in `src/components/`). Screens end in `Screen` (`src/screens/TaskListScreen.js`, `src/screens/SettingsScreen.js`).
 
-**Functions:** `camelCase` verbs — `getLocalDateString`, `parseLocalDate`, `isSameLocalDay` (`src/utils/dateUtils.js:14,63,157`), `clearAllCaches`, `migrateUserDataIfNeeded` (`src/utils/storage.js:30,74`), `generateEventId` (`src/behavior/eventBus.ts:17`).
+**Functions:** `camelCase` verbs — `parseUserIntent` (`src/ai/intentParser.ts:33`), `compileIntentToHabitPlan` / `compileIntentToCommand` / `compileAndExecuteIntent` (`src/ai/behaviorCompiler.ts:78,192,510`), `executeAiCommand` / `sanitizeAiPayload` (`src/commands/aiSandbox.ts:100,117`), `registerCommandHandler` (`src/commands/commandExecutor.ts:43`). Pure derivations use `derive*` / `generate*` / `normalize*` / `retrieve*` prefixes (`deriveIdentityStatement` at `src/ai/behaviorCompiler.ts:63`, `normalizeTimeString` in `src/ai/heuristicParser.ts`).
 
-**Variables/constants:** `camelCase` locals; `UPPER_SNAKE` for exported constants — `MAX_LOG_BUFFER_SIZE` (`src/utils/logger.js:13`), `APP_VERSION`/`STORAGE_VERSION` (`src/utils/storage.js:4-5`), `MAX_EVENT_BUFFER_SIZE` (`src/behavior/eventBus.ts:10`).
+**Variables:** `camelCase`; never-match factories return early with `heuristic` / `result` / `packet` locals (`src/ai/intentParser.ts:52-54`). Constants are `SCREAMING_SNAKE` with rule-ID values — `MAX_USER_INPUT_LENGTH = 500`, `MAX_OUTPUT_TOKENS = 120` (`src/ai/intentParser.ts:18-19`), `MAX_LOG_BUFFER_SIZE = 50` (`src/utils/logger.js:13`), `MAX_IDEMPOTENCY_CACHE_SIZE = 200` (`src/commands/commandExecutor.ts:22`). Rule IDs are string literals: `HABIT_IDENTITY_ANCHOR_001`, `SYS_AI_CONFIRMATION_GATE_001` (`src/ai/behaviorCompiler.ts:114,538`).
 
-**Storage keys:** `kwestup_<domain>_<version>` prefix, guarded by `isUserDataKey` (`src/utils/storage.js:8-27`).
-
-**Tests:** `describe('<module path>')` → nested `describe` per function/TC-ID → `it/test('<behavior>')`, e.g. `__tests__/unit/dateUtils.test.js:17-18`, `__tests__/unit/eventBus.test.ts:40` (`TC-EVT-01` tags).
+**Tests:** `describe('<module>')` → nested `describe('<unit>')` → `it('<behavior>', ...)` (`__tests__/unit/intentParser.test.ts:13-14`, `__tests__/unit/behaviorCompiler.test.ts:25,53`). Use `test(...)` interchangeably in older suites (`__tests__/unit/logger.test.js:49-67`); prefer `it` in new TS suites.
 
 ## Imports & Aliases
 
-**No path aliases.** No `tsconfig.json` `paths`/`baseUrl`, no `babel-plugin-module-resolver`. All imports are relative (`../`, `../../`).
-
-**Order (observed, follow it):**
-1. `react` / `react-native` (`src/components/ErrorBoundary.js:1-11`, `src/context/TaskContext.js:1-2`)
-2. Third-party / Expo (`@expo/vector-icons`, `expo-clipboard`, `expo-haptics`, `@react-native-async-storage/async-storage`) (`src/components/ErrorBoundary.js:12-13`, `src/utils/storage.js:1`)
-3. Internal relative (`../utils/logger`, `../utils/storage`, `./CustomButton`) (`src/components/ErrorBoundary.js:14-16`, `src/context/TaskContext.js:5-22`)
-
-**Type imports:** TS domains import types from sibling `./types` (`src/behavior/eventBus.ts:3-8`). Tests import directly from `../../src/...` (`__tests__/unit/logger.test.js:1-10`).
+**No path aliases** — `tsconfig.json:1-28` extends `expo/tsconfig.base` with only `strict`/`allowJs`/`checkJs` overrides; `babel.config.js:1-26` defines zero `module-resolver`/`alias` plugins. Every import is relative.
+- Same-folder: `./types`, `./heuristicParser` (`src/ai/intentParser.ts:12-13`).
+- Cross-layer: `../utils/logger`, `../behavior/eventBus`, `../behavior/habitEngine` (`src/ai/behaviorCompiler.ts:13-23`, `src/commands/commandExecutor.ts:17-20`).
+- Barrel re-exports per bounded context: `src/ai/index.ts:10-14` (`export * from './types'` etc.), `src/commands/index.ts` (mirror pattern).
+- Import order convention (observed, not enforced): (1) type imports, (2) sibling modules, (3) cross-layer `../` modules, (4) no external-first grouping — follow `src/ai/intentParser.ts:12-16` and `src/ai/behaviorCompiler.ts:13-23` as the template. Do not introduce `@/` or `~/` aliases without a Babel+TS+Jest triple change.
 
 ## Error Handling & Logging
 
-**Logger is mandatory** — `src/utils/logger.js:142-162` exports `debug/info/warn/error`, `getRecentLogs`, `clearLogs`, `logger` default. `/* eslint-disable no-console */` appears only in `src/utils/logger.js:1`; nowhere else.
+**Result objects, not throws, at module boundaries.** Return `{ success, errors?, rulesApplied }` / `{ success, message, error?, requestId, requiresConfirmation? }`:
+- Compiler: `CompilationResult` (`src/ai/types.ts:43-50`); every failure branch returns `success: false` with a human-readable `errors[0]` (`src/ai/behaviorCompiler.ts:84-98,104-110`).
+- Gateway/sandbox: `CommandExecutionResult` (`src/commands/types.ts:108-115`); malformed AI JSON → `success:false, message:'', error:'...'` (`src/commands/aiSandbox.ts:127-133,136-143`); unconfirmed destructive → `requiresConfirmation:true` + `rulesApplied:['SYS_AI_CONFIRMATION_GATE_001']` (`src/commands/aiSandbox.ts:178-187`, `src/ai/behaviorCompiler.ts:531-540`).
+- `try/catch` is for **fallback, never propagation**: LLM unavailable/timeout/malformed → log at `debug` and return heuristic result (`src/ai/intentParser.ts:134-139,143-148,175-178`); sanitize rejection → `logger.warn` + failure result (`src/commands/aiSandbox.ts:157-167`).
 
-- `debug`/`info` are dev-gated (no console, no buffer in prod) — `src/utils/logger.js:142-152`.
-- `warn`/`error` always buffer + passthrough — `src/utils/logger.js:154-162`.
-- PII redaction before buffering via `SENSITIVE_KEYS` regex (`src/utils/logger.js:37-38`); 50-entry deep-frozen FIFO ring buffer (`src/utils/logger.js:13,116-134`).
-- `logger.test.js:181-204` pins redaction; `logger.test.js:81-87` pins prod silencing.
-
-**Pattern:** `try/catch` at async boundaries, log + return safe fallback (`false`/`[]`/`null`), never rethrow to UI:
-```js
-// src/utils/storage.js:67-70
-} catch (error) {
-  logger.error("❌ CACHE CLEAR FAILED:", error);
-  return false;
-}
-```
-Highest `logger.*` density in `src/utils/diagnostics.js` (21), `src/utils/aiService.js` (15), `src/utils/vaultService.js` (15), `src/utils/storage.js` (13). Pure utils (`src/utils/dateUtils.js`) use zero logging — return `''` / `Invalid Date` instead (`src/utils/dateUtils.js:43,83`).
-
-**UI errors:** `ErrorBoundary` (`src/components/ErrorBoundary.js:18-40`) catches via `getDerivedStateFromError` + `componentDidCatch` → `logger.error` (`src/components/ErrorBoundary.js:39`), renders retry/copy-report/restart UI with 8000-char capped report (`src/components/ErrorBoundary.js:93-97`).
-
-**EventBus isolation:** listener throw/reject is caught + logged, never breaks dispatch (`__tests__/unit/eventBus.test.ts:172-225`).
-
-**JSDoc contracts:** every `src/utils/*.js` public function carries `@param`/`@returns` (e.g. `src/utils/dateUtils.js:8-13`, `src/utils/logger.js:17-21`). Keep them; they substitute for TS types in JS files.
+**Logger:** Use `import { logger } from '../utils/logger'` (`src/ai/intentParser.ts:16`) — never raw `console.*` in `src/` (lint warns; Babel strips `log/info/debug` in prod).
+- Levels (`src/utils/logger.js:142-162`): `logger.debug/info` emit + buffer **only in dev** (`__DEV__`/NODE_ENV gate, `src/utils/logger.js:21-26`); `logger.warn/error` always emit + buffer.
+- File starts with `/* eslint-disable no-console */` (`src/utils/logger.js:1`) — that pragma is exclusive to the logger; do not copy it elsewhere.
+- Buffer: 50-entry deep-frozen FIFO ring (`src/utils/logger.js:13,116-134`); PII keys redacted pre-buffer (`SENSITIVE_KEYS`, `src/utils/logger.js:37-38`).
 
 ## Type Safety
 
-- `tsconfig.json:4` — `strict: true`, `allowJs: true`, `checkJs: false` (deliberate; enabling surfaces ~1152 legacy JS errors per `tsconfig.json:6-11`). `npm run typecheck` (`tsc --noEmit`, `package.json:12`) covers `src/**/*`, `widgets/**/*`, `__tests__/**/*` (`tsconfig.json:15-24`).
-- New typed code goes in `.ts` with explicit interfaces/unions — see `src/behavior/types.ts:22-39` (`Habit`), `src/behavior/types.ts:130-176` (`BehaviorEvent`), `src/behavior/types.ts:178-188` (`DomainEventInput`, `DomainEventListener`).
-- Defensive TS idioms to copy: deep-freeze emitted events (`__tests__/unit/eventBus.test.ts:286-308`), `structuredClone`→JSON fallback (`src/behavior/eventBus.ts:31-43`), `// @ts-ignore` only for missing test-renderer types (`__tests__/unit/eventBus.test.ts:2`).
-- Do not flip `checkJs: true` or add `coverageThreshold` without triaging the tracked debt (see comments in `tsconfig.json:6-11`, `jest.config.js:30-33`).
+- `tsconfig.json:4` — `strict: true`; `checkJs: false` (1152 pre-existing JS errors untriaged per comment `tsconfig.json:6-12` — do not flip to `true`).
+- New code is **TypeScript with explicit contracts**: `ExtractedIntent`, `CompilationResult` (`src/ai/types.ts:13-50`); generic `CommandPayload<A extends CommandAction>` discriminated union + `DispatchedCommand` with required `idempotencyKey` (`src/commands/types.ts:26-123`).
+- Validate-then-narrow at trust boundaries: `sanitizeAiPayload` rejects non-plain objects, functions/symbols/undefined, prototype-pollution keys, `kwestup_*`/path-traversal patterns (`src/commands/aiSandbox.ts:15-18,32-106`); JSON extraction guards (`src/ai/intentParser.ts:150-156`).
+- `npm run typecheck` → `tsc --noEmit` (`package.json:12`) — CI runs it after lint (`.github/workflows/ci.yml:39-40`).
 
-## Do/Don't
+## Do / Don't (from actual code)
 
-**Do:**
-- Use `logger.debug/info/warn/error` from `src/utils/logger.js` — never raw `console.*` (production strip + PII redaction depend on it).
-- Use `src/utils/dateUtils.js` (`getLocalDateString`, `parseLocalDate`, `isSameLocalDay`) for all calendar logic — never `toISOString().slice(0,10)` (UTC-shift bug the module exists to prevent).
-- Put shared date/storage/sync logic in `src/utils/` as pure named exports with JSDoc; put typed domain logic in `src/behavior/*.ts` / `src/services/*.ts`.
-- Prefix unused fn args with `_` (satisfies `no-unused-vars` + `argsIgnorePattern`).
-- Emit domain changes through `eventBus.emit` with `{ type, entityId, source }` (`__tests__/unit/eventBus.test.ts:45-50`); spy on `logger` with `jest.spyOn(logger, 'error').mockImplementation(...)` + `mockRestore` (`__tests__/unit/eventBus.test.ts:21-28`).
-- Clear module/global state in `beforeEach` (`clearLogs`, `eventBus.clearListeners/clearBuffer`) — copy `__tests__/unit/logger.test.js:20-33`.
-
-**Don't:**
-- Don't add path aliases, Prettier configs, or new lint plugins without updating both `eslint.config.js` and `.eslintrc.js` + CI.
-- Don't use `console.log` for debugging in `src/` — it trips `no-console: warn` and ships noise (use `logger.debug`).
-- Don't store user text/tokens in logs — `SENSITIVE_KEYS` redacts by key name, so name fields conventionally (`title`, `content`, `token`).
-- Don't mutate `getRecentLogs()` / `getRecentEvents()` snapshots — entries are frozen; treat as readonly.
-- Don't parse `YYYY-MM-DD` with `new Date(str)` (UTC midnight) — use `parseLocalDate` (`src/utils/dateUtils.js:63`).
+- ✅ DO return `{ success:false, errors:[...], rulesApplied }` with the rule ID that fired — e.g. cap rejection carries `HABIT_CONCURRENT_CAP_001` (`src/ai/behaviorCompiler.ts:102-130`).
+- ✅ DO gate destructive AI actions on `options.confirmed === true` and surface `requiresConfirmation` (`src/ai/behaviorCompiler.ts:530-540`, `src/commands/aiSandbox.ts:178-187`).
+- ✅ DO clear `clearCommandHandlers()`, `clearIdempotencyCache()`, `eventBus.clearListeners()/clearBuffer()` in `beforeEach` for gateway-adjacent tests (`__tests__/unit/behaviorCompiler.test.ts:28-33`).
+- ✅ DO `jest.spyOn(aiService, 'loadModel')` + `jest.restoreAllMocks()` in `afterEach` when testing LLM fallback paths (`__tests__/unit/intentParser.test.ts:156-165`).
+- ❌ DON'T call `console.log/info/debug` in `src/` — use `logger.debug` (silenced + unbuffered in prod, `src/utils/logger.js:142-146`).
+- ❌ DON'T pass `Date`/class instances/functions through the AI sandbox — only plain JSON values survive `sanitizeValue`, else `Security violation` (`src/commands/aiSandbox.ts:58-92`).
+- ❌ DON'T let AI payloads self-authorize: `confirmed` comes from `options`, never from parsed input (`src/commands/aiSandbox.ts:169-175`).
+- ❌ DON'T add `@/` imports — no alias exists in Babel/TS/Jest; use relative paths only.
 
 ---
 *Convention analysis: 2026-10-11*
