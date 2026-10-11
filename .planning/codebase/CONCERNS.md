@@ -4,317 +4,249 @@
 
 ## Tech Debt
 
-**God files (monolithic modules):**
-- Issue: Several modules exceed 700 lines and mix UI, state, IO, and business logic, making review and refactor risky.
-- Files: `App.js` (1085 lines), `src/screens/NotesScreen.js` (2013 lines), `src/screens/SettingsScreen.js` (1101 lines), `src/components/AIAssistant.js` (1096 lines), `src/utils/aiService.js` (1064 lines), `src/screens/TaskListScreen.js` (803 lines), `src/services/notificationService.ts` (767 lines), `src/screens/BillingScreen.js` (858 lines)
-- Impact: High merge-conflict surface, hard to unit test, slow onboarding; a change to notes search risks touching note IO, vault switching, and import in one file.
-- Fix approach: Extract per-screen hooks (`useNotesSearch`, `useArchiveFlow`, `useModelDownload`) and move pure logic into `src/utils/` with unit tests before splitting JSX. Start with `src/screens/NotesScreen.js` (largest, highest churn).
+**TypeScript strictness deferred (`checkJs: false`):**
+- Issue: JS files are excluded from typechecking. `tsconfig.json` documents ~1152 pre-existing JS errors across `src/screens`, `src/navigation`, `App.js`, `__tests__` that block enabling `checkJs:true`. `App.js`, `index.js`, and `widgets/**/*` are additionally excluded from the TS program (widget `flex` excess-prop errors would otherwise red the gate). New `src/behavior/*.ts` and `src/services/*.ts` are strict, but all surrounding callers in JS are unchecked — type errors at the JS↔TS boundary are invisible.
+- Files: `tsconfig.json`, `App.js`, `src/screens/*.js`, `src/navigation/AppNavigator.js`, `widgets/*.js`
+- Impact: Refactors of shared contracts (`src/behavior/types.ts`, `src/services/types.ts`) can silently break JS callers; `tsc --noEmit` passes while runtime breaks.
+- Fix approach: Phased `// @ts-check` rollout per directory (start with `src/utils/storage.js`, `src/utils/billingStorage.js`, `src/utils/vaultImport.js` per the CR-08 note), fix in small batches, then flip `checkJs:true`. Track widget `flex` style-type errors separately for the Phase 25 widget hardening.
 
-**Mixed JS/TS with no type gate:**
-- Issue: Only `src/services/*.ts`, `src/behavior/*.ts`, `src/commands/*.ts` are TypeScript; all screens/contexts/utils are untyped `.js`. `tsc --noEmit` exists (`package.json`) but there is no evidence it gates CI, and `src/services/notificationService.ts:95` uses `importance: channel.importance as any`.
-- Files: `src/services/notificationService.ts`, `tsconfig.json`, `package.json`
-- Impact: Refactors of shared shapes (task, vault, billing) fail silently at runtime; the `as any` hides channel-shape drift across Expo SDK upgrades.
-- Fix approach: Add `tsc --noEmit` to CI, replace the `as any` with a narrow union cast, then convert `src/utils/taskMutations.js` and `src/utils/storage.js` to TS first (most-imported pure modules).
+**No coverage gate enforced:**
+- Issue: `jest.config.js` explicitly documents no global `coverageThreshold` because current coverage is ~28% lines / ~17% functions. CI collects `--coverage` for tracking only, so coverage can regress silently.
+- Files: `jest.config.js`
+- Impact: Untested code ships without friction; coverage debt compounds.
+- Fix approach: Add per-directory thresholds starting where coverage is already strong (e.g. `src/behavior/`, `src/services/notificationService.ts`), ratchet upward; keep the 70/90/95 targets from the jest comment as the end goal.
 
-**Non-unique ID generation:**
-- Issue: IDs use `Date.now().toString()` alone in several production paths (collides when N items are created in the same millisecond, e.g. AI batch extraction). Only `calculateNextRecurrence` (`src/utils/taskMutations.js:54`) appends random entropy.
-- Files: `src/utils/taskMutations.js:169`, `src/utils/taskMutations.js:246`, `src/screens/TaskListScreen.js:86`, `src/screens/NotesScreen.js:1261` (has entropy — good), `src/screens/BirthdaysScreen.js:53`, `src/screens/BillingScreen.js:150,187,212`, `src/context/BirthdayContext.js:40`, `src/utils/vaultService.js:78`, `src/navigation/AppNavigator.js:139,166`, `src/behavior/eventBus.ts:21` (has entropy — good)
-- Impact: Duplicate task/bill/birthday/vault IDs → silent overwrite or wrong-item delete/notify. Previously flagged in the Phase-17 review and still present.
-- Fix approach: Extract a single `generateId(prefix)` helper (timestamp + `Math.random().toString(36).slice(2)`) in `src/utils/` and replace every `Date.now().toString()` call site; add a collision unit test that creates 1000 IDs in a tight loop.
+**Lint warnings banked instead of fixed:**
+- Issue: `no-console` stays at `warn` (~100 pre-existing `console.*` statements triaged as WR-09); `react-native/no-inline-styles`, `no-unused-styles`, `no-color-literals` are `warn`. `tsc`/`eslint` are clean only because the rules are lenient, not because the code is clean.
+- Files: `eslint.config.js`, `src/utils/logger.js` (has `/* eslint-disable no-console */` by design — that one is correct), `src/context/VaultContext.js`, `src/screens/NotesScreen.js`, `src/screens/SettingsScreen.js`, `src/navigation/AppNavigator.js`, `src/screens/DashboardScreen.js` (2× `eslint-disable-next-line react-hooks/exhaustive-deps`)
+- Impact: Real warnings drown in noise; exhaustive-deps suppressions hide stale-closure bugs.
+- Fix approach: Route all logging through `src/utils/logger.js` (which redacts PII), delete raw `console.*` call sites, then escalate `no-console` to `error`. Justify or remove each `exhaustive-deps` suppression in `src/screens/DashboardScreen.js:116,133`.
 
-**Swallowed errors (`catch {}`):**
-- Issue: Bare `catch {}` blocks silently discard filesystem/model errors with no log, no UI signal.
-- Files: `src/screens/SettingsScreen.js:188`, `src/screens/SettingsScreen.js:207`
-- Impact: Model download/size check can fail invisibly; user sees stale "not downloaded" state with no recourse.
-- Fix approach: Replace with `logger.warn` + user-visible `setDownloadError`/toast. Escalate `no-console` and add an eslint `no-empty` error rule.
+**God-files / oversized modules:**
+- Issue: Several files exceed 700–2000 lines and mix UI, state, persistence, and side effects: `src/screens/NotesScreen.js` (2014 lines), `src/screens/SettingsScreen.js` (1102), `src/components/AIAssistant.js` (1097), `App.js` (1089), `src/utils/aiService.js` (1065), `src/theme/styles.js` (896), `src/screens/BillingScreen.js` (859), `src/screens/TaskListScreen.js` (804), `src/services/notificationService.ts` (768).
+- Files: As listed above.
+- Impact: Hard to review, hard to test, high merge-conflict surface; `NotesScreen.js` and `App.js` are the highest-risk edit targets.
+- Fix approach: Extract by responsibility (e.g. split `NotesScreen.js` into editor/view/list/import subcomponents + hooks; split `App.js` boot orchestration into `src/boot/*.js`; split `aiService.js` into model-lifecycle / download / inference modules). No behavior change, just moves with existing tests pinning behavior.
 
-**`console.*` bypassing the logger:**
-- Issue: Direct `console.warn`/`console.error`/`console.log` calls remain outside `src/utils/logger.js`, so they skip PII redaction, the forensic ring-buffer, and prod silencing. `no-console` is only `warn` (see `eslint.config.js:46`).
-- Files: `src/context/VaultContext.js:48,60,62,73`, `src/navigation/AppNavigator.js:125,387`, `src/screens/SettingsScreen.js:106,134`, `src/screens/NotesScreen.js:743`
-- Impact: Potential PII in release logs; inconsistent forensics; the pre-existing ~100-statement backlog noted in `eslint.config.js:43-45` never shrinks.
-- Fix approach: Codemod remaining `console.*` to `logger.*`; then flip `no-console` to `error`.
+**Deprecated shim still shipped:**
+- Issue: `src/utils/notifications.js` is marked `@deprecated` in favor of `src/services/notificationService.ts`, but remains in the bundle and importable.
+- Files: `src/utils/notifications.js`, `src/services/notificationService.ts`
+- Impact: New code may import the deprecated path and bypass behavioral policy (quiet hours, caps, dedup).
+- Fix approach: Grep for importers, migrate them, delete the shim.
 
-**No coverage gate, acknowledged low coverage:**
-- Issue: `jest.config.js:30-33` documents ~28% line / ~17% function coverage with no `coverageThreshold` — "a 70% gate would red CI".
-- Files: `jest.config.js`, `eslint.config.js`
-- Impact: Regressions in untested areas (screens, import pipeline, billing) ship undetected; coverage can only drift downward.
-- Fix approach: Add per-module thresholds starting with high-risk pure modules (`taskMutations`, `exportService`, `notificationService`, `eventBus`) at current +5%, ratchet upward.
+**Collision-prone ID generation (`Date.now().toString()`):**
+- Issue: Entity IDs are generated with `Date.now().toString()` in at least 6 places — rapid double-tap / batch import can produce duplicate IDs.
+- Files: `src/context/BirthdayContext.js:40`, `src/context/BillingContext.js:49,123`, `src/screens/BirthdaysScreen.js:53`, `src/screens/BillingScreen.js:150,187,212`, `src/navigation/AppNavigator.js:139,166`, `src/utils/vaultService.js:78`
+- Impact: Duplicate IDs cause overwrites, wrong-item deletes, and sync payload corruption. The typed path already does it right — `generateEntityId` in `src/behavior/habitEngine.ts` (used by `src/context/HabitContext.js`).
+- Fix approach: Centralize ID generation in one helper (crypto-random, e.g. `CryptoJS.lib.WordArray.random` or `expo-crypto`) and replace all `Date.now()` ID sites.
 
-**Dangerous dev kill-switch in shipped code:**
-- Issue: `const FORCE_CLEAR_ALL_STORAGE = false` in `App.js:66`, consumed at `App.js:195`, can wipe caches on next launch if ever flipped in a release build.
-- Files: `App.js:66`, `App.js:195-196`
-- Impact: One-line accidental flip (or bad merge) triggers mass cache clear for all users on upgrade.
-- Fix approach: Delete the flag; expose cache-clear only behind the Settings UI action that already exists.
-
-**Legacy weak-crypto fallback (v1 envelope):**
-- Issue: `decryptBackup` (`src/utils/exportService.js:84-92`) falls back to static salt `4b77657374557053616c745f7632` with 1,000 PBKDF2 iterations when the v2 envelope is absent.
-- Files: `src/utils/exportService.js:58-97`
-- Impact: Old archives remain decryptable with far weaker KDF; an attacker with a v1 file can brute-force much faster. Keeping the fallback indefinitely extends the weak-crypto window.
-- Fix approach: On successful v1 import, immediately re-encrypt to v2 and warn the user; add a deprecation timeline and log v1 usage via telemetry.
-
-**Dead placeholder domain layer:**
-- Issue: `src/domains/` contains only `README.md` — an aspirational layer with no code after 23+ phases.
-- Files: `src/domains/README.md`
-- Impact: Confuses "where do I put this?" decisions; planners may target a layer that does not exist.
-- Fix approach: Either implement the first domain slice or delete the directory and remove it from architecture docs.
-
-**Duplicated model-path constant:**
-- Issue: `MODEL_PATH` is constructed independently in `src/utils/aiService.js:30` and `src/screens/SettingsScreen.js:22`.
-- Files: `src/utils/aiService.js:30`, `src/screens/SettingsScreen.js:22`
-- Impact: A rename of the model file breaks Settings size/delete checks while downloads succeed (or vice versa).
-- Fix approach: Export `MODEL_PATH`/`MODEL_FILENAME` from `aiService.js` once and import in `SettingsScreen.js`.
-
-**Overbroad cache-clear key matcher:**
-- Issue: `clearAllCaches` (`src/utils/storage.js:33-41`) deletes any key containing `kwestup`, `medical`, `clean`, `sidebar`, or `cache` unless allow-listed by `isUserDataKey`.
-- Files: `src/utils/storage.js:24-66`
-- Impact: Substring `cache`/`clean` (a theme name is literally `"clean"`) can match unrelated third-party or future keys; runs automatically on every version change (`App.js:197-200`).
-- Fix approach: Switch to an explicit key prefix allowlist (`kwestup_` + known third-party keys) and require the destructive path to be opt-in from Settings.
+**Dual persistence models with documented race windows:**
+- Issue: `TaskContext.js` uses debounced read-modify-write against a shared `kwestup_data_v7.0` key that `App.js` also writes (birthdays/notes/theme). Comments document a residual micro-window: a mutation <500ms before a foreground refresh can be overwritten; only a per-task `updatedAt` merge closes it. `HabitContext.js` avoids this with isolated versioned keys (`kwestup_habits_v1`, etc.) — the two contexts follow different patterns.
+- Files: `src/context/TaskContext.js:64-72,77-93,95-120`, `App.js` (boot `loadData`/persist), `src/context/HabitContext.js:142-159` (good pattern)
+- Impact: Silent user-data loss (tasks/dailyTasks) onunlucky timing; inconsistent patterns confuse future contributors.
+- Fix approach: Migrate task persistence to isolated versioned keys like habits, or add `updatedAt` per-entity last-write-wins merge. Add a regression test that interleaves a mutation with a background refresh.
 
 ## Known Bugs
 
-**Destructive import with no rollback:**
-- Symptoms: `importArchive` (`src/utils/exportService.js:279-324`) reads → decrypts → `multiRemove`s ALL user keys → `multiSet`s backup entries. If the app crashes, the archive is partially written, or `multiSet` fails midway, the user's pre-import data is already gone with no backup copy.
-- Files: `src/utils/exportService.js:309-324`
-- Trigger: Import a large archive on a low-memory device; kill the app at ~45% progress; relaunch to find partial data.
-- Workaround: Manually export a backup before every import (not prompted by UI).
-- Fix approach: Snapshot existing user keys to a temp backup key prefix before `multiRemove`; restore-or-rollback in `try/catch`; surface progress + "keep a pre-import backup" prompt in `src/screens/SettingsScreen.js:315-340`.
+**Boot-guard can only protect, not heal:**
+- Symptoms: `TaskContext.js:104-116` boot guard refuses to persist an empty in-memory snapshot over non-empty storage — correct, but if hydration itself failed (corrupt JSON), the UI silently shows empty state with only a log line.
+- Files: `src/context/TaskContext.js:104-120,133-169`, `src/context/HabitContext.js:100-103` (same fail-empty pattern)
+- Trigger: Corrupt `kwestup_data_v7.0` value (killed mid-write) → `JSON.parse` throws → caught → empty defaults rendered.
+- Workaround: Storage migration (`src/utils/storage.js:migrateUserDataIfNeeded`) may restore from a legacy version key if one exists.
 
-**Import restore bypasses filename sanitization:**
-- Symptoms: Export restore writes `${vaultPath}${folder}/${title}.md` (`src/utils/exportService.js:343-358`) using the raw stored title, while `readNoteFile`/`saveNoteFile` sanitize titles via `.replace(/[/\\?%*:|"<>. ]/g, "_")` (`src/utils/fileStorage.js:38-42`). Notes with spaces, dots, or special chars in the title restore to paths the reader never looks up.
-- Files: `src/utils/exportService.js:343-358`, `src/utils/fileStorage.js:33-61`, `src/utils/fileStorage.js:70-91`
-- Trigger: Create note titled "Q3 Review. Final", export, wipe, import — note file exists on disk but opens as empty/missing.
-- Workaround: None user-side.
-- Fix approach: Reuse the same `sanitizeTitle`/`sanitizeFolder` helpers in both write paths; add a round-trip test (save → export → wipe → import → read) with hostile titles.
+**Unguarded `JSON.parse` on storage/sync/AI outputs:**
+- Symptoms: Dozens of bare `JSON.parse(raw)` calls on AsyncStorage values, sync payloads, and LLM raw output. Most are inside try/catch that falls back to `[]`/`{}` (data silently dropped); LLM parse sites in `aiService.js:720,806` can throw out of inference helpers.
+- Files: `src/utils/vaultService.js:51`, `src/utils/billingStorage.js:22`, `src/context/TaskContext.js:81,108,136`, `src/context/HabitContext.js:80-96`, `src/utils/aiService.js:296,720,806`, `src/utils/exportService.js:62,81,92`, `src/services/notificationService.ts:155`
+- Trigger: Corrupt storage value, malformed sync payload, or non-JSON LLM output.
+- Workaround: Most call sites degrade to empty state; export/import surfaces "Unable to decrypt archive" regardless of actual cause, misleading users.
 
-**Filename collision from aggressive sanitization:**
-- Symptoms: `fileStorage.js` maps spaces AND dots AND underscores-adjacent chars all to `_`, so "My Note", "My_Note", and "My.Note" resolve to the same file and silently overwrite each other.
-- Files: `src/utils/fileStorage.js:38-42`, `src/utils/fileStorage.js:73-76`, `src/utils/fileStorage.js:102-105`
-- Trigger: Create two notes differing only by space vs underscore in one folder.
-- Fix approach: Keep dots/spaces handling distinct (or append a short id suffix on collision like `vaultImport.js:86-99` already does).
+**Stale-closure suppressions in Dashboard:**
+- Symptoms: Two `eslint-disable-next-line react-hooks/exhaustive-deps` suppressions mean effects may capture stale state.
+- Files: `src/screens/DashboardScreen.js:116,133`
+- Trigger: State referenced inside those effects changes without re-running the effect.
+- Workaround: None — inspect each suppression before touching surrounding code.
 
-**Deleting the last vault leaves a dangling active ID:**
-- Symptoms: `deleteVault` (`src/utils/vaultService.js:100-122`) only re-points the active vault `if remaining.length > 0`. Deleting the final vault leaves `ACTIVE_KEY` pointing at a non-existent vault; next launch resolves a missing directory.
-- Files: `src/utils/vaultService.js:100-122`
-- Trigger: Create one vault, delete it, restart the app.
-- Fix approach: Guard deletion of the last vault in UI, or auto-recreate the `default` vault when none remain.
-
-**Task write race inside the 500ms debounce window (documented residual):**
-- Symptoms: `TaskContext.js:70-72` self-documents that a mutation made <500ms before a foreground refresh can be overwritten by the storage read; no per-task `updatedAt` merge exists.
-- Files: `src/context/TaskContext.js:64-80`, `App.js:235-270`
-- Trigger: Rapid task toggle during cold-start refresh.
-- Fix approach: Add per-task `updatedAt` last-writer-wins merge (the comment already prescribes this; slated but unscheduled).
-
-**Stale-closure reschedule workaround is load-bearing:**
-- Symptoms: `App.js:258-260` (WR-08) notes the reschedule block must iterate locally-loaded birthdays, not state, because the closure captures stale `[]`. Correct today, but any future edit that "simplifies" it back to state reintroduces missed birthday reminders.
-- Files: `App.js:255-260`
-- Fix approach: Extract birthday rescheduling into a tested util taking an explicit array argument so the invariant is enforced by signature, not comment.
+**Notification fire-once paths swallow errors:**
+- Symptoms: `TaskContext.js:217` schedules reminders with `.catch(e => logger.warn(...))` — a scheduling failure is a warn-and-continue, so a task can appear to have a reminder that was never scheduled.
+- Files: `src/context/TaskContext.js:217`, `src/utils/billingNotifications.js:78-87` (`return null` on failure), `src/services/notificationService.ts` (exempt recurring paths don't re-verify)
+- Trigger: Notification permission denied/revoked after task creation.
+- Workaround: Re-save the task to reschedule.
 
 ## Security Considerations
 
-**Logger redaction is key-name-only; free-text PII still buffered:**
-- Risk: `SENSITIVE_KEYS` (`src/utils/logger.js:37-38`) redacts object *values by key name*, but message strings pass through verbatim (`sanitizeEntry`, `src/utils/logger.js:86-107`). Any call like `logger.debug("saved", noteTitle)` or pasted crash-report text lands unredacted in the 50-entry ring-buffer and the copy-pasteable diagnostics report.
-- Files: `src/utils/logger.js:37-107`, `src/utils/logger.js:125-134`
-- Current mitigation: Key-based redaction, 1000-char truncation, depth cap, cycle guard, dev-gating of debug/info.
-- Recommendations: Add a content-side sweep for long free-text details (truncate + tag), audit all `logger.*` call sites passing note/bill/birthday strings as the message, and confirm the crash-report share sheet warns that content may be included.
+**Sensitive data at rest is unencrypted (AsyncStorage plaintext):**
+- Risk: Tasks, birthdays, billing amounts, habit titles, behavior events, and vault configs sit in plaintext AsyncStorage. Device backup / rooted-device read exposes PII and financial data. Only the export archive is encrypted — live storage is not.
+- Files: `src/utils/storage.js` (`kwestup_data_v7.0`), `src/utils/billingStorage.js`, `src/context/HabitContext.js` (`kwestup_habits_v1`, `kwestup_behavior_events_v1`, `kwestup_identities_v1`, `kwestup_rewards_v1`), `src/utils/vaultService.js` (`VAULTS_KEY`, `ACTIVE_KEY`), `src/utils/diagnostics.js:129` (telemetry opt-in flag)
+- Current mitigation: Export encryption via `src/utils/exportService.js:encryptBackup` (PBKDF2-SHA256 100k + AES-256, v2 envelope) — covers backups only.
+- Recommendations: Adopt `expo-secure-store` for tokens/passphrases at minimum; evaluate encrypted-storage for billing/PII keys; never log note bodies (the `logger.js:38` redaction regex is the control — keep it updated as new field names are added).
 
-**No passphrase strength floor on encrypted export:**
-- Risk: `handleExportConfirm` (`src/screens/SettingsScreen.js:287-296`) rejects only empty/mismatched passphrases. A 1-character passphrase yields a valid AES-256 archive whose PBKDF2 (100k) protection is trivially brute-forced.
-- Files: `src/screens/SettingsScreen.js:287-313`, `src/utils/exportService.js:21-47`
-- Current mitigation: Random 16-byte salt + IV per archive, 100k PBKDF2-SHA256 (v2).
-- Recommendations: Enforce min length (≥12 chars) + confirmation, show a strength hint, and document that archives are only as strong as the passphrase.
+**Weak legacy backup KDF still accepted:**
+- Risk: `decryptBackup` transparently falls back to v1 (static salt `4b77657374557053616c745f7632`, 1000 PBKDF2 iterations) for old archives. Any v1 archive in the wild is far cheaper to brute-force.
+- Files: `src/utils/exportService.js:84-92`
+- Current mitigation: New archives always use v2 (random 16-byte salt/IV, 100k iterations) — `src/utils/exportService.js:21-47`.
+- Recommendations: Warn on v1 import and offer re-export to v2; consider a sunset version that drops v1.
 
-**Archive import has no size cap (memory exhaustion):**
-- Risk: `importArchive` does `readAsStringAsync(filePath)` with no size check (`src/utils/exportService.js:285`), and the picker accepts `type: "*/*"` (`src/screens/SettingsScreen.js:271-274`). A multi-hundred-MB file is fully loaded into the JS heap before decryption.
-- Files: `src/utils/exportService.js:279-300`, `src/screens/SettingsScreen.js:268-285`
-- Current mitigation: `vaultImport.js` caps at 50 files / 1 MB each — but the archive path does not share that guard.
-- Recommendations: `getInfoAsync` size check before read (e.g. reject >50 MB with a clear error), stream/chunked read if larger archives must be supported.
+**LAN sync token policy is weak + transport risk:**
+- Risk: Sync bearer token minimum length is 6 chars (`src/utils/syncService.js:67`); validation permits hostnames/IPv6; if the sync URL is `http://` (LAN), the bearer travels in cleartext on the local network. QR-scanned config (`src/components/QRScannerModal.js`) is a token-injection surface.
+- Files: `src/utils/syncService.js:9-24,34-72,169-176`, `src/components/QRScannerModal.js`, `src/screens/SettingsScreen.js` (sync UI)
+- Current mitigation: `validateSyncConfig` rejects malformed IPs/ports/short tokens; `validateSyncPayload` guards against note-wipe payloads (`src/utils/syncService.js:74+`).
+- Recommendations: Raise token minimum (≥32 random chars), prefer HTTPS/wss or document the LAN-cleartext risk in UI, validate QR payload shape before use, and add auth-failure lockout/throttling.
 
-**LAN sync token floor (6 chars) and plaintext storage:**
-- Risk: `validateSyncConfig` (`src/utils/syncService.js:67`) accepts a 6-character token; tokens persist in AsyncStorage unencrypted and ride LAN HTTP depending on server config.
-- Files: `src/utils/syncService.js:34-72`
-- Current mitigation: Strict IPv4/hostname/port validation, payload shape validation (`validateSyncPayload`), 4s fetch timeout.
-- Recommendations: Raise token minimum (≥16 chars, encourage QR-generated), document plaintext-at-rest explicitly in Settings UI, prefer HTTPS-only sync URIs.
+**Filename sanitization is incomplete (vault/file layer):**
+- Risk: `saveNoteFile` sanitizes `/\\?%*:|"<> ` to `_` but allows `..` segments and does not constrain folder names the same way; a crafted folder/title from import/sync could escape the vault directory. `vaultImport.js` (markdown import) and sync-restore paths write attacker-influenced filenames.
+- Files: `src/utils/fileStorage.js:33-54`, `src/utils/vaultImport.js`, `src/utils/vaultService.js:18-20`, `src/utils/exportService.js:274+` (import-restore pipeline)
+- Current mitigation: Model-file hashing is fail-closed (`src/utils/aiService.js:184`); sync payload shape is validated.
+- Recommendations: Centralize a `sanitizePathSegment` helper that strips `.`, `..`, leading `-`, control chars, and caps length; apply to folder + title + vault name; add unit tests with `../`, absolute, and unicode-overlong inputs; verify `deleteNoteFile`/vault-delete cannot escape the vault root.
 
-**APK self-update without signature verification:**
-- Risk: `SettingsScreen` downloads an APK from the GitHub release asset over the network and triggers install (`src/screens/SettingsScreen.js:60-112`); verification is limited to GitHub HTTPS transport — no checksum/signature check against a pinned value (unlike the AI model flow, which pins SHA-256).
-- Files: `src/screens/SettingsScreen.js:60-149`, `src/utils/diagnostics.js:62-106`
-- Current mitigation: HTTPS + GitHub release provenance.
-- Recommendations: Publish SHA-256 per release asset and verify post-download before install; show the verified version string in UI.
+**LLM prompt-injection surface (on-device model):**
+- Risk: Note/task content is interpolated into inference prompts (`src/utils/aiService.js:615+,947+,1021+`). Malicious note text (pasted from web, imported .md, synced) can attempt instruction override; extracted "TODO:" lines in `aiService.js:516-517` flow into task creation (`AppNavigator.js` handlers) — a prompt-injection → task-creation chain.
+- Files: `src/utils/aiService.js`, `src/components/AIAssistant.js`, `src/navigation/AppNavigator.js:112-139,166-387` (task-creation callbacks with `console.warn` fallbacks)
+- Current mitigation: Output is parsed as JSON with try/catch; task creation goes through validated mutations.
+- Recommendations: Delimit untrusted content with explicit boundaries in prompts, cap/validate extracted tasks before creation, and never let model output auto-execute destructive actions without confirmation.
 
-**Passphrase and token material in component state:**
-- Risk: Export/import passphrases live in `SettingsScreen` state (`exportPassphrase`, `confirmPassphrase`, `importPassphrase`, `src/screens/SettingsScreen.js:165-172`) and sync tokens flow through QR scan state — all inspectable via devtools/flipper and retained until cleared.
-- Files: `src/screens/SettingsScreen.js:161-172`, `src/screens/SettingsScreen.js:287-340`
-- Current mitigation: State cleared on modal open (`handleExportPress`); nothing persisted.
-- Recommendations: Zero-out passphrase state immediately after use (already partially done — verify every path), never log passphrases (audit `logger.*` calls in the archive flow).
-
-**`legacy-peer-deps=true` masks dependency conflicts:**
-- Risk: `.npmrc` sets `legacy-peer-deps=true` (added to resolve an ERESOLVE conflict per git history `4b82fba`). Incompatible peer ranges (notably `@react-navigation/drawer` v6 under React 19 / Expo 57) install without error.
-- Files: `.npmrc`, `package.json`, `package-lock.json`
-- Current mitigation: Pinned lockfile.
-- Recommendations: Re-attempt `npm install` without the flag each dependency upgrade; record remaining conflicts explicitly instead of a blanket bypass.
+**Dependency vulnerabilities (transitive `ws`):**
+- Risk: `npm audit` reports 73 vulnerabilities (1 low, 19 moderate, 52 high, 1 critical), dominated by transitive `ws` advisories (memory disclosure, memory-exhaustion DoS via tiny fragments) through `react-devtools-core`. No `.env` files exist in the repo (verified — secrets posture is clean), and `.gitignore` correctly excludes `*.key`, `*.p12`, `*.pem`, `.env*.local`.
+- Files: `package.json`, `package-lock.json`, `.gitignore`
+- Current mitigation: Dev-only exposure (Metro/devtools), not production runtime — but `npm ci` installs it for every contributor.
+- Recommendations: Run `npm audit fix` for the non-breaking subset; track the breaking remainder; add a scheduled `npm audit` CI step with `--audit-level=high` so new advisories page.
 
 ## Performance Bottlenecks
 
-**468 MB model SHA-256 in JS (main-thread, Base64 chunks):**
-- Problem: Model integrity check reads the whole GGUF via `readAsStringAsync` Base64 chunks and hashes with `crypto-js` (pure JS) — `src/utils/aiService.js:141-160`.
-- Files: `src/utils/aiService.js:22-31`, `src/utils/aiService.js:141-260`
-- Cause: `crypto-js` has no native acceleration; Base64 inflates IO ~33%; runs on the JS thread.
-- Improvement path: Hash incrementally with `expo-crypto` (native digest) or verify size-first + sparse-chunk sampling; move verification off the launch path into the download-completion step with progress UI.
-
-**Single-blob AsyncStorage dataset parsed on every load:**
-- Problem: All tasks/lists/daily data live in one `kwestup_data_${STORAGE_VERSION}` JSON string parsed wholesale in `App.js:loadData` and rewritten (debounced ≤1s) on every mutation (`src/context/TaskContext.js:73-80`).
-- Files: `App.js:235-270`, `src/context/TaskContext.js:64-80`, `src/utils/storage.js:68-80`
-- Cause: No pagination, no per-entity keys, no SQLite.
-- Improvement path: Split hot collections into per-list keys or migrate to `expo-sqlite`; at minimum measure blob size in diagnostics and warn past a threshold.
-
-**Sequential per-note filesystem round-trips in export/import:**
-- Problem: Export (`src/utils/exportService.js:133-150`) and import (`src/utils/exportService.js:332-362`) issue `getInfoAsync`/`makeDirectoryAsync`/`readAsStringAsync`/`writeAsStringAsync` per note, serially. A 500-note vault = thousands of awaited bridge calls.
-- Files: `src/utils/exportService.js:99-160`, `src/utils/exportService.js:328-363`, `src/utils/fileStorage.js:180-230`
-- Cause: No batching, no concurrency limit, progress callback per file re-renders Settings.
-- Improvement path: Concurrency-limited worker pool (e.g. 8 in flight), throttle progress updates, batch directory creation per folder.
-
-**Cold-start fan-out with fire-and-forget migration race:**
-- Problem: `initializeApp` awaits 5 parallel reads, then fires vault migration + cache-clear + diagnostics without awaiting (`App.js:192-212`) while `loadData` (triggered on `isInitialized`) concurrently reads/migrates the same storage keys.
-- Files: `App.js:150-234`
-- Cause: Migration (`migrateToVaultSystem`, `migrateUserDataIfNeeded`) is not mutually exclusive with the first data load.
-- Improvement path: Single async boot chain with an explicit phase gate (migrate → load → render), plus a startup-timing log to catch regressions.
+**Whole-snapshot `JSON.stringify` on every keystroke:**
+- Problem: Both `TaskContext` and `HabitContext` `JSON.stringify` the entire snapshot on every state change to detect dirtiness, then debounce the write (≤1s / 400ms). With large task/note lists this is O(n) serialization per render.
+- Files: `src/context/TaskContext.js:95-100`, `src/context/HabitContext.js:161-170`
+- Cause: Dirty-check by full serialization instead of version counters / dirty flags.
+- Improvement path: Dirty-flag set by mutation functions, or persist only the changed slice; measure with a 1000-task fixture first.
 
 **Oversized screens re-render wholesale:**
-- Problem: `NotesScreen.js` (2013 lines) and `SettingsScreen.js` (1101 lines) hold dozens of `useState` slices in one component; any keystroke/progress tick re-renders the whole tree. ESLint `no-inline-styles`/`no-color-literals` are `warn`-only (`eslint.config.js:34-37`), so style objects are likely recreated per render.
-- Files: `src/screens/NotesScreen.js`, `src/screens/SettingsScreen.js`, `eslint.config.js:34-37`
-- Improvement path: Split into memoized sub-components, hoist static styles, throttle progress state (already partially done for archive progress — extend to model download + search input).
+- Problem: `NotesScreen` (2014 lines), `SettingsScreen` (1102), `AIAssistant` (1097) hold many unrelated states in one component — any keystroke re-renders the whole tree (search, lists, editor, modals).
+- Files: `src/screens/NotesScreen.js`, `src/screens/SettingsScreen.js`, `src/components/AIAssistant.js`
+- Cause: Monolithic component state; `FlatList` benefits lost when parent re-creates props inline.
+- Improvement path: Split into memoized subcomponents, `useMemo` filtered lists, move editor state into a child component so typing doesn't re-render the list.
+
+**On-device LLM memory pressure (~468MB model):**
+- Problem: `qwen2.5-0.5b-instruct-q4_k_m.gguf` (~491MB, pinned commit in `aiService.js:23-28`) loads into a memory-constrained RN process; idle-unload (5 min) and background-unload (`aiService.js:41-73`) mitigate but any inference while notes/tasks are large risks OOM kills, especially with the ~5000-char prompt clamps (`aiService.js:947-948`).
+- Files: `src/utils/aiService.js:22-56,281-360,384,461-473,947-948`
+- Cause: Single-process inference + full-file hashing (`hashFileSha256`) on every download verification.
+- Improvement path: Keep idle/background unload; stream hash verification; chunk large-note summarization; surface a low-memory fallback that disables AI features gracefully.
+
+**Notification history growth:**
+- Problem: `NOTIFICATION_HISTORY_KEY` (`kwestup_notification_history_v1`) accumulates dispatch records used for cap/gap/dedup evaluation (`notificationService.ts:155+`). No bound is documented unlike behavior events (500-cap in `HabitContext.js:38`).
+- Files: `src/services/notificationService.ts:33,155-233`
+- Cause: Append-only history without pruning.
+- Improvement path: Cap history (e.g. keep last 30 days / 500 entries) and prune on write, mirroring `MAX_PERSISTED_BEHAVIOR_EVENTS`.
 
 ## Fragile Areas
 
-**App.js boot sequence:**
-- Files: `App.js:74-270`
-- Why fragile: One 1085-line component owns font loading, version check, vault init, migration, theme, telemetry consent, timer restore, widget tab, and sync. Ordering assumptions live in comments, not code.
-- Safe modification: Change one boot phase at a time; keep `initializeApp` → `loadData` ordering; run the full jest suite plus a cold-start manual pass on Android after any edit.
-- Test coverage: No tests cover `App.js` (all 16 suites target utils/services; only `errorBoundary` and `aiAssistant-smoke` touch components).
+**App.js boot orchestration (1089 lines):**
+- Files: `App.js`
+- Why fragile: Owns font loading, theme resolution, storage migration, vault init, notes/tasks/birthdays hydration, widget registration, AI AppState subscription, diagnostics, and provider nesting. Order matters; a failure early in the chain leaves providers with empty defaults and the boot guard (`TaskContext`) then protects the emptiness — appearing as data loss.
+- Safe modification: Change one boot step at a time; keep `migrateUserDataIfNeeded` before any read; never add a second writer to `kwestup_data_*` keys; test fresh-install, upgrade-with-legacy-data, and corrupt-storage scenarios.
+- Test coverage: Partial — `storageMigration.test.js`, `taskContext.test.js` cover pieces; no boot-sequence integration test.
 
-**Storage versioning + auto cache-clear on upgrade:**
-- Files: `src/utils/storage.js:4-66`, `App.js:192-211`
-- Why fragile: Bumping `STORAGE_VERSION` (`v7.0`) triggers `clearAllCaches` with substring matching; `migrateUserDataIfNeeded` silently no-ops when the new key already exists, so a half-migrated state is indistinguishable from success.
-- Safe modification: Dry-run migration behind a Settings "diagnostics" action first; log key counts before/after `multiRemove`.
-- Test coverage: `__tests__/unit/storageMigration.test.js` covers migration happy paths only — no interrupted-migration or double-run test.
+**Vault filesystem + AsyncStorage dual source of truth:**
+- Files: `src/utils/vaultService.js`, `src/utils/fileStorage.js`, `src/utils/vaultImport.js`, `src/context/VaultContext.js`, `App.js` (vault init/migration)
+- Why fragile: Vault configs live in AsyncStorage while note bodies live on disk; the two can desync (dir deleted but config remains, or vice versa). Legacy keys (`kwestup_vaults_v5.0`) add a third state.
+- Safe modification: Always mutate through `vaultService.js` helpers (which touch both stores); never write vault keys directly; add a repair/reconcile pass on boot.
+- Test coverage: `vaultAndFileStorage.test.js` covers helpers, not desync repair.
 
-**Vault filesystem layout + one-shot migration:**
-- Files: `src/utils/vaultService.js:173-237`, `src/utils/fileStorage.js`
-- Why fragile: `migrateToVaultSystem` moves (not copies) user files with a copy+delete fallback per item; a crash mid-loop leaves half the notes in `Notes/` and half in `Notes/Vaults/default/`, and the guard (`Vaults/` exists → skip) then treats the partial state as done.
-- Safe modification: Make migration idempotent per item (skip already-moved, resume remaining) rather than directory-existence-gated; test with a fixture tree.
-- Test coverage: `__tests__/unit/vaultAndFileStorage.test.js` — covers CRUD, not the migration resume path.
+**Export/import/restore pipeline (destructive restore):**
+- Files: `src/utils/exportService.js:205-385`, `src/screens/SettingsScreen.js:590+`
+- Why fragile: Import does clear-storage → restore-storage → restore-vault-files. Any failure mid-restore (bad passphrase detected late, disk full, killed app) leaves partial state. Error messages collapse all failures to "Unable to decrypt archive."
+- Safe modification: Backup current state before clearing; restore to temp keys then swap; distinguish wrong-passphrase from corrupt-file from IO errors in UI copy.
+- Test coverage: `exportImportService.test.js` — extend with mid-restore-failure cases.
 
-**Notification policy split-brain (JS vs OS):**
-- Files: `src/services/notificationService.ts:1-17` (decision record), `src/services/notificationService.ts:340-720`
-- Why fragile: Behavioral caps/gaps/dedup apply only to one-shot `behavior` requests; all recurring triggers are explicitly exempt because "schedule-time JS cannot constrain native future OS-level firings". Any PM request to "just cap birthday reminders too" contradicts an architecture decision that is only documented in a code comment.
-- Safe modification: Read the decision record at the top of `notificationService.ts` before touching policy; keep quiet-hours shifting (still applied) separate from caps.
-- Test coverage: `__tests__/unit/notificationService.test.ts` — policy unit tests exist; no OS-level firing tests possible in jest.
+**Notification scheduling (exempt recurring paths):**
+- Files: `src/services/notificationService.ts` (767 lines), `src/utils/billingNotifications.js`, `src/context/TaskContext.js:200-260`
+- Why fragile: The one-shot-vs-recurring exemption architecture (documented at the top of `notificationService.ts`) is subtle — schedule-time JS cannot constrain future OS firings, so policy (caps, gaps, dedup) applies only to behavior one-shots. A well-meaning "unify the paths" refactor breaks Feb-29/advance-reminder semantics.
+- Safe modification: Read the ADR header comment first; keep recurring paths exempt; add tests before changing evaluation order. `notificationService.test.ts` (908 lines) is the safety net — keep it green.
+- Test coverage: Strong — `__tests__/unit/notificationService.test.ts` is the largest suite.
 
-**Headless widget handler sharing `taskMutations`:**
-- Files: `widgets/widget-task-handler.tsx`, `src/utils/taskMutations.js`
-- Why fragile: The widget runs headless (no React context, possibly stale JS bundle) and imports the same pure module as the app — any signature change breaks the widget silently on devices that cached the old bundle.
-- Safe modification: Treat `taskMutations.js` exports as a versioned contract; add widget-handler tests to the same suite as any mutation change.
-- Test coverage: `__tests__/phase12-widget-logic.test.js` only — no coverage of the handler's recurrence spawn path.
+**New behavior engine cluster (Phase 23/24):**
+- Files: `src/behavior/eventBus.ts`, `src/behavior/ruleEngine.ts`, `src/behavior/habitEngine.ts`, `src/behavior/recoveryEngine.ts`, `src/behavior/rewardEngine.ts`, `src/behavior/improvementEngine.ts`, `src/behavior/cueEngine.ts`, `src/context/HabitContext.js`, `rulebook/machine/*.json`
+- Why fragile: Brand-new deterministic rules + event bus + telemetry with cross-cutting imports (`TaskContext` → `eventBus`; `HabitContext` → engines). Rule JSON shape drift vs `evaluateCondition` operator grammar (`ruleEngine.ts:68-80`) fails silently (condition never matches, no error).
+- Safe modification: Validate rule JSON against a schema on load; keep engines pure (no IO) as they are now; route all side effects through `HabitContext`/dispatch.
+- Test coverage: Strong — `behaviorRuleEngine.test.ts`, `eventBus.test.ts`, `habitContext.test.js`, `domainEventInstrumentation.test.js`.
 
-**Phase-23 eventBus (new global):**
-- Files: `src/behavior/eventBus.ts`, `src/context/TaskContext.js:222-293`
-- Why fragile: New process-wide singleton with `typedListeners`/`wildcardListeners`; a missed `unsubscribe` leaks handlers across navigation mounts; `clear()` exists but is test-only (`src/behavior/eventBus.ts:246-247`).
-- Safe modification: Always pair `subscribe` with cleanup in `useEffect` return; never call `clear()` in app code.
-- Test coverage: `__tests__/unit/eventBus.test.ts` + `domainEventInstrumentation.test.js` — good unit coverage, zero lifecycle/leak tests.
-
-**Expo SDK 57 / `expo-file-system` API surface:**
-- Files: `src/utils/fileStorage.js`, `src/utils/vaultService.js`, `src/utils/exportService.js`, `src/utils/vaultImport.js`, `src/utils/aiService.js`
-- Why fragile: Every persistence path depends on legacy `FileSystem.documentDirectory` / `readAsStringAsync` / `writeAsStringAsync`. Expo 57 renames/restructures this API family (`expo-file-system/legacy`), so an SDK bump can break all note/vault/model IO at once.
-- Safe modification: Centralize all FS access behind one wrapper module before upgrading; pin and test the SDK upgrade in isolation.
-- Test coverage: Mocked FS in `__tests__/setup/jest.setup.js` — mocks hide real API-shape drift.
+**Native boundaries (llama.rn, widgets, gradle patch):**
+- Files: `src/utils/aiService.js` (llama.rn lifecycle), `widgets/*`, `patch-llama-gradle.js` (postinstall), `android/*`, `eas.json`
+- Why fragile: `postinstall` patches native gradle files — Expo SDK upgrades can silently invalidate the patch. Widgets run headless (no JS context guarantees) and are excluded from typechecking. `llama.rn@0.12.4` is pinned with no upgrade path documented.
+- Safe modification: After any Expo/RN upgrade, re-run `postinstall` and verify the patch applied; test widgets on-device (no Jest coverage — `phase12-widget-logic.test.js` covers logic only, not rendering).
+- Test coverage: None for native rendering paths.
 
 ## Scaling Limits
 
-**AsyncStorage single-blob growth:**
-- Current capacity: Entire task dataset + settings in one JSON value per storage version.
-- Limit: AsyncStorage throughput degrades past ~1–2 MB values on Android; `JSON.parse` blocks the JS thread; `multiSet` restore of large blobs risks transaction failures.
-- Scaling path: Per-list/per-task keys now; `expo-sqlite` when notes/tasks exceed a measured threshold (add blob-size telemetry first).
+**AsyncStorage single-key documents:**
+- Current capacity: Entire task corpus serializes into one `kwestup_data_v7.0` value; habits/events/rewards into four more keys. Fine for hundreds of items.
+- Limit: Multi-MB values hit AsyncStorage performance cliffs (slow parse, UI jank during hydration, higher corrupt-on-kill risk). Behavior events are already capped at 500; tasks/notes are not.
+- Scaling path: Cap/paginate task history, move note bodies fully to filesystem (already the direction), consider SQLite (`expo-sqlite`) when lists exceed low thousands.
 
-**Notification history unbounded array:**
-- Current capacity: `kwestup_notification_history_v1` appended on every dispatch (`src/services/notificationService.ts:33` + history recording paths).
-- Limit: Array grows without documented trimming; slows every policy evaluation that scans it (dedup/min-gap checks).
-- Scaling path: Cap history (e.g. last 200 entries / 30 days) with FIFO eviction like `logger.js:125-134` already demonstrates.
-
-**Forensic log buffer fixed at 50 entries:**
-- Current capacity: 50-entry FIFO (`src/utils/logger.js:13`).
-- Limit: Fine for crash forensics; insufficient for session replay or post-release diagnostics of intermittent bugs.
-- Scaling path: Persist WARN/ERROR breadcrumbs to a bounded on-disk ring file (opt-in, redacted) when chasing field issues.
-
-**Vault count and note count per vault:**
-- Current capacity: Flat directory per vault; full `readDirectoryAsync` scans (`src/utils/fileStorage.js:180-230`).
-- Limit: Hundreds of notes per folder → slow search/sync/export (all full scans today).
-- Scaling path: Filename index cached in AsyncStorage with mtime invalidation; paginate search results (`src/screens/SearchScreen.js` runs 4 parallel full scans per keystroke).
+**Behavior event history (500-cap):**
+- Current capacity: `MAX_PERSISTED_BEHAVIOR_EVENTS = 500` FIFO in `src/context/HabitContext.js:38`.
+- Limit: Long-term consistency/automaticity scores (`improvementEngine.ts`) lose signal beyond the window; streak math stays correct (derived from habits, not events).
+- Scaling path: Aggregate old events into rollups before eviction if multi-year analytics are ever needed.
 
 ## Dependencies at Risk
 
-**`llama.rn@0.12.4` (exact pin, native module):**
-- Risk: Pinned native bridge tied to specific RN/Gradle shapes; `patch-llama-gradle.js` postinstall rewrites native build files on every `npm install` — breaks silently on AGP/Gradle upgrades. `no_gpu_devices: true` workaround (`src/utils/aiService.js:424`) signals existing Android GPU probing failures.
-- Impact: AI features fail to build or crash on new devices; every RN/Expo upgrade must re-validate the patch script.
-- Migration plan: Track upstream `llama.rn` releases; add a CI step that runs the Gradle patch + native build smoke on the pinned AGP before merging SDK bumps; keep `IDLE_UNLOAD_TIMEOUT_MS` + AppState unload as the memory backstop.
+**llama.rn@0.12.4 (pinned, native, single-source):**
+- Risk: Pinned native module with a postinstall gradle patch; no fallback if it breaks on a future RN/Expo version. Model is pinned to a HuggingFace commit — URL/commit rot breaks downloads.
+- Impact: All AI features (`AIAssistant`, summarization, task extraction) go dark.
+- Migration plan: Isolate all llama.rn imports behind `aiService.js` (already the case — do not import `llama.rn` anywhere else); document minimum-supported Expo/RN matrix; add a download-URL health check to diagnostics.
 
-**`crypto-js@^4.2.0` (unmaintained pure-JS crypto):**
-- Risk: No native acceleration — PBKDF2-100k + AES on large archives and SHA-256 over 468 MB run in JS; last meaningful upstream maintenance years ago.
-- Impact: Export of large vaults and model verification jank or ANR on low-end devices.
-- Migration plan: Migrate hashing to `expo-crypto` (native) and KDF/file cipher to a native module in phases; keep envelope format (`v:2`) stable so archives stay compatible.
+**expo-notifications scheduling semantics:**
+- Risk: Core reminders depend on OS-level scheduling quirks (Doze, exact-alarm permissions, iOS limits). The codebase already works around this with the recurring-exemption design, but OS behavior changes can silently drop reminders.
+- Impact: Missed task/bill/birthday reminders — the highest-trust feature.
+- Migration plan: Keep `notificationService.test.ts` green; add an on-device reminder self-test in Settings; monitor Expo changelog for scheduling changes.
 
-**`react-native-android-widget@^0.16.1` (Android-only):**
-- Risk: Widgets are Android-exclusive; iOS has no counterpart. Any shared task-mutation change must be validated against the headless handler with no iOS safety net.
-- Impact: Feature asymmetry; widget bugs only reproducible on device, not in jest.
-- Migration plan: Keep widget logic in pure `taskMutations.js` (current design — do not regress); add handler-level tests per widget (`widgets/*.tsx` have none today).
-
-**Expo ~57 / React Native 0.86 / React 19.2.3 (bleeding-edge trio):**
-- Risk: Major-version combination with `legacy-peer-deps` bypass; `@react-navigation/drawer@^6` predates React 19; `jest-expo@~57` Android preset is the only tested target.
-- Impact: Navigation/gesture/reanimated incompatibilities surface as runtime crashes, not install errors.
-- Migration plan: Upgrade `@react-navigation` to the v7 line validated for React 19; re-attempt install without `legacy-peer-deps` quarterly.
-
-**`expo-notifications@~0.31.4` OS-behavior coupling:**
-- Risk: Recurring triggers, channels, and importance levels are OS-version-sensitive; the policy-exemption architecture (see Fragile Areas) means behavior changes with Android notification policy, not app code.
-- Impact: Reminders fire at wrong times or get batched by Doze/Battery-optimization on some OEMs with no app-side signal.
-- Migration plan: Document OEM-specific verification steps; add a Settings "notification diagnostics" screen showing scheduled vs fired counts from history.
+**react-native-android-widget:**
+- Risk: Third-party widget bridge (`^0.16.1`) with headless rendering; excluded from typechecking; minimal test coverage.
+- Impact: Widget breakage on RN upgrades.
+- Migration plan: Phase 25 widget-engine hardening (already tracked in `tsconfig.json` comments); pin version and test on-device per release.
 
 ## Missing Critical Features
 
-**No destructive-action safety net:**
-- Problem: Import wipes all user data before restoring with no automatic pre-import backup and no undo (`src/utils/exportService.js:309-315`).
-- Blocks: Safe restore UX; every support case for a failed import is unrecoverable data loss.
+**No crash/error reporting:**
+- Problem: `src/utils/logger.js` + `src/utils/diagnostics.js` record breadcrumbs/telemetry locally only. Production crashes leave no server-side trace — issues are found via user reports.
+- Blocks: Triaging field failures (OOM kills, boot failures, restore failures).
 
-**No app-lock / biometric gate for encrypted content:**
-- Problem: Vault files and archives are protected only by OS sandbox + optional export passphrase; there is no PIN/biometric gate in-app.
-- Blocks: Privacy-story completeness for a notes app holding personal content.
+**No backup-before-destructive-restore:**
+- Problem: Import wipes storage before restoring (`exportService.js`). No automatic pre-restore snapshot.
+- Blocks: Safe user recovery from a bad import.
 
-**No E2E or device-lab coverage:**
-- Problem: 16 jest suites, all unit-level; no Maestro/Detox/EAS-device flow covers boot → create task → schedule notification → export → import.
-- Blocks: Confidence in the exact paths flagged above (migration resume, import rollback, widget contract).
+**No screen-level test coverage:**
+- Problem: All 9 screens (`src/screens/*`) and `App.js` boot have zero component tests; only `ErrorBoundary` has a smoke test. 18 suites / 293 tests all pass, but they cover utils/engines/contexts only.
+- Blocks: Confident UI refactoring (especially `NotesScreen`, `SettingsScreen`).
 
 ## Test Coverage Gaps
 
-**Screens (9/9 untested):**
-- What's not tested: All user flows in `DashboardScreen`, `TaskListScreen`, `DailyTasksScreen`, `NotesScreen`, `BirthdaysScreen`, `BillingScreen`, `FocusTimerScreen`, `SearchScreen`, `SettingsScreen` — including archive export/import handlers, billing CRUD + reschedule, QR sync execution.
+**Screens (zero component tests):**
+- What's not tested: Rendering, navigation, user flows for `DailyTasksScreen`, `BirthdaysScreen`, `BillingScreen`, `NotesScreen`, `FocusTimerScreen`, `DashboardScreen`, `SettingsScreen`, `SearchScreen`, `TaskListScreen`.
 - Files: `src/screens/*.js`
-- Risk: The most destructive path in the app (import wipe) has zero automated tests; regressions only surface via manual QA.
+- Risk: UI regressions ship undetected; the 2014-line `NotesScreen` is the blind spot.
+- Priority: Medium (logic is tested below the UI; add smoke tests for the two most-edited screens first)
+
+**App.js boot sequence:**
+- What's not tested: Migration ordering, hydration failure modes, provider wiring, widget registration.
+- Files: `App.js`
+- Risk: Upgrade/corruption scenarios only surface on user devices.
 - Priority: High
 
-**Contexts (3/4 untested):**
-- What's not tested: `BillingContext.js`, `BirthdayContext.js`, `VaultContext.js` provider behavior (persistence, error paths, active-vault switching). Only `TaskContext` has a suite (`__tests__/unit/taskContext.test.js`).
-- Files: `src/context/BillingContext.js`, `src/context/BirthdayContext.js`, `src/context/VaultContext.js`
-- Risk: Billing reminder rescheduling and vault-switch data routing break silently.
+**Vault import / export round-trip on device:**
+- What's not tested: Real-filesystem import of hostile filenames, large-vault performance, mid-restore kill recovery.
+- Files: `src/utils/vaultImport.js`, `src/utils/exportService.js`, `src/utils/fileStorage.js`
+- Risk: Data-loss bugs in the highest-stakes flow.
 - Priority: High
 
-**Widget handlers and billing notification math:**
-- What's not tested: `widgets/widget-task-handler.tsx` recurrence spawn, `widgets/*.tsx` rendering, `src/utils/billingNotifications.js` scheduling edge cases (month-end, leap day), `src/utils/syncService.js` beyond happy-path validation.
-- Files: `widgets/widget-task-handler.tsx`, `widgets/*.tsx`, `src/utils/billingNotifications.js`, `src/utils/syncService.js:100-195`
-- Risk: Recurring spawned-task ID shape and billing reschedule drift diverge from app behavior unnoticed.
+**AI inference paths:**
+- What's not tested: Only `aiService.test.js` + `aiAssistant-smoke.test.js` exist; model-output parsing edge cases (non-JSON, truncated, oversized) and OOM fallback are thinly covered.
+- Files: `src/utils/aiService.js`, `src/components/AIAssistant.js`
+- Risk: Model upgrades or large notes produce unhandled inference failures.
 - Priority: Medium
 
-**Failure-injection paths (import/migration/AI download):**
-- What's not tested: Interrupted migration resume, `multiSet` failure rollback, model-download retry with jitter (`src/utils/aiService.js:384`), SHA mismatch handling, oversized-archive rejection.
-- Files: `src/utils/exportService.js`, `src/utils/vaultService.js:173-237`, `src/utils/aiService.js:218-360`
-- Risk: Every resilience path added in recent phases is unverified under fault conditions.
+**Billing and birthday reminder end-to-end:**
+- What's not tested: Scheduling → OS firing → deep-link handling; `billingNotifications.js` null-return paths; Feb-29/advance-reminder edge cases beyond unit level.
+- Files: `src/utils/billingNotifications.js`, `src/context/BillingContext.js`, `src/context/BirthdayContext.js`
+- Risk: Silent reminder loss.
 - Priority: Medium
 
 ---
