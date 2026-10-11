@@ -8,7 +8,7 @@
  */
 
 import { CommandAction, DispatchedCommand } from '../commands/types';
-import { HabitFrequency, CueType, CompiledHabitPlan, Habit } from '../behavior/types';
+import { HabitFrequency, CueType, CompiledHabitPlan, Habit, FrictionCategory } from '../behavior/types';
 
 export interface ExtractedIntent {
   action: CommandAction;
@@ -52,4 +52,59 @@ export interface CompilationResult {
 export interface CompilerOptions {
   activeHabits?: Habit[];
   confirmed?: boolean;
+}
+
+export interface SuggestedIntervention {
+  action: CommandAction;
+  habitId: string;
+  payload: Record<string, unknown>;
+  description: string;
+  ruleId: string;
+}
+
+export interface FrictionAnalysisResult {
+  category: FrictionCategory;
+  reason: string;
+  confidence: number; // 0..1
+  source: 'llm' | 'heuristic';
+  suggestedIntervention?: SuggestedIntervention;
+  rulesApplied: string[];
+}
+
+export interface FrictionAnalyzerOptions {
+  forceHeuristic?: boolean;
+  timeoutMs?: number;
+  habit?: Habit;
+  recentMissCount?: number;
+  consecutiveMisses?: number;
+}
+
+export interface WeeklyReviewIdentityVote {
+  identityId: string;
+  statement: string;
+  totalVotes: number;
+  votesThisWeek: number;
+}
+
+export interface WeeklyReviewReport {
+  periodStart: string; // YYYY-MM-DD
+  periodEnd: string; // YYYY-MM-DD
+  totalHabitsTracked: number;
+  overallConsistencyRate: number; // 0..1
+  totalCompletions: number;
+  totalMisses: number;
+  recoveryAdherenceRate: number; // 0..1
+  identityVotes: Record<string, WeeklyReviewIdentityVote>;
+  topFrictionCategories: Array<{ category: FrictionCategory; count: number }>;
+  suggestedAdjustments: SuggestedIntervention[];
+  narrativeSummary: string;
+  source: 'llm' | 'heuristic';
+  rulesApplied: string[];
+}
+
+export interface WeeklyReviewOptions {
+  todayDate?: string; // YYYY-MM-DD
+  forceHeuristic?: boolean;
+  timeoutMs?: number;
+  userName?: string;
 }

@@ -12,3 +12,5 @@ export * from './rulePacketRetriever';
 export * from './heuristicParser';
 export * from './intentParser';
 export * from './behaviorCompiler';
+export * from './frictionAnalyzer';
+export * from './weeklyReviewEngine';
