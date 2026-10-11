@@ -8,10 +8,13 @@ import { ImportantTasksWidget } from './ImportantTasksWidget';
 import { TasksListWidget } from './TasksListWidget';
 import { HabitWidget } from './HabitWidget';
 import { selectWidgetTouchpoint } from '../src/behavior/interventionEngine';
-import { completeHabit } from '../src/behavior/habitEngine';
+import { completeHabit, generateEntityId } from '../src/behavior/habitEngine';
+import { evaluateRewards } from '../src/behavior/rewardEngine';
+import { handleRecoveryCompletion } from '../src/behavior/recoveryEngine';
 import {
   HABITS_STORAGE_KEY,
   BEHAVIOR_EVENTS_STORAGE_KEY,
+  REWARDS_STORAGE_KEY,
   MAX_PERSISTED_BEHAVIOR_EVENTS,
 } from '../src/context/HabitContext';
 import type { Habit, BehaviorEvent } from '../src/behavior/types';
@@ -293,8 +296,59 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
               }
             }
 
+            // Mirror the foreground HabitContext.completeHabit rewards pipeline:
+            // restore active status from recovery, evaluate factual rewards,
+            // and persist them so widget completions award the same milestones.
+            const wasInRecovery = targetHabit.status === 'recovery';
+            let rewardedHabit = completionResult.updatedHabit;
+            const widgetRulesApplied = [...completionResult.rulesApplied];
+            if (wasInRecovery) {
+              const recoveryResult = handleRecoveryCompletion(targetHabit, { now, todayDate });
+              rewardedHabit = {
+                ...rewardedHabit,
+                status: 'active',
+              };
+              recoveryResult.rulesApplied.forEach((r) => {
+                if (!widgetRulesApplied.includes(r)) widgetRulesApplied.push(r);
+              });
+            }
+            const previousSessionEvent = existingEvents
+              .slice()
+              .reverse()
+              .find(
+                (e) =>
+                  e.entityId === habitId &&
+                  (e.type === 'HABIT_MISSED' || e.type === 'HABIT_COMPLETED')
+              )?.type;
+            const effectivePreviousEvent = wasInRecovery ? 'HABIT_MISSED' : previousSessionEvent;
+            const rewardResult = evaluateRewards({
+              habit: rewardedHabit,
+              event: 'HABIT_COMPLETED',
+              previousEvent: effectivePreviousEvent as 'HABIT_MISSED' | 'HABIT_COMPLETED' | undefined,
+              options: { now, todayDate },
+            });
+            rewardResult.rulesApplied.forEach((r) => {
+              if (!widgetRulesApplied.includes(r)) widgetRulesApplied.push(r);
+            });
+            if (rewardResult.rewards && rewardResult.rewards.length > 0) {
+              try {
+                const rawRewards = await AsyncStorage.getItem(REWARDS_STORAGE_KEY);
+                const existingRewards = rawRewards ? JSON.parse(rawRewards) : [];
+                const mergedRewards = Array.isArray(existingRewards)
+                  ? [...rewardResult.rewards, ...existingRewards]
+                  : [...rewardResult.rewards];
+                await AsyncStorage.setItem(REWARDS_STORAGE_KEY, JSON.stringify(mergedRewards));
+              } catch (e) {
+                logger.warn('[WidgetTaskHandler] Failed to persist widget rewards:', e);
+              }
+              const rewardedHabits = updatedHabits.map((h) =>
+                h.id === habitId ? rewardedHabit : h
+              );
+              await AsyncStorage.setItem(HABITS_STORAGE_KEY, JSON.stringify(rewardedHabits));
+            }
+
             const habitCompletedEvent: BehaviorEvent = {
-              id: `bevt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+              id: generateEntityId('bevt'),
               type: 'HABIT_COMPLETED',
               entityId: habitId,
               timestamp: now,
@@ -302,9 +356,9 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
               payload: {
                 habitId,
                 completedToday: completionResult.completedToday,
-                streakCount: completionResult.updatedHabit.streakCount,
-                totalEvidenceVotes: completionResult.updatedHabit.totalEvidenceVotes,
-                rulesApplied: completionResult.rulesApplied,
+                streakCount: rewardedHabit.streakCount,
+                totalEvidenceVotes: rewardedHabit.totalEvidenceVotes,
+                rulesApplied: widgetRulesApplied,
               },
             };
 
@@ -330,7 +384,10 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
             eventBus.emit(habitCompletedEvent);
 
             // Re-render HabitWidget with the next touchpoint
-            const nextTouchpoint = selectWidgetTouchpoint(updatedHabits);
+            const latestHabits = updatedHabits.map((h) =>
+              h.id === habitId ? rewardedHabit : h
+            );
+            const nextTouchpoint = selectWidgetTouchpoint(latestHabits);
             await safeRequestWidgetUpdate({
               widgetName: 'HabitWidget',
               renderWidget: () => <HabitWidget touchpoint={nextTouchpoint} />,
