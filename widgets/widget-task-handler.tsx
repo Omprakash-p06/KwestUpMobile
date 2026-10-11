@@ -191,18 +191,9 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
                 });
               }
 
-              // --- TICKING ANIMATION (after storage write) ---
-              if (nextCompletedState) {
-                const tempTasks = parsed.tasks.map(t => t.id === taskId ? { ...t, isTicking: true } : t);
-                await safeRequestWidgetUpdate({
-                  widgetName: 'TasksList',
-                  renderWidget: () => <TasksListWidget tasks={tempTasks as any} activeTab={activeTab} />,
-                });
-                await new Promise(r => setTimeout(r, 600)); // wait for animation
-              }
-              // ----------------------------------------------
-
-              // Update other widgets in the background so everything stays in sync
+              // Update sibling widgets in a single pass (no intermediate
+              // ticking frame: it was overwritten by the updates below and
+              // the 600ms headless sleep risked OS task termination).
               const importantUnfinished = parsed.tasks
                 .filter((t) => t.important && !t.completed)
                 .slice(0, 5);
