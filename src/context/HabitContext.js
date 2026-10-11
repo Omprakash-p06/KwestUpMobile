@@ -115,10 +115,32 @@ export const HabitProvider = ({
   }, []);
 
   // 1b. Foreground Return Convergence (AppState active)
+  // Guards the headless-vs-foreground lost-update race: while a debounced
+  // persist is pending, in-memory state is newer than storage, so re-hydrate
+  // is skipped. Otherwise per-habit newer-wins merge keeps headless streak
+  // increments instead of wholesale replacement.
   useEffect(() => {
+    const mergeHabitsPreferNewer = (current, stored) => {
+      const currentById = new Map(current.map((h) => [h.id, h]));
+      return stored.map((storedHabit) => {
+        const existing = currentById.get(storedHabit.id);
+        if (!existing) return storedHabit;
+        const storedTime = storedHabit.updatedAt || '';
+        const currentTime = existing.updatedAt || '';
+        // Prefer the record with the later updatedAt; tie-break toward the
+        // stored (headless-written) copy so widget completions converge.
+        if (storedTime >= currentTime) return storedHabit;
+        return existing;
+      });
+    };
+
     const handleAppStateChange = async (nextState) => {
       if (nextState === 'active') {
         try {
+          if (storageWriteTimerRef.current) {
+            logger.debug('🔄 Skipping habit re-hydrate: debounced persist pending');
+            return;
+          }
           const [storedHabits, storedIdentities, storedEvents, storedRewards] = await Promise.all([
             AsyncStorage.getItem(HABITS_STORAGE_KEY),
             AsyncStorage.getItem(IDENTITIES_STORAGE_KEY),
@@ -128,7 +150,15 @@ export const HabitProvider = ({
 
           if (storedHabits) {
             const parsed = JSON.parse(storedHabits);
-            if (Array.isArray(parsed)) setHabits(parsed);
+            if (Array.isArray(parsed)) {
+              setHabits((prev) => {
+                if (prev.length === 0) return parsed;
+                const merged = mergeHabitsPreferNewer(prev, parsed);
+                const mergedIds = new Set(merged.map((h) => h.id));
+                const prevOnly = prev.filter((h) => !mergedIds.has(h.id));
+                return [...merged, ...prevOnly];
+              });
+            }
           }
           if (storedIdentities) {
             const parsed = JSON.parse(storedIdentities);
