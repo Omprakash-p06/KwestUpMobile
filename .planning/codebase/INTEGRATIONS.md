@@ -1,111 +1,44 @@
-# External Integrations
+# Integrations
 
 **Analysis Date:** 2026-10-11
 
-> This app is **local-first / offline-first**. There is no SaaS backend, no BaaS (Supabase/Firebase), no auth provider, no payment gateway, no analytics SDK, and no push service. Every "integration" below is either an on-device OS capability, a file download, or a direct LAN/HTTPS call made with the global `fetch`. There are no API keys or secrets in the repo.
+> No cloud backend. All integrations are on-device Expo/native modules, local files, LAN REST to a companion PC app, or optional outbound HTTPS (telemetry/update check). No Stripe/Supabase/Firebase/auth provider.
 
-## APIs & External Services
+| Name | Type | Purpose | Entry point | Config |
+|---|---|---|---|---|
+| On-device LLM (llama.rn + Qwen2.5-0.5B GGUF) | External (native) | Offline note summarization / task extraction | `src/utils/aiService.js:1-30`, UI `src/components/AIAssistant.js` | Plugin `app.json:33`; model URL/SHA/size pins `src/utils/aiService.js:23-30` |
+| PC sync (LAN REST: `GET /ping`, `POST /sync`, Bearer token) | External (companion app) | Bidirectional notes/tasks/birthdays merge, zero cloud | `src/utils/syncService.js:107-195`, orchestrated `App.js:769-847` | QR-scanned `{ip,port,token}` validated `src/utils/syncService.js:34-72`; QR scanner `src/components/QRScannerModal.js:14-52` |
+| Encrypted backup export/import | Internal + OS share sheet | AES-256 v2 envelope backup (PBKDF2 100k) + `.md` vault import | `src/utils/exportService.js:21-80`, `src/utils/vaultImport.js:1-111` | Passphrase user-supplied; legacy v1 fallback `src/utils/exportService.js:58-80` |
+| Vault filesystem (raw `.md` per vault/folder) | Internal (device disk) | Source of truth for notes | `src/utils/fileStorage.js:1-238` | `FileSystem.documentDirectory` vault paths; init per vault `App.js:218` |
+| AsyncStorage KV | Internal (device disk) | Tasks, birthdays, theme, timer, billing, habits, telemetry opt-in | `src/utils/storage.js:1-27` (`STORAGE_VERSION v7.0`) | Keys `kwestup_*`; timer decoupled from main save `App.js:458-496` |
+| Local notifications (5 Android channels) | External (OS) | Daily tasks, birthdays, bills, behavior cues, focus-timer done | `src/services/notificationService.ts:35-80`, legacy adapter `src/utils/notifications.js:1-131` | Channels behavior/daily/birthday/billing/system `src/services/notificationService.ts:35-73`; schedules from `App.js:732-739,399-418` |
+| Android home-screen widgets (×5) | External (OS) | FocusTimer, DailyTasks, ImportantTasks, TasksList, HabitWidget | `index.js:2,11`, `widgets/widget-task-handler.tsx:90-512`, pushes `App.js:596-686` | Declarations `app.json:48-115` (30-min update); headless handler reads AsyncStorage directly |
+| Camera (QR only) | External (OS) | Scan PC sync QR payload | `src/components/QRScannerModal.js:146-167` | Permission text `app.json:34-39` |
+| Document picker + Share sheet | External (OS) | Pick `.kwestup`/`.md` restores; share backup/model | `src/screens/SettingsScreen.js:6,95-96,271`, `src/utils/exportService.js:245-249` | `mimeType`/extension filter `src/utils/vaultImport.js:20` |
+| Clipboard | External (OS) | Copy crash report on ErrorBoundary | `src/components/ErrorBoundary.js:13,103-104` | None |
+| Haptics | External (OS) | Success/error/impact feedback | `App.js:832,839`, `src/components/CustomButton.js:4,25` | None |
+| Fonts (Inter/Hanken/JetBrains Mono) | External (Google Fonts pkg, bundled) | Typography | `App.js:107-119` | `@expo-google-fonts/*` `package.json:19-21` |
+| GitHub Releases update check | External (HTTPS GET) | Notify of newer APK | `src/utils/diagnostics.js:62-106`, prompted `App.js:575-594` | `api.github.com/repos/Omprakash-p06/KwestUpMobile/releases/latest` |
+| Telemetry (opt-in POST) | External (HTTPS POST) | Anonymous launch counting | `src/utils/diagnostics.js:127-149`, dialog `App.js:1034-1075` | `https://api.kwestup.com/telemetry`; gate `kwestup_telemetry_optin` |
+| Dev-only network probe (httpbin) | External (HTTPS, dev only) | Connectivity log | `src/utils/diagnostics.js:14-42`, gated `App.js:234-237` | Never runs in release (`__DEV__` guard) |
+| Behavior engine (internal) | Internal | Habit/reward/intervention/event-bus drives widgets + notifications | `src/behavior/*.ts`, `src/context/HabitContext.js`, emits `App.js:740-747` | Storage keys `kwestup_habits_/behavior_events_/rewards_` `src/utils/storage.js:21-25` |
 
-**On-device AI model download (Hugging Face):**
-- Qwen2.5-0.5B-Instruct Q4_K_M GGUF (~468 MB) via `llama.rn` — offline inference after one-time download
-  - SDK/Client: `llama.rn 0.12.4` (`initLlama` / `releaseAllLlama`)
-  - Download URL (pinned commit): `https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/9217f5db79a29953eb74d5343926648285ec7e67/qwen2.5-0.5b-instruct-q4_k_m.gguf`
-  - Integrity: SHA-256 `74a4da8c…7a9db` + size `491400032` bytes verified post-download; resumable state in `kwestup_ai_model_download_resumable`
-  - Auth: none (public model repo)
-  - Implementation: `src/utils/aiService.js` (`MODEL_DOWNLOAD_URL`, `MODEL_EXPECTED_SHA256`, `MODEL_PATH` under `FileSystem.documentDirectory/models/`)
+## Data flows
 
-**Companion PC sync server (LAN REST, first-party):**
-- KwestUp PC Sync Server over plain HTTP on the local network — bidirectional vault sync
-  - Endpoints: `GET http://{ip}:{port}/ping` → `{ status: "online" }`; `POST http://{ip}:{port}/sync` with JSON payload (`notes`, `tasks`, `taskLists`, `birthdays`, `themeMode`, `selectedThemeName`, `userName`), `Authorization: Bearer {token}`
-  - Auth: per-pairing token (min 6 chars) provisioned by QR scan (`expo-camera` → `src/components/QRScannerModal.js`); 401/403 surfaces "re-scan" error
-  - Validation: `validateSyncConfig` (strict IPv4/hostname/IPv6 + port 1–65535), `validateSyncPayload` (requires `notes`/`tasks`/`birthdays` arrays), 4 s ping timeout / 10 s sync timeout via `AbortController`
-  - Implementation: `src/utils/syncService.js` (`pingSyncServer`, `performSync`); invoked from `App.js` and `src/screens/SettingsScreen.js`
+1. **Cold start → local-first hydrate:** `App.js:178-256` reads AsyncStorage + `getAllNotesFromFilesystem(activeVault)` → state; fonts gate splash (`App.js:877-886`); background vault migration + cache clear fire-and-forget (`App.js:223-242`).
+2. **Note write path:** screen edits → `saveNoteFile(vault,folder,title)` (`src/utils/fileStorage.js:33-52`) → metadata cache; main JSON save merges over stored object so task slices owned by `TaskContext` are never clobbered (`App.js:465-482`).
+3. **LAN sync cycle:** QR scan (`QRScannerModal`) → `validateSyncConfig` → `pingSyncServer` (`GET /ping`) → `POST /sync` Bearer (`src/utils/syncService.js:135-195`) → wipe vault dir → rewrite `.md` files → cancel + reschedule birthday notifications → state overwrite (`App.js:783-830`).
+4. **Backup out / restore in:** `encryptBackup` (AES-256/PBKDF2) → temp file → `Sharing.shareAsync` (`src/utils/exportService.js:21-47,245-249`); restore via `DocumentPicker.getDocumentAsync` → `decryptBackup` (v2, v1 fallback) → rewrite vault + billing + reschedule bills (`src/utils/exportService.js:58-80`, `src/screens/SettingsScreen.js:271`).
+5. **AI inference path:** download GGUF to `documentDirectory/models/` with SHA-256/size gate → `initLlama` context → completion; idle-unload after 5 min, force-unload on background (`src/utils/aiService.js:33-114`).
+6. **Notification fan-out:** task/birthday/bill/habit/behavior engines → `notificationService.scheduleNotification` (policy-gated for `behavior` category only) → OS channels; foreground handler set in `initNotificationChannels` (`src/services/notificationService.ts:78-80`).
+7. **Widget loop (Android):** foreground pushes throttled/staggered `requestWidgetUpdate` (`App.js:596-686`); headless `widgetTaskHandler` (separate JS env) toggles tasks / completes habits via AsyncStorage + `eventBus` local emit, then re-renders siblings (`widgets/widget-task-handler.tsx:126-400`).
 
-**Update check (GitHub Releases API):**
-- `GET https://api.github.com/repos/Omprakash-p06/KwestUpMobile/releases/latest` (`Accept: application/vnd.github.v3+json`, `User-Agent: KwestUp-Mobile`)
-  - Compares `tag_name` against `APP_VERSION` (`v3.5.0` in `src/utils/storage.js`); surfaces release URL/notes and `.apk` asset URL via callback
-  - Auth: none (public repo endpoint, unauthenticated rate limits apply)
-  - Implementation: `src/utils/diagnostics.js` (`checkForUpdates`, `isNewerVersion`)
+## Env/config required
 
-**Telemetry (opt-in stub, placeholder endpoint):**
-- `POST https://api.kwestup.com/telemetry` with `{ event, version, platform, timestamp, ...payload }`
-  - Gated on `AsyncStorage` key `kwestup_telemetry_optin === "true"`; silent no-op otherwise and on any network failure
-  - Status: domain is a placeholder — treat as non-functional until a real collector exists; do not add PII to payloads
-  - Implementation: `src/utils/diagnostics.js` (`sendTelemetryEvent`)
-
-**Dev-only network probe (never runs in release):**
-- `GET https://httpbin.org/json` behind `__DEV__` guard (`isDiagnosticsEnabled()`); release builds skip it entirely
-  - Implementation: `src/utils/diagnostics.js` (`runNetworkDiagnostics`)
-
-**What is NOT integrated:** no axios/fetch wrapper library (raw global `fetch` only), no WebSocket/SSE, no Supabase/Firebase/AWS/Stripe/Clerk/Auth0/RevenueCat/Sentry/Amplitude/Segment/OneSignal, no `expo-constants` remote config, no `EXPO_PUBLIC_*` vars.
-
-## Data Storage
-
-**Databases:**
-- None. No SQLite, WatermelonDB, Realm, Supabase, or Firebase. Structured state lives in key-value storage:
-  - Connection: n/a (on-device only)
-  - Client: `@react-native-async-storage/async-storage 2.1.2` — key namespaces enumerated in `isUserDataKey()` in `src/utils/storage.js` (`kwestup_data_*`, `kwestup_vaults_*`, `kwestup_billing_*`, `kwestup_habits_*`, `kwestup_behavior_events_*`, `kwestup_notification_history_v1`, `kwestup_telemetry_optin`, etc.)
-
-**File Storage:**
-- On-device filesystem only (`expo-file-system ~18.1.11`):
-  - Vault note markdown: per-vault directories from `getVaultPath()` — `src/utils/fileStorage.js` (`saveNoteFile`, `getAllNotesFromFilesystem`, `wipeNotesFilesystem`), registry/migration in `src/utils/vaultService.js`
-  - LLM binary: `FileSystem.documentDirectory/models/qwen2.5-0.5b-instruct-q4_k_m.gguf` — `src/utils/aiService.js`
-  - Encrypted backup import/export: `expo-document-picker ~13.1.6` (import) + `expo-sharing ~13.1.5` (export share sheet) — `src/utils/vaultImport.js`, `src/utils/exportService.js`, `src/screens/SettingsScreen.js`
-  - No S3/GCS/Cloudinary or any remote bucket
-
-**Caching:**
-- None (no React Query cache, no Redis, no image CDN). `clearAllCaches()` in `src/utils/storage.js` only removes non-user `kwestup*`/`*cache*` AsyncStorage keys while preserving everything matched by `isUserDataKey()`
-
-## Authentication & Identity
-
-**Auth Provider:**
-- None — single-user local app, no accounts, no sessions, no OAuth
-  - Implementation: physical device possession is the auth boundary. Sensitive operations use user-supplied passphrases at runtime:
-  - Backup encryption: AES-256 + PBKDF2-HMAC-SHA256 (100k iterations, random 16-byte salt/IV, v2 envelope with legacy v1 fallback) via `crypto-js` — `src/utils/exportService.js` (`encryptBackup` / `decryptBackup`)
-  - LAN sync pairing: QR-provisioned bearer token per `src/utils/syncService.js`; camera permission string in `app.json`
-
-## Monitoring & Observability
-
-**Error Tracking:**
-- None (no Sentry/Bugsnag/Crashlytics). Errors surface via in-app `src/components/ErrorBoundary.js` (with copy-to-clipboard via `expo-clipboard`) and the file/AsyncStorage-backed `src/utils/logger.js` (dev-verbose, production `error`/`warn` only — enforced by `babel-plugin-transform-remove-console`)
-
-**Logs:**
-- Custom `logger` (`debug/info/warn/error`) in `src/utils/logger.js`; dev-only device/network diagnostics in `src/utils/diagnostics.js` (`runDeviceDiagnostics`, gated on `__DEV__`)
-- Quality signals in CI: ESLint JSON report artifact + Jest coverage artifact (see below)
-
-## CI/CD & Deployment
-
-**Hosting:**
-- No backend hosting. Mobile artifacts built with EAS Build:
-  - `extra.eas.projectId: 9b029b06-5b07-4a1d-9999-a543a3ef1614`, owner `omprakash-p06` — `app.json`
-  - Profiles in `eas.json`: `development` (dev-client APK, internal), `preview` (internal), `production` (APK, `NODE_OPTIONS=--max-old-space-size=4096`); `submit.production` is empty (no store submission wired)
-  - Updates distributed as GitHub Release APKs (see update-check API above)
-
-**CI Pipeline:**
-- GitHub Actions — `.github/workflows/ci.yml` (push/PR on `main`, `development`): `npm ci` → `npm run lint` → `npm run typecheck` → `npx jest --ci --maxWorkers=2 --coverage`, uploads `eslint-report.json` + `coverage/`
-- Semgrep security scan — `.github/workflows/semgrep.yml` (`continue-on-error: true`, scope in `.semgrepignore`)
-
-## Environment Configuration
-
-**Required env vars:**
-- None. Verified 2026-10-11: no `.env*` files exist, no `EXPO_PUBLIC_*` references, and the only `process.env.NODE_ENV` reads are build-mode guards in `src/utils/diagnostics.js` and `src/utils/logger.js`
-- Configuration surface is: `app.json` (Expo manifest), `eas.json` (build profiles), `src/utils/storage.js` (`APP_VERSION v3.5.0`, `STORAGE_VERSION v7.0`), and user defaults seeded into AsyncStorage at runtime
-
-**Secrets location:**
-- No secrets to store — no API keys, tokens, or service credentials exist. Do not introduce any without also adding `.env` + `.gitignore` coverage (currently neither exists for env files)
-
-## Webhooks & Callbacks
-
-**Incoming:**
-- None — no server, no webhook receivers. The only "incoming" data paths are: LAN `POST /sync` *client* (this app calls out; it never listens), QR-scanned pairing payloads, document-picker imports, and the Android widget task handler (`registerWidgetTaskHandler(widgetTaskHandler)` in `index.js` → `widgets/widget-task-handler.tsx`)
-
-**Outgoing:**
-- `POST {lan-server}/sync` (authenticated vault sync) — `src/utils/syncService.js`
-- `POST https://api.kwestup.com/telemetry` (opt-in only, placeholder) — `src/utils/diagnostics.js`
-- `GET https://api.github.com/.../releases/latest` (update check) — `src/utils/diagnostics.js`
-- `GET https://huggingface.co/.../qwen2.5-0.5b-instruct-q4_k_m.gguf` (one-time model download) — `src/utils/aiService.js`
-- OS-level: local notification scheduling via `expo-notifications` (5 channels: `kwestup_behavior_cues`, `kwestup_daily_tasks`, `kwestup_birthdays`, `kwestup_billing`, `kwestup_system`) — `src/services/notificationService.ts`; share-sheet export via `expo-sharing`; haptics via `expo-haptics`; 4 Android home-screen widgets via `react-native-android-widget` (`FocusTimer`, `DailyTasks`, `ImportantTasks`, `TasksList` in `widgets/*.tsx`, declared in `app.json`)
+- **No `.env` / secrets file in repo** — nothing to copy; all config is code + OS permissions.
+- **Required at build:** EAS project ID (`app.json:117-119`); Android package + `versionCode` (`app.json:25-26`); camera permission string (`app.json:34-39`); widget declarations (`app.json:48-115`).
+- **Required at runtime (user-supplied):** PC sync `{ip, port, token}` via QR/manual entry (`src/components/QRScannerModal.js:178`); backup passphrase (never stored); AI model file (~468 MB, downloaded on demand from pinned HuggingFace URL); telemetry opt-in flag (`kwestup_telemetry_optin`).
+- **Outbound network (optional):** `api.github.com` (update check), `api.kwestup.com/telemetry` (opt-in only), `httpbin.org` (dev only), `images.unsplash.com` (decorative paper texture `src/components/LiquidGlassBackground.js:35`), HuggingFace model CDN.
 
 ---
-
 *Integration audit: 2026-10-11*

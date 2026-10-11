@@ -1,205 +1,106 @@
-# Codebase Structure
+# Structure
 
 **Analysis Date:** 2026-10-11
 
-## Directory Layout
+## Directory Tree
 
 ```
-KwestUpMobile/
-├── index.js                # Expo root entry (app + widget handler registration)
-├── App.js                  # Root component: boot, global state, providers, timer, widgets
-├── app.json                # Expo config: package id, plugins, 4 widget declarations
-├── eas.json                # EAS build profiles
-├── package.json            # Deps + scripts (start, android/ios, lint, typecheck, test)
-├── tsconfig.json           # TypeScript config (behavior/services/commands/widgets)
-├── babel.config.js         # Babel (incl. release console stripping)
-├── metro.config.js         # Metro bundler config
-├── jest.config.js          # Jest config (jest-expo preset)
-├── eslint.config.js        # Flat config (+ legacy .eslintrc.js)
-├── patch-llama-gradle.js   # Postinstall native patch for llama.rn (run via postinstall)
-├── src/
-│   ├── behavior/           # Pure 4.0 behavior engines + event bus + domain types (TS)
-│   ├── commands/           # AI command-sandbox action/payload contracts (TS)
-│   ├── components/         # Reusable UI: controls, cards, modals, AI surface, boundary
-│   ├── context/            # Domain state owners: Task, Vault, Billing, Birthday, Habit
-│   ├── domains/            # Planned 4.0 domain isolation dir (README placeholder only)
-│   ├── navigation/         # Drawer navigator + custom drawer content
-│   ├── screens/            # 9 feature screens (one per drawer route)
-│   ├── services/           # Unified notification service + policy types (TS)
-│   ├── theme/              # Palette matrix (5 names × 3 modes) + global styles
-│   └── utils/              # Persistence, AI, sync, dates, logging, import/export (JS)
-├── widgets/                # Android widget renders + headless task handler (TSX)
-├── android/                # Native Android project (prebuild output, gradle)
-├── assets/                 # App icon, splash, fonts-adjacent art, widget previews
-├── rulebook/               # 4.0 behavioural spec: atomic-habits/, machine/*.json, rules/, ai/
-├── 4.0/                    # KwestUp_4.0_Master_Plan.md (source of behavior/command design)
-├── __tests__/             # Jest suites: unit/ (17 files) + setup/
-├── .planning/              # GSD planning docs (including this codebase map)
-├── coverage/               # Jest coverage output (generated, not committed logic)
-├── build/                  # Local build output (generated)
-└── GEMINI.md               # Repo agent instructions
+KwestUpMobile/                  # Expo SDK 57 / RN 0.86 / React 19 repo root
+├── App.js                      # Root composition (~1118 lines): boot, state, providers, sync, widgets
+├── index.js                    # JS entry: registerRootComponent(App) + widget task handler
+├── app.json / eas.json         # Expo + EAS build config
+├── src/                        # All app source (JS legacy + 4.0 TS behavior core)
+│   ├── behavior/               # Pure TS deterministic engines (habit, cue, recovery, reward, intervention, eventBus, ruleEngine, types)
+│   ├── commands/               # Command registry types only (sandbox planned Phase 26)
+│   ├── components/             # 15 shared RN components (TaskCard, modals, ErrorBoundary, LiquidGlass*)
+│   ├── context/                # 5 domain providers (Task, Vault, Billing, Birthday, Habit)
+│   ├── domains/                # Placeholder: README only, per-domain isolation planned
+│   ├── navigation/             # Drawer navigator + custom drawer content
+│   ├── screens/                # 9 drawer screens (Dashboard, Notes, Tasks, Birthdays, Timer, Billing, …)
+│   ├── services/               # notificationService.ts + types (channels, policy gates)
+│   ├── theme/                  # colors.js (5 themes × 3 modes) + styles.js
+│   └── utils/                  # 14 modules: storage, vault/FS, sync, export, AI, date, logger, …
+├── widgets/                    # 5 Android widgets (TSX) + headless widget-task-handler.tsx
+│   ├── FocusTimerWidget.tsx / DailyTasksWidget.tsx / ImportantTasksWidget.tsx
+│   ├── TasksListWidget.tsx / HabitWidget.tsx (behavioral cues: Today/Next/Recovery)
+│   └── widget-task-handler.tsx  # Headless tap actions (512 lines, AsyncStorage-synced)
+├── android/                    # Native shell (2 levels: app/, gradle/; src/ for widget receivers)
+│   ├── app/                    # build.gradle, proguard-rules.pro, src/, debug.keystore
+│   └── gradle/ + gradlew(.bat), settings.gradle, build.gradle
+├── rulebook/                   # Behavioral governance (human MD + machine JSON)
+│   ├── atomic-habits/          # 24 law/pattern docs (habit-loop, 2-min rule, never-miss-twice, …)
+│   ├── rules/                  # 8 enforcement docs (creation, missed-habit, overload, privacy, widgets, …)
+│   ├── ai/                     # 5 AI docs (intent-parser, habit-compiler, adaptation, …)
+│   ├── machine/                # 5 JSON contracts (habitRules, interventionRules, recoveryRules, …)
+│   └── examples/               # 7 worked examples (sleep, study, exercise, …)
+├── __tests__/                  # Jest suites (2 levels: setup/, unit/)
+│   ├── setup/                  # jest.setup.js + self-test
+│   └── unit/                   # aiService, dateUtils, behaviorRuleEngine, behavioralWidget, … tests
+├── .planning/                  # GSD planning (PROJECT.md, ROADMAP.md, phases/20-25, codebase/)
+├── 4.0/                        # KwestUp 4.0 master plan docs
+└── assets/ build/ coverage/    # Static assets + local build/test output (ignored)
 ```
 
-## Directory Purposes
+## Key Files
 
-**`src/behavior/`:**
-- Purpose: Deterministic, React-free 4.0 behavior domain — habit lifecycle, cues, recovery, rewards, improvement scoring, machine-rule evaluation, and the domain event bus.
-- Contains: TypeScript modules only (`*.ts`).
-- Key files: `src/behavior/eventBus.ts` (singleton bus + `useDomainEvent`), `src/behavior/types.ts` (Identity/Habit/Cue/Intervention/BehaviorEvent/Rule types), `src/behavior/habitEngine.ts`, `src/behavior/ruleEngine.ts`, `src/behavior/cueEngine.ts`, `src/behavior/recoveryEngine.ts`, `src/behavior/rewardEngine.ts`, `src/behavior/improvementEngine.ts`
+| Path | Purpose |
+|---|---|
+| `index.js` | JS entry: registers `App` and headless `widgetTaskHandler` |
+| `App.js` | Boot/migrate/load/save, 5 providers, drawer nav host, timer loop, LAN sync, widget pushes |
+| `src/navigation/AppNavigator.js` | Drawer routes (9 screens), notification channel init, context wiring |
+| `src/context/HabitContext.js` | Habit/identity/event/reward state; `kwestup_habits_v1` + `kwestup_behavior_events_v1` (cap 500); emits bus events |
+| `src/context/TaskContext.js` | Sole task-mutation path wrapping `src/utils/taskMutations.js` |
+| `src/context/VaultContext.js` / `BirthdayContext.js` / `BillingContext.js` | Notes-vault FS state / birthday alarms / billing persistence |
+| `src/behavior/eventBus.ts` | Singleton typed bus: monotonic IDs, deep-freeze, 100-event buffer, React hook |
+| `src/behavior/types.ts` | Habit/Cue/BehaviorEvent/Intervention/WidgetTouchpoint domain types |
+| `src/behavior/interventionEngine.ts` | Multi-surface arbitration: quiet-hours, anti-spam, `selectWidgetTouchpoint` |
+| `src/behavior/habitEngine.ts` / `cueEngine.ts` / `recoveryEngine.ts` / `rewardEngine.ts` / `improvementEngine.ts` / `ruleEngine.ts` | Habit CRUD/compile/complete; cue matching; never-miss-twice recovery; factual rewards; consistency/streak/automaticity; JSON rule evaluation |
+| `src/commands/types.ts` | `CommandAction` union + typed payloads (AI sandbox contract, Phase 26) |
+| `src/services/notificationService.ts` | Unified channels, priority, quiet-hours deferral, dedup/rate limits |
+| `src/utils/storage.js` | `STORAGE_VERSION="v7.0"`, versioned keys, `migrateUserDataIfNeeded`, `clearAllCaches` |
+| `src/utils/dateUtils.js` | `getLocalDateString()` central date engine |
+| `src/utils/taskMutations.js` | Authoritative task toggle/recurrence shared by app + widgets |
+| `src/utils/syncService.js` | LAN P2P sync (`performSync`) with PC companion |
+| `src/utils/fileStorage.js` / `vaultService.js` | Per-vault markdown FS (`initNotesFolder`, `getAllNotesFromFilesystem`); vault registry |
+| `src/utils/aiService.js` | llama.rn lifecycle: pinned SHA-256, memory mgmt, heuristic fallback |
+| `src/utils/logger.js` | Structured ring-buffer logger, release console stripping |
+| `widgets/widget-task-handler.tsx` | Headless widget actions reusing engines via AsyncStorage |
+| `widgets/HabitWidget.tsx` | Behavioral widget (Today/Next/Recovery touchpoint) |
+| `rulebook/manifest.json` + `machine/*.json` | Machine-readable behavior contracts consumed by `ruleEngine.ts` |
+| `app.json` / `eas.json` / `babel.config.js` / `metro.config.js` | Expo/EAS/bundler config |
+| `jest.config.js` / `__tests__/setup/jest.setup.js` | Jest + native-mock setup |
 
-**`src/commands/`:**
-- Purpose: AI command-sandbox contract — the only actions the assistant may execute, with discriminated payloads and idempotency.
-- Contains: `src/commands/types.ts` (11 `CommandAction`s: `CREATE_HABIT`, `UPDATE_HABIT`, `DELETE_HABIT`, `LOG_HABIT`, `START_RECOVERY`, `DISMISS_INTERVENTION`, `ADJUST_DIFFICULTY`, `CREATE_IDENTITY`, `PAUSE_HABIT`, `ARCHIVE_HABIT`, `RESUME_HABIT`).
+## Module Map
 
-**`src/components/`:**
-- Purpose: Shared presentational components consumed by screens, navigator, and `App.js` overlays.
-- Contains: Plain JS React components (`PascalCase.js`), one per file.
-- Key files: `src/components/AIAssistant.js` (floating AI surface), `src/components/TaskEditModal.js` (global editor, mounted in `AppNavigator`), `src/components/ErrorBoundary.js`, `src/components/TaskCard.js`, `src/components/CustomButton.js`, `src/components/CustomTextInput.js`, `src/components/CustomDateTimePicker.js`, `src/components/TimerLockoutOverlay.js`, `src/components/LiquidGlassBackground.js`, `src/components/LiquidGlassCard.js`, `src/components/QRScannerModal.js`, `src/components/CustomBadge.js`, `src/components/CustomCard.js`, `src/components/CustomSegmentedButtons.js`, `src/components/CustomSwitch.js`
+| Domain | Files |
+|---|---|
+| Habits / behavior core | `src/behavior/habitEngine.ts`, `cueEngine.ts`, `recoveryEngine.ts`, `rewardEngine.ts`, `improvementEngine.ts`, `ruleEngine.ts`, `types.ts`; `src/context/HabitContext.js`; `rulebook/atomic-habits/*`, `rulebook/rules/habit-*.md`, `rulebook/machine/habitRules.json` + `recoveryRules.json` + `rewardRules.json` |
+| Behavior events / telemetry | `src/behavior/eventBus.ts`; `BEHAVIOR_EVENTS_STORAGE_KEY` in `src/context/HabitContext.js`; `IDENTITIES/REWARDS_STORAGE_KEY` |
+| Interventions (notify/widget/in-app) | `src/behavior/interventionEngine.ts`; `src/services/notificationService.ts`; `rulebook/machine/interventionRules.json`; `rulebook/rules/reminders.md` + `widgets.md`; `widgets/HabitWidget.tsx` |
+| Widgets / headless | `widgets/*.tsx` (5 widgets); `widgets/widget-task-handler.tsx`; `App.js` widget effects + `HabitWidgetSync`; `android/app/src/` receivers |
+| Tasks | `src/context/TaskContext.js`; `src/utils/taskMutations.js`; `src/screens/TaskListScreen.js` + `DailyTasksScreen.js`; `src/components/TaskCard.js` + `TaskEditModal.js`; `widgets/TasksListWidget.tsx` + `ImportantTasksWidget.tsx` + `DailyTasksWidget.tsx` |
+| Notes / vaults | `src/context/VaultContext.js`; `src/utils/fileStorage.js` + `vaultService.js` + `vaultImport.js`; `src/screens/NotesScreen.js`; FS vault dirs per `activeVaultId` |
+| Birthdays / reminders | `src/context/BirthdayContext.js`; `src/screens/BirthdaysScreen.js`; `src/utils/notifications.js` + `billingNotifications.js`; `scheduleCustomBirthdayReminders` call sites in `App.js` |
+| Billing / finance | `src/context/BillingContext.js`; `src/utils/billingStorage.js` + `billingNotifications.js`; `src/screens/BillingScreen.js` |
+| Focus timer | `App.js` timer state/loop; `src/screens/FocusTimerScreen.js`; `src/components/TimerLockoutOverlay.js`; `widgets/FocusTimerWidget.tsx`; `FOCUS_COMPLETED` bus event |
+| Sync / export | `src/utils/syncService.js`; `src/components/QRScannerModal.js`; `src/utils/exportService.js` (AES-256 `.kwestup`); `App.js:handleExecuteSync` |
+| On-device AI | `src/utils/aiService.js`; `src/components/AIAssistant.js`; `src/commands/types.ts`; `rulebook/ai/*` (intent-parser, habit-compiler, …) |
+| Theming / UI shell | `src/theme/colors.js` + `styles.js`; `src/components/LiquidGlass*.js`, `Custom*.js`; `src/navigation/CustomDrawerContent.js`; `src/screens/DashboardScreen.js` + `SettingsScreen.js` + `SearchScreen.js` |
+| Cross-cutting | `src/utils/logger.js`; `src/components/ErrorBoundary.js`; `src/utils/diagnostics.js`; `src/utils/dateUtils.js` |
 
-**`src/context/`:**
-- Purpose: One exclusive state-owner provider per domain (state + hydration + persistence + side effects + hook).
-- Contains: `*Context.js` providers, one per domain.
-- Key files: `src/context/TaskContext.js` (sole task writer), `src/context/VaultContext.js` (vault + notes), `src/context/HabitContext.js` (habits/identities/events/rewards, own `*_v1` keys), `src/context/BillingContext.js`, `src/context/BirthdayContext.js`
+## Generated/Build Artifacts
 
-**`src/domains/`:**
-- Purpose: Reserved isolation boundary for future per-domain modules (Phase 22–28: `habits/`, `identity/`, `events/`, `interventions/`, `ai/`).
-- Contains: Currently `src/domains/README.md` only — no code yet. Do not place new engine code in `src/behavior/` when it belongs to a listed domain; create the subdomain directory.
-
-**`src/navigation/`:**
-- Purpose: Drawer routing + context/prop resolution + global modal/AI mounting.
-- Contains: `src/navigation/AppNavigator.js`, `src/navigation/CustomDrawerContent.js`
-
-**`src/screens/`:**
-- Purpose: One full-screen feature surface per drawer route; screens never import each other.
-- Contains: `*Screen.js` (9 files).
-- Key files: `src/screens/DashboardScreen.js`, `src/screens/DailyTasksScreen.js`, `src/screens/BirthdaysScreen.js`, `src/screens/TaskListScreen.js`, `src/screens/FocusTimerScreen.js`, `src/screens/NotesScreen.js` (vault explorer + editor, largest screen), `src/screens/BillingScreen.js`, `src/screens/SearchScreen.js`, `src/screens/SettingsScreen.js` (sync, reset, telemetry, diagnostics)
-
-**`src/services/`:**
-- Purpose: Unified notification + behavioral dispatch engine with policy types.
-- Contains: TypeScript only.
-- Key files: `src/services/notificationService.ts` (channels, scheduling, policy gate, history), `src/services/types.ts` (`NotificationDispatchRequest`, `BehavioralNotificationPolicy`, `DEFAULT_BEHAVIORAL_NOTIFICATION_POLICY`)
-
-**`src/theme/`:**
-- Purpose: Single theme object + global stylesheet consumed as the `currentTheme` prop.
-- Contains: `src/theme/colors.js` (`themes[name][mode]`, 5 names × `light`/`dark`/`amoled`), `src/theme/styles.js`
-
-**`src/utils/`:**
-- Purpose: Persistence, device integrations, and shared helpers (all plain JS).
-- Contains: `camelCase.js` utility modules.
-- Key files: `src/utils/storage.js` (`APP_VERSION`, `STORAGE_VERSION=v7.0`, cache clear, legacy migration), `src/utils/vaultService.js` (vault CRUD + paths), `src/utils/fileStorage.js` (markdown FS ops + hashtag extraction), `src/utils/taskMutations.js` (pure task engine shared with widgets), `src/utils/aiService.js` (`llama.rn` lifecycle + heuristic fallbacks), `src/utils/syncService.js` (LAN sync), `src/utils/billingStorage.js`, `src/utils/billingNotifications.js`, `src/utils/notifications.js` (legacy helpers), `src/utils/dateUtils.js` (local wall-clock dates — always use these), `src/utils/logger.js` (central logger), `src/utils/diagnostics.js`, `src/utils/exportService.js`, `src/utils/vaultImport.js`
-
-**`widgets/`:**
-- Purpose: Android home-screen widgets + headless tap handler (runs with the app killed).
-- Contains: `PascalCaseWidget.tsx` renders + handler.
-- Key files: `widgets/widget-task-handler.tsx`, `widgets/FocusTimerWidget.tsx`, `widgets/DailyTasksWidget.tsx`, `widgets/ImportantTasksWidget.tsx`, `widgets/TasksListWidget.tsx`
-
-**`rulebook/`:**
-- Purpose: Human/machine-readable 4.0 behaviour specification that the engines implement.
-- Contains: `rulebook/atomic-habits/*.md` (22 habit-loop concept docs), `rulebook/machine/*.json` (`habitRules.json`, `recoveryRules.json`, `rewardRules.json`, `rules.json`, `interventionRules.json`), `rulebook/rules/`, `rulebook/ai/`, `rulebook/manifest.json`, `rulebook/README.md`, `rulebook/CHANGELOG.md`
-
-**`__tests__/`:**
-- Purpose: Jest suites mirroring `src` layers.
-- Contains: `__tests__/unit/*.test.{js,ts}` (17 files: `aiService`, `aiAssistant-smoke`, `behaviorRuleEngine`, `dateUtils`, `domainEventInstrumentation`, `errorBoundary`, `eventBus`, `exportImportService`, `habitContext`, `logger`, `notificationService`, `storageMigration`, `syncService`, `taskContext`, `taskMutations`, `vaultAndFileStorage`), `__tests__/setup/jest.setup.js`, `__tests__/phase12-widget-logic.test.js`
-
-## Key File Locations
-
-**Entry Points:**
-- `index.js`: Expo registration (`registerRootComponent(App)` + `registerWidgetTaskHandler`).
-- `App.js`: Root component (~1088 lines) — boot, providers, timer, widgets, dialogs.
-- `widgets/widget-task-handler.tsx`: Headless widget entry (native host callbacks).
-- `android/app/build.gradle` + `app.json`: Native package/widget/plugin wiring.
-
-**Configuration:**
-- `package.json`: Deps (Expo ~57, React 19, RN 0.86, `llama.rn` 0.12.4, drawer/gesture/paper/reanimated, AsyncStorage), scripts (`start`, `android`, `ios`, `lint`, `typecheck`, `test`, `postinstall`).
-- `app.json`: App id/slug/version, `llama.rn` + camera + build-properties + `react-native-android-widget` plugins, 4 widget specs, EAS project id.
-- `eas.json`: EAS build profiles.
-- `tsconfig.json`: TS for `src/behavior`, `src/commands`, `src/services`, `widgets`.
-- `babel.config.js`, `metro.config.js`: Bundler config.
-- `jest.config.js` (+ `__tests__/setup/jest.setup.js`): `jest-expo` preset, test match, setup.
-- `eslint.config.js` (+ legacy `.eslintrc.js`): Lint rules.
-- `patch-llama-gradle.js`: Postinstall native patch (do not delete; `postinstall` runs it).
-- `.npmrc`: Registry auth scoping (existence only — never read contents).
-
-**Core Logic:**
-- Task writes: `src/context/TaskContext.js` → `src/utils/taskMutations.js`
-- Habit intelligence: `src/behavior/*.ts` + `src/context/HabitContext.js` + `rulebook/machine/*.json`
-- AI: `src/utils/aiService.js` + `src/components/AIAssistant.js`
-- Notifications: `src/services/notificationService.ts` + `src/services/types.ts`
-- Notes at rest: `src/utils/fileStorage.js` + `src/utils/vaultService.js`
-- Sync: `src/utils/syncService.js` (called from `App.js:740`)
-
-**Testing:**
-- `jest.config.js`: Runner config.
-- `__tests__/unit/`: Per-module suites.
-- `__tests__/phase12-widget-logic.test.js`: Widget mutation logic suite.
-- `coverage/`: Generated coverage output.
-
-## Naming Conventions
-
-**Files:**
-- Screens: `PascalCase` + `Screen` suffix — e.g. `src/screens/DailyTasksScreen.js`, `src/screens/TaskListScreen.js`
-- Shared UI: `PascalCase.js` matching the exported component — e.g. `src/components/TaskEditModal.js`, `src/components/LiquidGlassCard.js`
-- Contexts: `PascalCase` domain + `Context` suffix — e.g. `src/context/TaskContext.js`, `src/context/HabitContext.js`
-- Behavior/services/commands: `camelCase.ts` (+ `types.ts` per boundary) — e.g. `src/behavior/habitEngine.ts`, `src/behavior/eventBus.ts`, `src/services/notificationService.ts`, `src/commands/types.ts`
-- Utils: `camelCase.js` verb/noun helpers — e.g. `src/utils/taskMutations.js`, `src/utils/fileStorage.js`, `src/utils/dateUtils.js`
-- Widgets: `PascalCase` + `Widget` suffix (`.tsx`), handler as `widget-task-handler.tsx` — e.g. `widgets/TasksListWidget.tsx`
-- Tests: `<module>.test.{js,ts}` mirroring source names — e.g. `__tests__/unit/taskMutations.test.js`, `__tests__/unit/eventBus.test.ts`
-- Rulebook machine rules: `camelRules.json` — e.g. `rulebook/machine/habitRules.json`
-- Storage keys: `kwestup_<domain>_<STORAGE_VERSION>` — e.g. `` `kwestup_data_v7.0` ``, `kwestup_habits_v1` (see `src/utils/storage.js`, `src/context/HabitContext.js`)
-
-**Directories:**
-- Lowercase singular/plural nouns: `src/behavior`, `src/commands`, `src/components`, `src/context`, `src/domains`, `src/navigation`, `src/screens`, `src/services`, `src/theme`, `src/utils`, `widgets`, `rulebook`, `assets`, `__tests__`.
-- Vault content on device: `Notes/Vaults/<vaultId>/` with `<Folder>/<Title>.md` files (sanitised, see `src/utils/fileStorage.js:33`).
-
-## Where to Add New Code
-
-**New Feature:**
-- Primary code: New screen in `src/screens/<Name>Screen.js` + route entry in `src/navigation/AppNavigator.js` (copy an existing `Drawer.Screen` block, `src/navigation/AppNavigator.js:221`).
-- State: New or extended provider in `src/context/` (one owner per domain — never split a domain across two providers).
-- Tests: `__tests__/unit/<name>.test.js`
-
-**New Component/Module:**
-- Implementation: `src/components/<PascalCase>.js` for UI (export the named component, import by name as in `App.js:32`); pure logic goes in `src/utils/<camelCase>.js` (JS) or `src/behavior/<camelEngine>.ts` (4.0 deterministic logic).
-- 4.0 domain module: Create `src/domains/<domain>/` per `src/domains/README.md` (isolated state/mutations/service calls; cross-domain via `eventBus` event types in `src/behavior/types.ts` — never direct imports).
-- AI command: Extend `CommandAction` + `CommandPayload` in `src/commands/types.ts`, implement handling in `src/utils/aiService.js` / `src/components/AIAssistant.js`, bridge creation through `AppNavigator`'s `on*Created` callbacks.
-
-**Utilities:**
-- Shared helpers: `src/utils/` — dates via `src/utils/dateUtils.js` (never raw `new Date` formatting), logging via `src/utils/logger.js` (never `console`), storage keys versioned per `src/utils/storage.js`.
-- Notification scheduling: Add functions in `src/services/notificationService.ts` using the `NotificationDispatchRequest` contract in `src/services/types.ts`; respect the behavioral policy gate.
-- Widget surface: New `widgets/<Name>Widget.tsx` + `nameToWidget` entry + render branch in `widgets/widget-task-handler.tsx` + declaration in the `react-native-android-widget` plugin block in `app.json`; reuse `src/utils/taskMutations.js` — never import contexts or screens (separate JS env, storage-only coupling).
-
-## Special Directories
-
-**`android/`:**
-- Purpose: Expo prebuild native output (gradle project, manifests, widget host wiring).
-- Generated: Yes (via `expo prebuild` / `expo run:android`).
-- Committed: Yes (includes `android/` + `android/app` + gradle wrapper).
-
-**`assets/` (+ `assets/widget-preview/`):**
-- Purpose: App icon, splash, favicon, widget preview images referenced by `app.json`.
-- Generated: No.
-- Committed: Yes.
-
-**`rulebook/` + `4.0/`:**
-- Purpose: Normative 4.0 behaviour spec (`4.0/KwestUp_4.0_Master_Plan.md` is the design source cited at the top of every `src/behavior/*.ts` file); engines must cite the section they implement.
-- Generated: No.
-- Committed: Yes.
-
-**`__tests__/`:**
-- Purpose: Jest suites + setup; run with `npm test` (`jest`), watch with `npm run test:watch`, coverage with `npm run test:coverage`.
-- Generated: No (only `coverage/` output is generated).
-- Committed: Yes (suites); `coverage/` is generated output.
-
-**`coverage/`, `build/`:**
-- Purpose: Generated Jest coverage report and local build artifacts.
-- Generated: Yes.
-- Committed: No (build outputs; do not place source here).
-
-**`.planning/`:**
-- Purpose: GSD planning state, roadmaps, phase artefacts, and this codebase map (`.planning/codebase/`).
-- Generated: No (working docs).
-- Committed: Yes (planning history).
+| Path | Ignore? | Notes |
+|---|---|---|
+| `node_modules/` | Yes — never edit | Restored via `npm ci` (Node ≥22.13) |
+| `android/build/`, `android/app/build/`, `build/` | Yes — never edit/commit | Gradle + EAS outputs; see `.gitignore` |
+| `coverage/` | Yes | Jest `--coverage` output |
+| `*.kwestup` exports | Yes (user data) | Encrypted backups produced by `exportService.js` |
+| `expo/` caches, `.expo/` | Yes | `expo start -c` clears |
+| `eslint-report.json` | Yes | `npm run lint:report` output, gitignored |
+| `android/app/debug.keystore` | Committed debug key only | Do not replace with release keys |
+| `patch-llama-gradle.js` output | N/A | `postinstall` patch; edit the script, not patched Gradle files |
+| `src/domains/` contents (when scaffolded) | No — source | Currently README-only; future per-domain modules live here |
 
 ---
-
 *Structure analysis: 2026-10-11*
