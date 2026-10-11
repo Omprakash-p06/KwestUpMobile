@@ -92,7 +92,11 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
   if (props.widgetAction === 'WIDGET_CLICK') {
     // 1. SWITCH_TAB action
     if (props.clickAction === 'SWITCH_TAB' && props.clickActionData?.tab) {
-      const targetTab = props.clickActionData.tab as 'tasks' | 'daily' | 'timer' | 'all' | 'persistent';
+      const rawTab = props.clickActionData.tab as string;
+      if (rawTab !== 'all' && rawTab !== 'persistent') {
+        logger.warn('[WidgetTaskHandler] Ignoring invalid tab value:', rawTab);
+      } else {
+      const targetTab = rawTab as 'all' | 'persistent';
       try {
         const tabKey = `kwestup_widget_tab_${widgetId}`;
         await Promise.all([
@@ -112,6 +116,7 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
         logger.info('[WidgetTaskHandler] Tab switched to:', targetTab);
       } catch (err) {
         logger.warn('[WidgetTaskHandler] Failed to save active tab:', err);
+      }
       }
     }
 
