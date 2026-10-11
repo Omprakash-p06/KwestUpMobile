@@ -515,8 +515,8 @@ Per workspace standard `GEMINI.md`, **all phase planning (`gsd-plan-phase`) must
 
 **Plans**:
 
-- [ ] 27-01-PLAN.md — Specialist Intent Parser module and offline heuristic fallback
-- [ ] 27-02-PLAN.md — Deterministic Behavior Compiler and llama.rn memory lifecycle management
+- [x] 27-01-PLAN.md — Specialist Intent Parser module and offline heuristic fallback ✅
+- [x] 27-02-PLAN.md — Deterministic Behavior Compiler and command execution bridge ✅
 
 ---
 

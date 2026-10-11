@@ -33,6 +33,11 @@ function sanitizeObject(obj: Record<string, unknown>): Record<string, unknown> {
   const clean: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(obj)) {
+    // 0. Skip undefined values (standard JSON serialization behavior)
+    if (value === undefined) {
+      continue;
+    }
+
     // 1. Prototype pollution defense
     if (PROHIBITED_KEYS.has(key.toLowerCase())) {
       continue;
