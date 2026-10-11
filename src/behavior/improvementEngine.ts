@@ -77,7 +77,7 @@ export function calculateCurrentStreak(
   let streak = 0;
   let offset = completedToday ? 0 : 1;
 
-  while (true) {
+  while (offset < 3650) {
     const targetDate = new Date(baseDate.getTime());
     targetDate.setDate(targetDate.getDate() - offset);
     const dateKey = getLocalDateString(targetDate);

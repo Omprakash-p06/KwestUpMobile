@@ -334,6 +334,9 @@ describe('HabitContext & Isolated Persistence Unit Tests', () => {
         },
       ];
 
+      const eventsEmitted = [];
+      eventBus.subscribeAll((evt) => eventsEmitted.push(evt));
+
       await act(async () => {
         currentRoot = renderer.create(
           <HabitProvider initialHabits={initialHabits}>
@@ -346,11 +349,162 @@ describe('HabitContext & Isolated Persistence Unit Tests', () => {
         contextValue.updateHabit('h_test', { title: 'Edited Title' });
       });
       expect(contextValue.habits[0].title).toBe('Edited Title');
+      expect(eventsEmitted.some((e) => e.type === 'HABIT_UPDATED')).toBe(true);
 
       await act(async () => {
         contextValue.deleteHabit('h_test');
       });
       expect(contextValue.habits).toHaveLength(0);
+      expect(eventsEmitted.some((e) => e.type === 'HABIT_DELETED')).toBe(true);
+    });
+
+    it('completeHabit is idempotent on the same calendar day without duplicate events or rewards', async () => {
+      const initialHabits = [
+        {
+          id: 'h_idem',
+          identityId: 'id_idem',
+          title: 'Hydration',
+          behavior: 'Drink 2L water',
+          frequency: 'daily',
+          status: 'active',
+          minimumAction: 'Drink 1 glass',
+          normalTarget: 'Drink 2L water',
+          streakCount: 0,
+          bestStreak: 0,
+          totalEvidenceVotes: 0,
+          createdAt: '2026-10-01T10:00:00.000Z',
+          updatedAt: '2026-10-01T10:00:00.000Z',
+        },
+      ];
+
+      const eventsEmitted = [];
+      eventBus.subscribe('HABIT_COMPLETED', (evt) => eventsEmitted.push(evt));
+
+      await act(async () => {
+        currentRoot = renderer.create(
+          <HabitProvider initialHabits={initialHabits}>
+            <TestHabitConsumer />
+          </HabitProvider>
+        );
+      });
+
+      // First completion today
+      let firstResult;
+      await act(async () => {
+        firstResult = contextValue.completeHabit('h_idem', {
+          now: '2026-10-11T09:00:00.000Z',
+          todayDate: '2026-10-11',
+        });
+      });
+
+      expect(firstResult.completedToday).toBe(true);
+      expect(firstResult.updatedHabit.streakCount).toBe(1);
+      expect(eventsEmitted).toHaveLength(1);
+      expect(contextValue.rewards).toHaveLength(1);
+
+      // Second completion on the exact same day
+      let secondResult;
+      await act(async () => {
+        secondResult = contextValue.completeHabit('h_idem', {
+          now: '2026-10-11T14:00:00.000Z',
+          todayDate: '2026-10-11',
+        });
+      });
+
+      // Must be idempotent
+      expect(secondResult.completedToday).toBe(false);
+      expect(secondResult.rewards).toHaveLength(0);
+      expect(eventsEmitted).toHaveLength(1); // No second event emitted
+      expect(contextValue.rewards).toHaveLength(1); // No duplicate reward granted
+    });
+
+    it('createHabit populates identities state and rejects empty behavior input', async () => {
+      await act(async () => {
+        currentRoot = renderer.create(
+          <HabitProvider>
+            <TestHabitConsumer />
+          </HabitProvider>
+        );
+      });
+
+      // Empty behavior string must be rejected
+      expect(() => {
+        contextValue.createHabit({ behavior: '   ' });
+      }).toThrow('Behavior description cannot be empty');
+
+      // Valid habit with custom identity statement
+      let created;
+      await act(async () => {
+        created = contextValue.createHabit({
+          behavior: 'Meditation',
+          identity: 'mindful meditator',
+        });
+      });
+
+      expect(created.habit).toBeDefined();
+      expect(contextValue.identities).toHaveLength(1);
+      expect(contextValue.identities[0].statement).toBe('mindful meditator');
+      expect(contextValue.identities[0].id).toBe(created.habit.identityId);
+    });
+
+    it('missHabit deduplicates multiple miss calls on the same calendar day', async () => {
+      const initialHabits = [
+        {
+          id: 'h_miss_same_day',
+          identityId: 'id_miss',
+          title: 'Stretch',
+          behavior: 'Stretch 15m',
+          frequency: 'daily',
+          status: 'active',
+          minimumAction: 'Stretch 1m',
+          normalTarget: 'Stretch 15m',
+          streakCount: 3,
+          bestStreak: 5,
+          totalEvidenceVotes: 10,
+          createdAt: '2026-10-01T10:00:00.000Z',
+          updatedAt: '2026-10-01T10:00:00.000Z',
+        },
+      ];
+
+      await act(async () => {
+        currentRoot = renderer.create(
+          <HabitProvider initialHabits={initialHabits}>
+            <TestHabitConsumer />
+          </HabitProvider>
+        );
+      });
+
+      // First miss today (2026-10-11)
+      let miss1;
+      await act(async () => {
+        miss1 = contextValue.missHabit('h_miss_same_day', {
+          now: '2026-10-11T10:00:00.000Z',
+          todayDate: '2026-10-11',
+        });
+      });
+      expect(miss1.triggerFrictionReview).toBe(false);
+
+      // Second miss on the same date (2026-10-11)
+      let miss2;
+      await act(async () => {
+        miss2 = contextValue.missHabit('h_miss_same_day', {
+          now: '2026-10-11T18:00:00.000Z',
+          todayDate: '2026-10-11',
+        });
+      });
+      // Should remain 1 consecutive missed calendar day (not trigger friction review)
+      expect(miss2.triggerFrictionReview).toBe(false);
+
+      // Miss on a NEXT distinct date (2026-10-12)
+      let miss3;
+      await act(async () => {
+        miss3 = contextValue.missHabit('h_miss_same_day', {
+          now: '2026-10-12T10:00:00.000Z',
+          todayDate: '2026-10-12',
+        });
+      });
+      // Now 2 consecutive distinct missed days -> triggers friction review!
+      expect(miss3.triggerFrictionReview).toBe(true);
     });
   });
 

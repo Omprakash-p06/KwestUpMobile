@@ -102,8 +102,16 @@ export function compileHabitPlan(
   const allRules = loadMachineRules('habit');
   const rulesAppliedSet = new Set<string>();
 
+  if (!input.behavior || input.behavior.trim().length === 0) {
+    return {
+      valid: false,
+      reason: 'Behavior description cannot be empty.',
+      rulesApplied: [],
+    };
+  }
+
   // 1. Check concurrent cap
-  const creationCheck = validateHabitCreation({}, activeHabits);
+  const creationCheck = validateHabitCreation(input, activeHabits);
   creationCheck.rulesApplied.forEach((r) => rulesAppliedSet.add(r));
 
   if (!creationCheck.valid) {
@@ -222,7 +230,7 @@ export function completeHabit(
  * Evaluates a difficulty progression upgrade against the 80% 14-day gate (HABIT_PROGRESSION_001)
  */
 export function evaluateProgression(
-  _habit: Habit,
+  habit: Habit,
   rolling14DayConsistency: number
 ): { allowed: boolean; reason?: string; rulesApplied: string[] } {
   const rules = loadMachineRules('habit');
@@ -230,6 +238,8 @@ export function evaluateProgression(
     action: 'ADJUST_DIFFICULTY',
     direction: 'harder',
     rolling14DayConsistency,
+    'habit.id': habit.id,
+    'habit.status': habit.status,
   });
 
   if (result.rejected) {

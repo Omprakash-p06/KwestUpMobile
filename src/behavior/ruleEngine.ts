@@ -20,13 +20,18 @@ export type RuleCategory = 'habit' | 'recovery' | 'reward' | 'intervention' | 's
  */
 export function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
   if (!obj || typeof obj !== 'object') return undefined;
-  if (path in obj) return obj[path];
+  if (Object.prototype.hasOwnProperty.call(obj, path)) return obj[path];
 
   const parts = path.split('.');
   let current: unknown = obj;
 
   for (const part of parts) {
-    if (current === null || current === undefined || typeof current !== 'object') {
+    if (
+      current === null ||
+      current === undefined ||
+      typeof current !== 'object' ||
+      !Object.prototype.hasOwnProperty.call(current, part)
+    ) {
       return undefined;
     }
     current = (current as Record<string, unknown>)[part];

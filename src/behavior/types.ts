@@ -106,10 +106,11 @@ export type BehaviorEventType =
   | 'FOCUS_COMPLETED'
   // Home-screen Widget lifecycle
   | 'WIDGET_ACTION'
-  // Habit & Behavioral lifecycle (Phase 24 readiness)
+  // Habit & Behavioral lifecycle
   | 'HABIT_CREATED'
   | 'HABIT_UPDATED'
   | 'HABIT_COMPLETED'
+  | 'HABIT_DELETED'
   | 'HABIT_MISSED'
   | 'RECOVERY_STARTED'
   | 'REMINDER_DISMISSED'

@@ -230,6 +230,20 @@ export const HabitProvider = ({
         updatedAt: now,
       };
 
+      const identityStatement = compilation.plan.identity.statement;
+      setIdentities((prev) => {
+        if (prev.some((i) => i.id === identityId)) return prev;
+        return [
+          {
+            id: identityId,
+            statement: identityStatement,
+            createdAt: now,
+            updatedAt: now,
+          },
+          ...prev,
+        ];
+      });
+
       setHabits((prev) => [newHabit, ...prev]);
 
       const event = {
@@ -258,35 +272,28 @@ export const HabitProvider = ({
    */
   const updateHabit = useCallback(
     (id, patch) => {
-      let updatedHabit = null;
+      const targetHabit = habits.find((h) => h.id === id);
+      if (!targetHabit) return null;
+
       const now = new Date().toISOString();
+      const updatedHabit = { ...targetHabit, ...patch, updatedAt: now };
 
-      setHabits((prev) =>
-        prev.map((h) => {
-          if (h.id === id) {
-            updatedHabit = { ...h, ...patch, updatedAt: now };
-            return updatedHabit;
-          }
-          return h;
-        })
-      );
+      setHabits((prev) => prev.map((h) => (h.id === id ? updatedHabit : h)));
 
-      if (updatedHabit) {
-        const event = {
-          id: generateEntityId('bevt'),
-          type: 'HABIT_UPDATED',
-          entityId: id,
-          timestamp: now,
-          source: 'app',
-          payload: { habitId: id, patch },
-        };
-        appendBehaviorEvent(event);
-        eventBus.emit(event);
-      }
+      const event = {
+        id: generateEntityId('bevt'),
+        type: 'HABIT_UPDATED',
+        entityId: id,
+        timestamp: now,
+        source: 'app',
+        payload: { habitId: id, patch },
+      };
+      appendBehaviorEvent(event);
+      eventBus.emit(event);
 
       return updatedHabit;
     },
-    [appendBehaviorEvent]
+    [habits, appendBehaviorEvent]
   );
 
   /**
@@ -294,11 +301,14 @@ export const HabitProvider = ({
    */
   const deleteHabit = useCallback(
     (id) => {
+      const exists = habits.some((h) => h.id === id);
+      if (!exists) return;
+
       setHabits((prev) => prev.filter((h) => h.id !== id));
       const now = new Date().toISOString();
       const event = {
         id: generateEntityId('bevt'),
-        type: 'HABIT_UPDATED',
+        type: 'HABIT_DELETED',
         entityId: id,
         timestamp: now,
         source: 'app',
@@ -307,7 +317,7 @@ export const HabitProvider = ({
       appendBehaviorEvent(event);
       eventBus.emit(event);
     },
-    [appendBehaviorEvent]
+    [habits, appendBehaviorEvent]
   );
 
   /**
@@ -329,6 +339,15 @@ export const HabitProvider = ({
 
       // 1. Complete session via pure engine
       const completionResult = completeHabitEngine(habit, options);
+      if (!completionResult.completedToday) {
+        return {
+          updatedHabit: habit,
+          rewards: [],
+          completedToday: false,
+          rulesApplied: [],
+        };
+      }
+
       let updated = completionResult.updatedHabit;
       const rulesApplied = [...completionResult.rulesApplied];
 
@@ -401,16 +420,25 @@ export const HabitProvider = ({
         throw new Error(`Habit with ID ${id} not found`);
       }
 
-      // Determine consecutive misses
+      const todayStr = options.todayDate || getLocalDateString(options.now);
+
+      // Determine consecutive missed distinct calendar days
       const recentMisses = behaviorEvents
         .slice()
         .reverse()
         .filter((e) => e.entityId === id && (e.type === 'HABIT_MISSED' || e.type === 'HABIT_COMPLETED'));
 
+      const distinctMissDates = new Set();
+      if (todayStr) distinctMissDates.add(todayStr);
+
       let consecutiveMisses = 1;
       for (const evt of recentMisses) {
         if (evt.type === 'HABIT_MISSED') {
-          consecutiveMisses++;
+          const missDate = getLocalDateString(evt.timestamp);
+          if (missDate && !distinctMissDates.has(missDate)) {
+            distinctMissDates.add(missDate);
+            consecutiveMisses++;
+          }
         } else {
           break;
         }
