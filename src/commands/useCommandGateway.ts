@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useCallback } from 'react';
+import { generateId } from "../utils/generateId";
 import { useHabits } from '../context/HabitContext';
 import {
   CommandAction,
@@ -44,7 +45,7 @@ export function useCommandGateway() {
     ): Promise<CommandExecutionResult> => {
       const idempotencyKey =
         options.idempotencyKey ||
-        `cmd_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+        `cmd_${generateId()}`;
 
       const command: DispatchedCommand<A> = {
         action,

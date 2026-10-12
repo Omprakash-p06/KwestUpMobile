@@ -11,6 +11,7 @@
  */
 
 import { ExtractedIntent, CompilationResult, CompilerOptions } from './types';
+import { generateId } from "../utils/generateId";
 import { Habit, Cue } from '../behavior/types';
 import {
   compileHabitPlan,
@@ -198,7 +199,7 @@ export function compileIntentToCommand(
     intent.rulesRetrieved.forEach((r) => rulesAppliedSet.add(r));
   }
 
-  const idempotencyKey = `cmd_comp_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  const idempotencyKey = `cmd_comp_${generateId()}`;
 
   switch (intent.action) {
     case 'CREATE_HABIT': {

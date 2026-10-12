@@ -18,6 +18,11 @@ import { validateCommand } from './commandValidator';
 import { eventBus } from '../behavior/eventBus';
 import { logger } from '../utils/logger';
 import { loadMachineRules, evaluateRules } from '../behavior/ruleEngine';
+import {
+  readIdempotencyRecord,
+  writeIdempotencyRecord,
+  resetDurableIdempotencyCacheSync,
+} from './idempotencyStore';
 
 export const MAX_IDEMPOTENCY_CACHE_SIZE = 200;
 export const IDEMPOTENCY_TTL_MS = 15 * 60 * 1000; // 15 minutes
@@ -66,6 +71,9 @@ export function clearCommandHandlers(): void {
  */
 export function clearIdempotencyCache(): void {
   idempotencyCache.clear();
+  // Also reset the durable layer so a replayed key cannot leak across sessions
+  // and unit tests start from a clean slate.
+  resetDurableIdempotencyCacheSync();
 }
 
 /**
@@ -150,29 +158,45 @@ export async function executeCommand<A extends CommandAction = CommandAction>(
   }
 
   // 2. Idempotency Check (SYS_IDEMPOTENT_COMMAND_001)
-  const cached = idempotencyCache.get(command.idempotencyKey);
   const now = Date.now();
+  const cached = idempotencyCache.get(command.idempotencyKey);
+  let replayResult: CommandExecutionResult | undefined;
+
   if (cached) {
     if (now - cached.timestamp <= IDEMPOTENCY_TTL_MS) {
-      const systemRules = loadMachineRules('system');
-      const evalResult = evaluateRules(systemRules, {
-        command: 'DISPATCH',
-        isDuplicateKey: true,
-      });
-      const rulesApplied = Array.from(
-        new Set([
-          ...(cached.result.rulesApplied || []),
-          ...evalResult.rulesApplied,
-          'SYS_IDEMPOTENT_COMMAND_001',
-        ])
-      );
-      return {
-        ...cached.result,
-        rulesApplied,
-      };
+      replayResult = cached.result;
     } else {
       idempotencyCache.delete(command.idempotencyKey);
     }
+  }
+
+  // Durable fallback: the in-memory cache is lost on process restart, so a
+  // replay after a cold start would otherwise execute the command twice.
+  if (!replayResult) {
+    const durableResult = await readIdempotencyRecord(command.idempotencyKey, now);
+    if (durableResult) {
+      replayResult = durableResult;
+      setInCache(command.idempotencyKey, durableResult);
+    }
+  }
+
+  if (replayResult) {
+    const systemRules = loadMachineRules('system');
+    const evalResult = evaluateRules(systemRules, {
+      command: 'DISPATCH',
+      isDuplicateKey: true,
+    });
+    const rulesApplied = Array.from(
+      new Set([
+        ...(replayResult.rulesApplied || []),
+        ...evalResult.rulesApplied,
+        'SYS_IDEMPOTENT_COMMAND_001',
+      ])
+    );
+    return {
+      ...replayResult,
+      rulesApplied,
+    };
   }
 
   // 3. Handler Resolution
@@ -209,8 +233,15 @@ export async function executeCommand<A extends CommandAction = CommandAction>(
       rulesApplied,
     };
 
-    // Cache successful execution result
+    // Cache successful execution result (in-memory + durable). Durable writes
+    // are awaited so a crash immediately after this point cannot replay the
+    // command on the next launch.
     setInCache(command.idempotencyKey, executionResult);
+    try {
+      await writeIdempotencyRecord(command.idempotencyKey, executionResult);
+    } catch (persistErr) {
+      logger.warn('Failed to persist durable idempotency record:', persistErr);
+    }
 
     // Emit domain event for command execution telemetry
     try {

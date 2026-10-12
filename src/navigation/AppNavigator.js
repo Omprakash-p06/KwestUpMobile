@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { generateId } from "../utils/generateId";
 import { useWindowDimensions, View } from "react-native";
 import { AIAssistant } from "../components/AIAssistant";
 import { TaskEditModal } from "../components/TaskEditModal";
@@ -138,7 +139,7 @@ export const AppNavigator = ({
       return;
     }
     const newBday = {
-      id: Date.now().toString(),
+      id: generateId(),
       name: birthdayData.name,
       birthDate: birthdayData.date,
       remindAtTime: "09:00",
@@ -165,7 +166,7 @@ export const AppNavigator = ({
     }
     const { addTransaction } = await import("../utils/billingStorage");
     const newTx = {
-      id: Date.now().toString(),
+      id: generateId(),
       type: txData.transactionType,
       amount: txData.amount,
       category: txData.category,

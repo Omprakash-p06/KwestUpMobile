@@ -27,9 +27,18 @@ module.exports = {
     '!src/**/*.styles.js',
     '!**/node_modules/**',
   ],
-  // CR-09 partial: no global coverageThreshold yet — current coverage is
-  // ~28% lines / ~17% functions (26 suites, 358 tests passing 2026-10-01),
-  // so a 70% gate would red CI. Raise toward §24 targets (70/90/95) as
-  // Phase 22/24 engine suites land. CI still collects --coverage for tracking.
+  // CR-09: ratchet gate. The floor is set just below the current measured
+  // coverage (statements 49.6% / branches 40.8% / functions 37.2% / lines
+  // 52.9% across 30 suites, 457 tests on 2026-10-12) so coverage cannot
+  // silently regress. Raise toward the §24 targets (70/90/95) as engine
+  // suites land; do not lower these numbers.
+  coverageThreshold: {
+    global: {
+      statements: 47,
+      branches: 38,
+      functions: 35,
+      lines: 50,
+    },
+  },
   watchPlugins: [],
 };

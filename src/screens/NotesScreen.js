@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { generateId } from "../utils/generateId";
 import {
   View,
   Text,
@@ -1258,7 +1259,7 @@ export const NotesScreen = ({
           onTasksExtracted={(extractedTaskTitles) => {
             if (!setTasks) return;
             const newTasks = extractedTaskTitles.map((title) => ({
-              id: Date.now().toString() + Math.random().toString(36).slice(2),
+              id: generateId(),
               title,
               listId: "default_inbox",
               completed: false,

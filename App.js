@@ -65,8 +65,6 @@ import { getLocalDateString, getYesterdayLocalDateString } from './src/utils/dat
 import { subscribeAppState, unsubscribeAppState } from "./src/utils/aiService";
 import { eventBus } from "./src/behavior/eventBus";
 
-// Configuration
-const FORCE_CLEAR_ALL_STORAGE = false;
 
 const VALID_THEME_MODES = ["light", "dark", "amoled"];
 const VALID_THEME_NAMES = ["clean", "blue", "green", "purple", "dribbble"];
@@ -222,9 +220,7 @@ const App = () => {
       const backgroundInit = async () => {
         try {
           await migrateToVaultSystem();
-          if (FORCE_CLEAR_ALL_STORAGE) {
-            await clearAllCaches();
-          } else if (lastVersion !== APP_VERSION) {
+          if (lastVersion !== APP_VERSION) {
             logger.info("🔄 Version change detected, clearing caches...");
             await clearAllCaches();
           }

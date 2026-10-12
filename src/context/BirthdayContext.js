@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { generateId } from "../utils/generateId";
 import {
   scheduleBirthdayReminders,
   cancelNotification,
@@ -37,7 +38,7 @@ export const BirthdayProvider = ({
       }
     }
 
-    const newId = birthdayData.id || Date.now().toString();
+    const newId = birthdayData.id || generateId();
     const bdayToSchedule = { ...birthdayData, id: newId };
     let notificationIds = [];
     try {

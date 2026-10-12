@@ -9,6 +9,7 @@
  */
 
 import { CommandAction, CommandExecutionResult, DispatchedCommand } from './types';
+import { generateId } from "../utils/generateId";
 import { executeCommand } from './commandExecutor';
 import { logger } from '../utils/logger';
 
@@ -172,7 +173,7 @@ export async function executeAiCommand(
     options.idempotencyKey ||
     (typeof parsed.idempotencyKey === 'string' && parsed.idempotencyKey.trim().length >= 4
       ? parsed.idempotencyKey
-      : `cmd_ai_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`);
+      : `cmd_ai_${generateId()}`);
 
   // Destructive Action Confirmation Gate
   if (DESTRUCTIVE_ACTIONS.includes(action) && !isConfirmed) {

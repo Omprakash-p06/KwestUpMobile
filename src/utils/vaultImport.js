@@ -1,4 +1,5 @@
 import * as DocumentPicker from "expo-document-picker";
+import { generateId } from "./generateId";
 import * as FileSystem from "expo-file-system";
 import { createVault } from "./vaultService";
 import { logger } from "./logger";
@@ -73,12 +74,12 @@ export const importMDFilesAsVault = async (vaultName) => {
       });
 
       // Sanitize filename: remove path separators, keep original name
-      const rawName = file.name || `note_${Date.now()}_${(nameCounter += 1)}_${Math.floor(Math.random() * 1e6)}.md`;
+      const rawName = file.name || `note_${generateId()}_${(nameCounter += 1)}.md`;
       const safeName = rawName
         .replace(/[/\\?%*:|"<>]/g, "_")
         .replace(/[\x00-\x1f\x7f]/g, "_")
         .replace(/^\.+$/, "_")
-        .slice(0, 128) || `note_${Date.now()}_${(nameCounter += 1)}.md`;
+        .slice(0, 128) || `note_${generateId()}_${(nameCounter += 1)}.md`;
 
       let destPath = `${vaultBase}${safeName}`;
       // Never overwrite on collision — append (1), (2), ... suffix

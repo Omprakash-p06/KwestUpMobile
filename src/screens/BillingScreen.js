@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from "react";
+import { generateId } from "../utils/generateId";
 import {
   ScrollView, View, Text, TouchableOpacity, Modal,
   StyleSheet, KeyboardAvoidingView, Platform,
@@ -147,7 +148,7 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
     const amt = parseFloat(txAmount);
     if (!txAmount || isNaN(amt) || amt <= 0) return;
     const newTx = {
-      id: Date.now().toString(),
+      id: generateId(),
       type: txType,
       amount: amt,
       category: txCategory,
@@ -184,7 +185,7 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
     const lim = parseFloat(budgetLimit);
     if (!budgetLimit || isNaN(lim) || lim <= 0) return;
     const newBudget = {
-      id: Date.now().toString(),
+      id: generateId(),
       category: budgetCategory,
       limit: lim,
       period: "monthly",
@@ -209,7 +210,7 @@ export const BillingScreen = ({ billingData, setBillingData, currentTheme, showC
     const notifyDays = parseInt(billNotifyDays, 10);
     if (!billName.trim() || isNaN(amt) || amt <= 0 || isNaN(dueDay) || dueDay < 1 || dueDay > 31) return;
     const newBill = {
-      id: Date.now().toString(),
+      id: generateId(),
       name: billName.trim(),
       amount: amt,
       category: billCategory,

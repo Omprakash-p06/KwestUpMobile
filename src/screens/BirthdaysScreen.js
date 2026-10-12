@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { generateId } from "../utils/generateId";
 import { ScrollView, View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { CustomDatePickerModal, CustomTimePickerModal } from "../components/CustomDateTimePicker";
@@ -50,7 +51,7 @@ export const BirthdaysScreen = ({
       const timeStr = `${hours}:${minutes}`;
 
       const tempBday = {
-        id: Date.now().toString(),
+        id: generateId(),
         name: newBirthdayName.trim(),
         birthDate: bdateStr,
         remindAtTime: timeStr,

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import { generateId } from "../utils/generateId";
 import { AppState } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
@@ -248,7 +249,7 @@ export const TaskProvider = ({
 
     scheduleNotification({
       category: "system",
-      payloadKey: `task_complete_${taskId}_${Date.now()}`,
+      payloadKey: `task_complete_${taskId}_${generateId()}`,
       recurrence: "one-shot",
       channelId: "kwestup_system",
       title: "Task Completed! ✨",

@@ -306,60 +306,108 @@ export const importArchive = async (filePath, passphrase, onProgress) => {
   logger.info("✅ Archive decrypted. Restoring from version:", payload.metadata.appVersion);
   onProgress?.(0.3);
 
-  // Step 3: Clear existing AsyncStorage user data
-  const allKeys = await AsyncStorage.getAllKeys();
-  const userKeys = allKeys.filter(isUserDataKey);
-  if (userKeys.length > 0) {
-    await AsyncStorage.multiRemove(userKeys);
-    logger.info("🧹 Cleared existing AsyncStorage user data:", userKeys.length, "keys");
-  }
-
-  onProgress?.(0.45);
-
-  // Step 4: Restore AsyncStorage from backup
+  // Step 3: Stage the storage swap (recoverable).
+  //
+  // The previous implementation cleared every existing user key *before*
+  // writing the backup, so a crash/OOM between the two steps left the user
+  // with neither the old nor the new data (see CONCERNS.md -> "wipe-then-restore
+  // import"). We now snapshot the current user data, write the backup over it,
+  // verify the write, and only then drop keys the backup no longer contains.
+  // Any failure rolls the snapshot back so the device is never left empty.
   const storageEntries = Object.entries(payload.storage);
-  if (storageEntries.length > 0) {
-    await AsyncStorage.multiSet(storageEntries);
-    logger.info("✅ Restored AsyncStorage:", storageEntries.length, "keys");
+  const existingKeys = await AsyncStorage.getAllKeys();
+  const existingUserKeys = existingKeys.filter(isUserDataKey);
+  const snapshotPairs = existingUserKeys.length
+    ? await AsyncStorage.multiGet(existingUserKeys)
+    : [];
+  const snapshot = {};
+  for (const [snapKey, snapValue] of snapshotPairs) {
+    snapshot[snapKey] = snapValue;
   }
 
-  onProgress?.(0.6);
-
-  // Step 5: Restore vault files from backup
-  if (payload.vaults && payload.vaults.length > 0) {
-    await ensureVaultsDir();
-
-    for (const vault of payload.vaults) {
-      const vaultPath = getVaultPath(vault.id);
-
-      // Ensure vault directory exists
-      const vaultInfo = await FileSystem.getInfoAsync(vaultPath);
-      if (!vaultInfo.exists) {
-        await FileSystem.makeDirectoryAsync(vaultPath, { intermediates: true });
-        logger.debug("📂 Created vault directory:", vault.id);
+  const rollbackStorage = async (reason) => {
+    try {
+      const addedKeys = storageEntries.map(([k]) => k).filter((k) => !(k in snapshot));
+      if (addedKeys.length > 0) {
+        await AsyncStorage.multiRemove(addedKeys);
       }
+      if (snapshotPairs.length > 0) {
+        await AsyncStorage.multiSet(snapshotPairs);
+      }
+      logger.warn("↩️ Rolled back AsyncStorage to pre-import snapshot:", reason);
+    } catch (rollbackErr) {
+      logger.error("❌ AsyncStorage rollback failed:", rollbackErr);
+    }
+  };
 
-      // Restore each note
-      for (const note of vault.notes || []) {
-        const { folder, title, content } = note;
-        let notePath;
+  try {
+    // 3a. Write the backup over existing keys — non-destructive until verified.
+    if (storageEntries.length > 0) {
+      await AsyncStorage.multiSet(storageEntries);
+    }
 
-        if (folder && folder !== "Uncategorized") {
-          const folderPath = `${vaultPath}${folder}/`;
-          const folderInfo = await FileSystem.getInfoAsync(folderPath);
-          if (!folderInfo.exists) {
-            await FileSystem.makeDirectoryAsync(folderPath, { intermediates: true });
-          }
-          notePath = `${folderPath}${title}.md`;
-        } else {
-          notePath = `${vaultPath}${title}.md`;
+    // 3b. Verify every restored key round-trips before trusting the swap.
+    if (storageEntries.length > 0) {
+      const verified = await AsyncStorage.multiGet(storageEntries.map(([k]) => k));
+      const mismatched = verified.filter(([, value], i) => value !== storageEntries[i][1]);
+      if (mismatched.length > 0) {
+        throw new Error("Storage verification failed for " + mismatched.length + " key(s)");
+      }
+    }
+
+    // 3c. Only now remove stale keys that the backup does not contain.
+    const nextKeys = new Set(storageEntries.map(([k]) => k));
+    const staleKeys = existingUserKeys.filter((k) => !nextKeys.has(k));
+    if (staleKeys.length > 0) {
+      await AsyncStorage.multiRemove(staleKeys);
+      logger.info("🧹 Removed stale AsyncStorage keys:", staleKeys.length);
+    }
+
+    logger.info("✅ Restored AsyncStorage:", storageEntries.length, "keys (verified)");
+    onProgress?.(0.6);
+
+    // Step 4: Restore vault files from backup
+    if (payload.vaults && payload.vaults.length > 0) {
+      await ensureVaultsDir();
+
+      for (const vault of payload.vaults) {
+        const vaultPath = getVaultPath(vault.id);
+
+        // Ensure vault directory exists
+        const vaultInfo = await FileSystem.getInfoAsync(vaultPath);
+        if (!vaultInfo.exists) {
+          await FileSystem.makeDirectoryAsync(vaultPath, { intermediates: true });
+          logger.debug("📂 Created vault directory:", vault.id);
         }
 
-        await FileSystem.writeAsStringAsync(notePath, content || "");
-      }
+        // Restore each note
+        for (const note of vault.notes || []) {
+          const { folder, title, content } = note;
+          let notePath;
 
-      logger.info(`✅ Vault '${vault.name}' restored: ${(vault.notes || []).length} notes`);
+          if (folder && folder !== "Uncategorized") {
+            const folderPath = vaultPath + folder + "/";
+            const folderInfo = await FileSystem.getInfoAsync(folderPath);
+            if (!folderInfo.exists) {
+              await FileSystem.makeDirectoryAsync(folderPath, { intermediates: true });
+            }
+            notePath = folderPath + title + ".md";
+          } else {
+            notePath = vaultPath + title + ".md";
+          }
+
+          await FileSystem.writeAsStringAsync(notePath, content || "");
+        }
+
+        logger.info(
+          "✅ Vault '" + vault.name + "' restored: " + (vault.notes || []).length + " notes"
+        );
+      }
     }
+  } catch (importErr) {
+    // Recoverable failure: return the device to its pre-import state.
+    await rollbackStorage(importErr && importErr.message);
+    throw importErr;
   }
 
   onProgress?.(1.0);

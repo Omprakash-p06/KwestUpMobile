@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { generateId } from "../utils/generateId";
 import {
   loadBillingData,
   saveBillingData,
@@ -46,7 +47,7 @@ export const BillingProvider = ({
 
   const addTransactionAction = useCallback(async (tx) => {
     try {
-      const txWithId = { ...tx, id: tx.id || String(Date.now()) };
+      const txWithId = { ...tx, id: tx.id || generateId() };
       const updated = await addTransaction(txWithId);
       setBillingData(updated);
       eventBus.emit({
@@ -120,7 +121,7 @@ export const BillingProvider = ({
 
   const addRecurringBillAction = useCallback(async (bill) => {
     try {
-      const billWithId = { ...bill, id: bill.id || String(Date.now()) };
+      const billWithId = { ...bill, id: bill.id || generateId() };
       const updated = await addRecurringBill(billWithId);
       setBillingData(updated);
       eventBus.emit({

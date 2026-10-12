@@ -10,6 +10,7 @@
  */
 
 import { getLocalDateString } from "./dateUtils";
+import { generateId } from "./generateId";
 
 /**
  * Calculates the next occurrence for a recurring task.
@@ -51,7 +52,7 @@ export const calculateNextRecurrence = (task, now = new Date().toISOString()) =>
 
   return {
     ...task,
-    id: Date.now().toString() + Math.random().toString(36).slice(2),
+    id: generateId(),
     title: newTitle,
     completed: false,
     completedDate: null,
@@ -166,7 +167,7 @@ export const saveTask = (tasks = [], taskData, options = {}) => {
   } else {
     savedTask = {
       ...taskData,
-      id: taskData.id || Date.now().toString(),
+      id: taskData.id || generateId(),
       listId: taskData.listId || "default_inbox",
       completed: false,
       completedDate: null,
@@ -243,7 +244,7 @@ export const toggleSubtask = (tasks = [], taskId, subtaskIdx, options = {}) => {
 export const createTaskList = (taskLists = [], name) => {
   const trimmed = (name || "").trim();
   const createdList = {
-    id: Date.now().toString(),
+    id: generateId(),
     name: trimmed || "New List",
     createdAt: new Date().toISOString(),
   };

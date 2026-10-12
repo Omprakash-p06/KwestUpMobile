@@ -177,5 +177,55 @@ describe('exportService & importService Unit Tests', () => {
         'INVALID PASSPHRASE OR CORRUPTED ARCHIVE'
       );
     });
+
+    it('rolls back existing user data when the import fails after the storage swap', async () => {
+      // Pre-existing user data (keys recognized by isUserDataKey) that must
+      // survive a failed import untouched.
+      await AsyncStorage.setItem('kwestup_data_v5', 'ORIGINAL-DATA');
+      await AsyncStorage.setItem('kwestup_billing_v5', 'ORIGINAL-BILLING');
+
+      const failingPayload = {
+        metadata: {
+          appVersion: '3.5.0',
+          storageVersion: 'v5.0',
+          createdAt: '2026-09-27T12:00:00.000Z',
+          vaultCount: 1,
+          totalNotes: 1,
+        },
+        storage: {
+          kwestup_data_v5: JSON.stringify([{ id: 'new', title: 'Incoming task' }]),
+        },
+        vaults: [
+          {
+            id: 'default',
+            name: 'Personal',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            notes: [{ folder: 'Work', title: 'Incoming', content: 'incoming' }],
+          },
+        ],
+      };
+
+      const archivePath = `${FileSystem.documentDirectory}rollback.kwestup`;
+      await FileSystem.writeAsStringAsync(
+        archivePath,
+        encryptBackup(failingPayload, samplePassphrase)
+      );
+
+      // Fail the note write so the vault-restore step throws after the swap.
+      const writeSpy = jest
+        .spyOn(FileSystem, 'writeAsStringAsync')
+        .mockRejectedValueOnce(new Error('disk full'));
+      try {
+        await expect(importArchive(archivePath, samplePassphrase, jest.fn())).rejects.toThrow(
+          'disk full'
+        );
+      } finally {
+        writeSpy.mockRestore();
+      }
+
+      // The snapshot was restored, so the originals are intact.
+      expect(await AsyncStorage.getItem('kwestup_data_v5')).toBe('ORIGINAL-DATA');
+      expect(await AsyncStorage.getItem('kwestup_billing_v5')).toBe('ORIGINAL-BILLING');
+    });
   });
 });

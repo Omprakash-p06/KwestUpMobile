@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { generateId } from "./generateId";
 import * as FileSystem from "expo-file-system";
 import { STORAGE_VERSION } from "./storage";
 import { logger } from "./logger";
@@ -75,7 +76,7 @@ export const saveVaults = async (vaults) => {
  */
 export const createVault = async (name) => {
   await ensureVaultsDir();
-  const id = Date.now().toString();
+  const id = generateId();
   const now = new Date().toISOString();
   const path = getVaultPath(id);
 

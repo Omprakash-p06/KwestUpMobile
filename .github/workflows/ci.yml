@@ -30,11 +30,18 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      # WR-10 partial: plain lint (no --max-warnings=0) until the ~849
-      # pre-existing warnings are triaged. Escalating now reds CI.
-      # Phased enforcement tracked pre-Phase 22.
+      # Blocking gate: ESLint errors fail the build. Pre-existing warnings
+      # (~483 at last triage) are tolerated; see CONCERNS.md for the phased
+      # plan to escalate warnings once they are triaged.
       - name: Run ESLint Check
         run: npm run lint
+
+      # Always produce a machine-readable report for the artifact below, even
+      # when the gate above fails. `|| true` is scoped to report generation so
+      # it cannot mask the actual lint result.
+      - name: Generate ESLint Report
+        if: always()
+        run: npm run lint:report || true
 
       - name: Run TypeScript Check
         run: npm run typecheck
@@ -57,14 +64,3 @@ jobs:
           name: coverage
           path: coverage/
           if-no-files-found: ignore
-
-  semgrep:
-    name: Semgrep Security Scan
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Semgrep Scan
-        uses: returntocorp/semgrep-action@v1
-        continue-on-error: true

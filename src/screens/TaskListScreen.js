@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import { generateId } from "../utils/generateId";
 import { View, Text, ScrollView, TouchableOpacity, Animated, StyleSheet, TextInput } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Modal from "react-native-modal";
@@ -83,7 +84,7 @@ export const TaskListScreen = ({
   const handleAddQuickTask = (title) => {
     if (!title.trim()) return;
     const newTask = {
-      id: Date.now().toString(),
+      id: generateId(),
       title: title.trim(),
       description: "",
       dueDate: null,
