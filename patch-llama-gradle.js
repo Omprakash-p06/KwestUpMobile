@@ -1,73 +1,24 @@
 const fs = require('fs');
 const path = require('path');
 
+/**
+ * Postinstall native patch.
+ *
+ * 2026-10-12 (debug session: expo57-native-compat): the llama.rn build.gradle patch that used to
+ * live here was REMOVED. It force-unwrapped llama.rn's `if (isNewArchitectureEnabled())` guards so
+ * that codegen ran while `newArchEnabled=false` was set. android/gradle.properties now sets
+ * `newArchEnabled=true`, which satisfies llama.rn's own gate natively (its android/build.gradle:12
+ * reads the Gradle property `newArchEnabled`, :84 applies the React plugin and :239 runs the
+ * codegen block on that basis) — so the workaround is redundant and was removed rather than kept
+ * as a speculative native patch.
+ *
+ * The react-native-android-widget sizing patch below is unrelated to the New Architecture: it
+ * supplies a fallback when the launcher reports a zero widget size.
+ */
+
 let hasErrors = false;
 
-// 1. Patch llama.rn for Old Architecture JSI support
-const targetFile = path.join(__dirname, 'node_modules/llama.rn/android/build.gradle');
-
-if (fs.existsSync(targetFile)) {
-  let content = fs.readFileSync(targetFile, 'utf8');
-
-  const pattern1 = /if\s*\(\s*isNewArchitectureEnabled\(\)\s*\)\s*\{\s*apply\s+plugin:\s+["']com\.facebook\.react["']\s*\}/g;
-  const pattern2 = /if\s*\(\s*isNewArchitectureEnabled\(\)\s*\)\s*\{\s*react\s*\{([\s\S]*?)\}\s*\}/g;
-
-  // WR-02: per-pattern patchable detection. A global
-  // `content.includes('if (isNewArchitectureEnabled())')` conflates unrelated
-  // conditionals elsewhere in the file with the two conditional wrappers this
-  // script owns, causing false-fails (hard exit 1) and false-skips. Only the
-  // two regexes below count as "needs patch".
-  // Note: patterns use /g, so reset lastIndex before each .test().
-  pattern1.lastIndex = 0;
-  const hasPatchable1 = pattern1.test(content);
-  pattern1.lastIndex = 0;
-  pattern2.lastIndex = 0;
-  const hasPatchable2 = pattern2.test(content);
-  pattern2.lastIndex = 0;
-  const hasUnwrappedPlugin = content.includes('apply plugin: "com.facebook.react"');
-
-  if (!hasPatchable1 && !hasPatchable2 && hasUnwrappedPlugin) {
-    console.log('✅ llama.rn build.gradle is already patched for old architecture (idempotent skip).');
-  } else {
-    const before1 = content;
-    content = content.replace(pattern1, 'apply plugin: "com.facebook.react"');
-    const didPatch1 = content !== before1;
-
-    const before2 = content;
-    content = content.replace(pattern2, 'react {$1}');
-    const didPatch2 = content !== before2;
-
-    if (!didPatch1 && !didPatch2) {
-      console.error('❌ Failed to patch llama.rn build.gradle: neither target pattern matched. The upstream file layout may have changed — update the patterns in patch-llama-gradle.js.');
-      hasErrors = true;
-    } else {
-      // Post-patch verification asserts on the owned patterns (not a global
-      // substring), so unrelated `isNewArchitectureEnabled()` blocks elsewhere
-      // in the file do not fail the install.
-      pattern1.lastIndex = 0;
-      const stillPatchable1 = pattern1.test(content);
-      pattern1.lastIndex = 0;
-      pattern2.lastIndex = 0;
-      const stillPatchable2 = pattern2.test(content);
-      pattern2.lastIndex = 0;
-      if (!content.includes('apply plugin: "com.facebook.react"') || stillPatchable1 || stillPatchable2) {
-        console.error('❌ Failed to patch llama.rn build.gradle: verification assertion failed.');
-        hasErrors = true;
-      } else {
-        fs.writeFileSync(targetFile, content, 'utf8');
-        console.log('✅ Successfully patched llama.rn build.gradle for old architecture support.');
-      }
-    }
-  }
-} else {
-  // WR-03: fail closed — a missing target means a required patch was not
-  // applied; warn-and-continue would surface later as an obscure Gradle build
-  // failure instead of a clear install error.
-  console.error('❌ Target file not found, required patch not applied: ' + targetFile);
-  hasErrors = true;
-}
-
-// 2. Patch react-native-android-widget with sizing fallbacks
+// Patch react-native-android-widget with sizing fallbacks
 const widgetUtilFile = path.join(__dirname, 'node_modules/react-native-android-widget/android/src/main/java/com/reactnativeandroidwidget/RNWidgetUtil.java');
 
 if (fs.existsSync(widgetUtilFile)) {

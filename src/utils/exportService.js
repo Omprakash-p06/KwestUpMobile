@@ -1,5 +1,5 @@
 import CryptoJS from "crypto-js";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { isUserDataKey, APP_VERSION, STORAGE_VERSION } from "./storage";

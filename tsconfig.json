@@ -3,6 +3,12 @@
   "compilerOptions": {
     "strict": true,
     "allowJs": true,
+    // TypeScript 6 (required by Expo SDK 57) no longer auto-includes every node_modules/@types
+    // package, so the ambient type packages this project depends on are declared explicitly.
+    // Verified 2026-10-12: without this line the suite reports 1427 errors, all of the form
+    // "Cannot find name 'expect'/'describe'/'it'" (TS2304/TS2593) and "Cannot use namespace 'jest'
+    // as a value" (TS2708) across __tests__/**/*.ts; with it, 0 errors.
+    "types": ["jest", "node"],
     // CR-08 partial: checkJs stays false until the 1152 pre-existing JS errors
     // across src/screens, src/navigation, App.js and __tests__ are triaged.
     // Enabling checkJs:true surfaces them all and reds the gate (verified

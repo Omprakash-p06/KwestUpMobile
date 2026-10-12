@@ -89,3 +89,7 @@ UI Design plan/
 # Dynamically generated assets at build time
 android/app/src/main/assets/ggml-hexagon/
 
+# Test and mutation reports
+reports/
+.stryker-tmp/
+

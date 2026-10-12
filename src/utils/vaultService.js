@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { generateId } from "./generateId";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { STORAGE_VERSION } from "./storage";
 import { logger } from "./logger";
 
@@ -17,7 +17,10 @@ export const ACTIVE_KEY = `kwestup_activeVault_${STORAGE_VERSION}`;
  * Structure: <documentDirectory>/Notes/Vaults/<vaultId>/
  */
 export const getVaultPath = (vaultId) => {
-  return `${FileSystem.documentDirectory}Notes/Vaults/${vaultId}/`;
+  const sanitizedId = String(vaultId || "default")
+    .trim()
+    .replace(/[/\\?%*:|"<>. ]/g, "_") || "default";
+  return `${FileSystem.documentDirectory}Notes/Vaults/${sanitizedId}/`;
 };
 
 /**

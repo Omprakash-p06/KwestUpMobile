@@ -131,7 +131,7 @@ expect(() => validateSyncConfig({ ...validConfig, ip: '192.168.1.50/malicious' }
 - Respect level gating: `debug`/`info` emit AND buffer only when `isDevelopment()` (`__DEV__` or `NODE_ENV !== 'production'`); `warn`/`error` always buffer + passthrough — see `src/utils/logger.js:142-162`. Do not use `debug` for operational signal that must survive in production
 - Never log user content under raw keys — the `SENSITIVE_KEYS` regex in `src/utils/logger.js:37-38` redacts `content|body|note|title|text|message|passphrase|token|key|secret|password|habitTitle|cueText` to `'[Redacted]'` before buffering. Safe operational strings pass through verbatim
 - Keep the ring-buffer bounded: max 50 entries, FIFO eviction (`MAX_LOG_BUFFER_SIZE` in `src/utils/logger.js:13`); entries are deep-frozen at record time so consumers cannot mutate the live buffer via `getRecentLogs()` snapshots
-- Production bundles strip `console.log/info/debug` via `babel-plugin-transform-remove-console` (`exclude: ['error','warn']`), with `react-native-reanimated/plugin` always last — see `babel.config.js:12-23`
+- Production bundles strip `console.log/info/debug` via `babel-plugin-transform-remove-console` (`exclude: ['error','warn']`) — see `babel.config.js`. Do **not** add `react-native-reanimated/plugin` (or `react-native-worklets/plugin`) manually: since Expo SDK 57, `babel-preset-expo` injects the worklets plugin itself. The old explicit entry was removed 2026-10-12 — see `.planning/debug/expo57-native-compat.md`
 
 ## Comments
 

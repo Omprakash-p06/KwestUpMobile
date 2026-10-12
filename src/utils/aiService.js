@@ -8,7 +8,7 @@
 
 import { AppState } from "react-native";
 import { initLlama, releaseAllLlama } from "llama.rn";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import CryptoJS from "crypto-js";
 import {

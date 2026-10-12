@@ -314,10 +314,11 @@ export function validateCommand(
 
     case 'PAUSE_HABIT': {
       const p = payload as any;
+      const effectiveActor = p.actor || actor;
       if (typeof p.habitId !== 'string' || p.habitId.trim().length === 0) {
         errors.push('PAUSE_HABIT: habitId must be a non-empty string');
       }
-      if (p.actor !== 'user' && p.actor !== 'engine') {
+      if (effectiveActor !== 'user' && effectiveActor !== 'engine' && effectiveActor !== 'ai') {
         errors.push('PAUSE_HABIT: actor must be "user" or "engine"');
       }
       if (typeof p.reason !== 'string' || p.reason.trim().length === 0 || p.reason.length > 200) {
@@ -328,16 +329,17 @@ export function validateCommand(
 
     case 'ARCHIVE_HABIT': {
       const p = payload as any;
+      const effectiveActor = p.actor || actor;
       if (typeof p.habitId !== 'string' || p.habitId.trim().length === 0) {
         errors.push('ARCHIVE_HABIT: habitId must be a non-empty string');
       }
-      if (p.actor !== 'user' && p.actor !== 'engine') {
+      if (effectiveActor !== 'user' && effectiveActor !== 'engine' && effectiveActor !== 'ai') {
         errors.push('ARCHIVE_HABIT: actor must be "user" or "engine"');
       }
       if (typeof p.reason !== 'string' || p.reason.trim().length === 0 || p.reason.length > 200) {
         errors.push('ARCHIVE_HABIT: reason must be a non-empty string up to 200 characters');
       }
-      if (actor === 'ai' && !command.confirmed) {
+      if ((actor === 'ai' || effectiveActor === 'ai') && !command.confirmed) {
         errors.push('Destructive action ARCHIVE_HABIT initiated by AI requires explicit user confirmation');
       }
       break;
@@ -345,10 +347,11 @@ export function validateCommand(
 
     case 'RESUME_HABIT': {
       const p = payload as any;
+      const effectiveActor = p.actor || actor;
       if (typeof p.habitId !== 'string' || p.habitId.trim().length === 0) {
         errors.push('RESUME_HABIT: habitId must be a non-empty string');
       }
-      if (p.actor !== 'user' && p.actor !== 'engine') {
+      if (effectiveActor !== 'user' && effectiveActor !== 'engine' && effectiveActor !== 'ai') {
         errors.push('RESUME_HABIT: actor must be "user" or "engine"');
       }
       if (typeof p.reason !== 'string' || p.reason.trim().length === 0 || p.reason.length > 200) {

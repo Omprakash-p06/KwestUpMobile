@@ -1,4 +1,7 @@
-import * as FileSystem from "expo-file-system";
+// SDK 57: expo-file-system's default export is now the Paths/File/Directory API. This module uses
+// the classic documentDirectory/async-function surface, which SDK 54+ relocated to
+// 'expo-file-system/legacy' (still fully supported and shipped by expo-file-system@57).
+import * as FileSystem from "expo-file-system/legacy";
 import { getVaultPath } from "./vaultService";
 import { logger } from "./logger";
 
@@ -35,7 +38,9 @@ export const saveNoteFile = async (vaultId, folder, title, content) => {
     const vaultPath = getVaultPath(vaultId || "default");
 
     // Sanitize folder and title
-    const sanitizedFolder = (folder || "Uncategorized").trim();
+    const sanitizedFolder =
+      (folder || "Uncategorized").trim().replace(/[/\\?%*:|"<>. ]/g, "_") ||
+      "Uncategorized";
     const sanitizedTitle = (title || "Untitled Note")
       .trim()
       .replace(/[/\\?%*:|"<>. ]/g, "_");
@@ -70,7 +75,9 @@ export const saveNoteFile = async (vaultId, folder, title, content) => {
 export const readNoteFile = async (vaultId, folder, title) => {
   try {
     const vaultPath = getVaultPath(vaultId || "default");
-    const sanitizedFolder = (folder || "Uncategorized").trim();
+    const sanitizedFolder =
+      (folder || "Uncategorized").trim().replace(/[/\\?%*:|"<>. ]/g, "_") ||
+      "Uncategorized";
     const sanitizedTitle = (title || "Untitled Note")
       .trim()
       .replace(/[/\\?%*:|"<>. ]/g, "_");
@@ -99,7 +106,9 @@ export const readNoteFile = async (vaultId, folder, title) => {
 export const deleteNoteFile = async (vaultId, folder, title) => {
   try {
     const vaultPath = getVaultPath(vaultId || "default");
-    const sanitizedFolder = (folder || "Uncategorized").trim();
+    const sanitizedFolder =
+      (folder || "Uncategorized").trim().replace(/[/\\?%*:|"<>. ]/g, "_") ||
+      "Uncategorized";
     const sanitizedTitle = (title || "Untitled Note")
       .trim()
       .replace(/[/\\?%*:|"<>. ]/g, "_");
@@ -137,7 +146,9 @@ export const deleteNoteFile = async (vaultId, folder, title) => {
 export const deleteFolderFile = async (vaultId, folder) => {
   try {
     const vaultPath = getVaultPath(vaultId || "default");
-    const sanitizedFolder = (folder || "Uncategorized").trim();
+    const sanitizedFolder =
+      (folder || "Uncategorized").trim().replace(/[/\\?%*:|"<>. ]/g, "_") ||
+      "Uncategorized";
     if (sanitizedFolder === "Uncategorized") {
       return { success: false, error: "Cannot delete Uncategorized folder" };
     }

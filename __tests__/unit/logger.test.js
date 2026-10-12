@@ -238,9 +238,13 @@ describe('src/utils/logger', () => {
         expect(removeConsolePlugin).toBeDefined();
         expect(removeConsolePlugin[1]).toEqual({ exclude: ['error', 'warn'] });
 
-        // reanimated must be the last plugin
-        const lastPlugin = config.plugins[config.plugins.length - 1];
-        expect(lastPlugin).toBe('react-native-reanimated/plugin');
+        // SDK 57 / Reanimated 4: the worklets Babel plugin is configured automatically by
+        // babel-preset-expo (Expo docs: "No additional configuration is required. Reanimated
+        // Babel plugin is automatically configured in babel-preset-expo when you install the
+        // library."). Reanimated 4 also moved the plugin out of the reanimated package into
+        // react-native-worklets, so neither path may be listed manually here.
+        expect(config.plugins).not.toContain('react-native-reanimated/plugin');
+        expect(config.plugins).not.toContain('react-native-worklets/plugin');
       } finally {
         process.env.NODE_ENV = originalEnv;
       }

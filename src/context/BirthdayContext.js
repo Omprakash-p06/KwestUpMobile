@@ -64,7 +64,7 @@ export const BirthdayProvider = ({
       source: "app",
       payload: {
         name: finalBirthday.name,
-        date: finalBirthday.date,
+        date: finalBirthday.date || finalBirthday.birthDate || "",
       },
     });
 

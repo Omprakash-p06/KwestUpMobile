@@ -22,7 +22,8 @@ export const isUserDataKey = (key) => {
     key.startsWith("kwestup_behavior_events_") ||
     key.startsWith("kwestup_identities_") ||
     key.startsWith("kwestup_rewards_") ||
-    key.startsWith("kwestup_interventions_")
+    key.startsWith("kwestup_interventions_") ||
+    key.startsWith("kwestup_idempotency_")
   );
 };
 

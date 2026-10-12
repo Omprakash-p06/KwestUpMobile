@@ -34,7 +34,13 @@ export const calculateNextRecurrence = (task, now = new Date().toISOString()) =>
   } else if (recurrence === "weekly") {
     date.setDate(date.getDate() + 7);
   } else if (recurrence === "monthly") {
+    const originalDay = date.getDate();
+    date.setDate(1);
     date.setMonth(date.getMonth() + 1);
+    const targetYear = date.getFullYear();
+    const targetMonth = date.getMonth();
+    const lastDayOfTargetMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+    date.setDate(Math.min(originalDay, lastDayOfTargetMonth));
   } else if (recurrence === "progressive") {
     date.setDate(date.getDate() + 1);
     // Increment the last number found in title (e.g. "Sprint 1" -> "Sprint 2", "Day 99" -> "Day 100")
@@ -207,9 +213,15 @@ export const toggleSubtask = (tasks = [], taskId, subtaskIdx, options = {}) => {
   const now = options.now || new Date().toISOString();
   let updatedTask = null;
 
+  const targetTask = tasks.find((t) => t.id === taskId);
+  const subtasks = targetTask?.subtasks;
+  if (!targetTask || !Array.isArray(subtasks) || subtaskIdx < 0 || subtaskIdx >= subtasks.length) {
+    return { updatedTasks: tasks, updatedTask: null };
+  }
+
   const updatedTasks = tasks.map((task) => {
     if (task.id === taskId) {
-      const subtasks = (task.subtasks || []).map((st, i) => {
+      const updatedSubtasks = (task.subtasks || []).map((st, i) => {
         if (i === subtaskIdx) {
           const newCompleted = !st.completed;
           return {
@@ -223,7 +235,7 @@ export const toggleSubtask = (tasks = [], taskId, subtaskIdx, options = {}) => {
 
       updatedTask = {
         ...task,
-        subtasks,
+        subtasks: updatedSubtasks,
         updatedAt: now,
       };
       return updatedTask;
@@ -292,3 +304,51 @@ export const deleteTaskList = (taskLists = [], listId) => {
   const updatedTaskLists = taskLists.filter((l) => l.id !== listId);
   return { updatedTaskLists, deletedList };
 };
+
+/**
+ * Merges in-memory tasks with storage tasks using per-task `updatedAt` reconciliation.
+ * Resolves the W-01/W-02/Phase 18 micro-window race:
+ * - If a task exists in both, the record with the later `updatedAt` wins.
+ * - Tasks present only in storage (e.g. created/spawned by widget or sync) are preserved.
+ * - Tasks present only in-memory (e.g. freshly created, not yet persisted) are preserved.
+ *
+ * @param {Array<Object>} inMemoryTasks
+ * @param {Array<Object>} storageTasks
+ * @returns {Array<Object>} Reconciled tasks array
+ */
+export const mergeTasksByUpdatedAt = (inMemoryTasks = [], storageTasks = []) => {
+  const mergedMap = new Map();
+
+  // Consider all in-memory tasks (if duplicates exist in memory, newer wins)
+  for (const memory of inMemoryTasks || []) {
+    if (!memory || !memory.id) continue;
+    const existing = mergedMap.get(memory.id);
+    if (!existing) {
+      mergedMap.set(memory.id, memory);
+    } else {
+      const existingTime = existing.updatedAt || "";
+      const memoryTime = memory.updatedAt || "";
+      if (memoryTime > existingTime) {
+        mergedMap.set(memory.id, memory);
+      }
+    }
+  }
+
+  // Consider all stored tasks (stored wins if storedTime >= existingTime)
+  for (const stored of storageTasks || []) {
+    if (!stored || !stored.id) continue;
+    const existing = mergedMap.get(stored.id);
+    if (!existing) {
+      mergedMap.set(stored.id, stored);
+    } else {
+      const existingTime = existing.updatedAt || "";
+      const storedTime = stored.updatedAt || "";
+      if (storedTime >= existingTime) {
+        mergedMap.set(stored.id, stored);
+      }
+    }
+  }
+
+  return Array.from(mergedMap.values());
+};
+

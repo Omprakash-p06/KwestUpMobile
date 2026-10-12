@@ -1,6 +1,6 @@
 import * as DocumentPicker from "expo-document-picker";
 import { generateId } from "./generateId";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { createVault } from "./vaultService";
 import { logger } from "./logger";
 

@@ -25,6 +25,12 @@ const mockNormalizePath = (uri) => {
 mockInMemoryFS.set('/mock-docs/', { isDirectory: true, content: null });
 mockInMemoryFS.set('/mock-cache/', { isDirectory: true, content: null });
 
+// SDK 57: the app imports the LEGACY file-system surface from 'expo-file-system/legacy' because
+// expo-file-system@57's default export is the new Paths/File/Directory API. Alias the legacy
+// specifier onto the same in-memory mock below, so tests exercise the interface the app really
+// imports instead of a mock that only intercepts a path nothing uses.
+jest.mock('expo-file-system/legacy', () => jest.requireMock('expo-file-system'));
+
 jest.mock('expo-file-system', () => ({
   documentDirectory: 'file:///mock-docs/',
   cacheDirectory: 'file:///mock-cache/',

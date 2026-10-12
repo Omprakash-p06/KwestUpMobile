@@ -12,6 +12,7 @@ import {
   createTaskList,
   renameTaskList,
   deleteTaskList,
+  mergeTasksByUpdatedAt,
 } from "../utils/taskMutations";
 import {
   scheduleDueDateReminder,
@@ -41,12 +42,21 @@ export const TaskProvider = ({
   const [selectedTask, setSelectedTask] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
 
+  const prevInitialTasksRef = useRef(initialTasks);
+  const tasksHydratedRef = useRef(Array.isArray(initialTasks) && initialTasks.length > 0);
+
   // Synchronize when initial props change (e.g. boot loadData, sync, reset).
-  // Sync is unconditional so legitimate empty states (e.g. reset-to-empty)
-  // propagate instead of leaving stale context data behind.
   useEffect(() => {
-    if (Array.isArray(initialTasks)) {
-      setTasks(initialTasks);
+    if (Array.isArray(initialTasks) && initialTasks !== prevInitialTasksRef.current) {
+      prevInitialTasksRef.current = initialTasks;
+      if (!tasksHydratedRef.current || initialTasks.length === 0) {
+        setTasks(initialTasks);
+        if (initialTasks.length > 0) {
+          tasksHydratedRef.current = true;
+        }
+      } else {
+        setTasks((prevTasks) => mergeTasksByUpdatedAt(prevTasks, initialTasks));
+      }
     }
   }, [initialTasks]);
 
@@ -68,26 +78,27 @@ export const TaskProvider = ({
   // sibling domains App.js still persists (birthdays/notes/theme) are never
   // clobbered. Writes use the computed state snapshot — never inside a React
   // updater — to avoid StrictMode double-invocation double-writes.
-  // Residual risk (documented for Phase 18): an in-app mutation made <500ms
-  // before a foreground refresh can still be overwritten by the storage read;
-  // a per-task updatedAt merge would be needed to close that micro-window.
   const storageWriteTimerRef = useRef(null);
   const lastPersistedJsonRef = useRef(null);
-  const tasksHydratedRef = useRef(false);
 
   const writeTaskSnapshot = useCallback(async (snapshot) => {
     try {
       const storageKey = `kwestup_data_${STORAGE_VERSION}`;
       const raw = await AsyncStorage.getItem(storageKey);
       const stored = raw ? JSON.parse(raw) : {};
+      const mergedTasks = mergeTasksByUpdatedAt(snapshot.tasks, stored.tasks || []);
       const merged = {
         ...stored,
-        tasks: snapshot.tasks,
+        tasks: mergedTasks,
         taskLists: snapshot.taskLists,
         dailyTasks: snapshot.dailyTasks,
       };
       await AsyncStorage.setItem(storageKey, JSON.stringify(merged));
-      lastPersistedJsonRef.current = JSON.stringify(snapshot);
+      lastPersistedJsonRef.current = JSON.stringify({
+        tasks: mergedTasks,
+        taskLists: snapshot.taskLists,
+        dailyTasks: snapshot.dailyTasks,
+      });
     } catch (err) {
       logger.error("❌ Failed to persist tasks to storage:", err);
     }
@@ -137,12 +148,12 @@ export const TaskProvider = ({
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed.tasks)) {
         setTasks((prevTasks) => {
-          // Quick structural equality check
+          const merged = mergeTasksByUpdatedAt(prevTasks, parsed.tasks);
           const prevJson = JSON.stringify(prevTasks);
-          const nextJson = JSON.stringify(parsed.tasks);
+          const nextJson = JSON.stringify(merged);
           if (prevJson !== nextJson) {
             logger.info("🔄 Synchronized tasks from storage update");
-            return parsed.tasks;
+            return merged;
           }
           return prevTasks;
         });
@@ -193,25 +204,30 @@ export const TaskProvider = ({
   }, [refreshTasksFromStorage]);
 
   // Task Action Handlers
-  // WR-01: Compute toggleTask outside updater, schedule notifications outside, keep setTasks pure
+  // DEF-01: Compute toggleTask inside functional updater to eliminate closure races
   const toggleTaskComplete = useCallback((id) => {
+    let spawnedTaskToSchedule = null;
     let wasCompleted = false;
     let targetTitle = "";
-    const target = tasks.find((t) => t.id === id);
-    if (target) {
-      wasCompleted = Boolean(target.completed);
-      targetTitle = target.title || "";
-    }
 
-    const { updatedTasks, spawnedTask } = toggleTask(tasks, id);
-    setTasks(updatedTasks);
+    setTasks((currentTasks) => {
+      const target = currentTasks.find((t) => t.id === id);
+      if (target) {
+        wasCompleted = Boolean(target.completed);
+        targetTitle = target.title || "";
+      }
 
-    if (spawnedTask && spawnedTask.dueDate) {
-      scheduleDueDateReminder(spawnedTask)
+      const { updatedTasks, spawnedTask } = toggleTask(currentTasks, id);
+      spawnedTaskToSchedule = spawnedTask;
+      return updatedTasks;
+    });
+
+    if (spawnedTaskToSchedule && spawnedTaskToSchedule.dueDate) {
+      scheduleDueDateReminder(spawnedTaskToSchedule)
         .then((notificationId) => {
           if (notificationId) {
             setTasks((prev) =>
-              prev.map((t) => (t.id === spawnedTask.id ? { ...t, notificationId } : t))
+              prev.map((t) => (t.id === spawnedTaskToSchedule.id ? { ...t, notificationId } : t))
             );
           }
         })
@@ -233,7 +249,8 @@ export const TaskProvider = ({
         payload: { title: targetTitle, completed: false },
       });
     }
-  }, [tasks]);
+  }, []);
+
 
   const handleCompleteTask = useCallback((taskId) => {
     setTasks((currentTasks) => {
@@ -294,19 +311,10 @@ export const TaskProvider = ({
   }, [showConfirmationDialog]);
 
   const handleSaveTask = useCallback(async (taskData) => {
-    const isUpdate = Boolean(taskData.id && tasks.some((t) => t.id === taskData.id));
     const taskToSave = {
       ...taskData,
       listId: taskData.listId || "default_inbox",
     };
-
-    // Cancel old notification if due date changed
-    if (taskToSave.id) {
-      const existing = tasks.find((t) => t.id === taskToSave.id);
-      if (existing?.notificationId && existing.dueDate !== taskToSave.dueDate) {
-        await cancelNotification(existing.notificationId);
-      }
-    }
 
     // Schedule notification if due date is present
     let notificationId = taskToSave.notificationId || null;
@@ -315,27 +323,40 @@ export const TaskProvider = ({
       if (nid) notificationId = nid;
     }
 
-    // WR-02: Compute saveTask deterministically outside updater, set tasks, and emit telemetry immediately
-    const { updatedTasks, savedTask } = saveTask(tasks, {
-      ...taskToSave,
-      notificationId,
-    });
-    setTasks(updatedTasks);
+    let isUpdate = false;
+    let savedTaskResult = null;
 
-    if (savedTask) {
+    setTasks((currentTasks) => {
+      isUpdate = Boolean(taskToSave.id && currentTasks.some((t) => t.id === taskToSave.id));
+      if (isUpdate && taskToSave.id) {
+        const existing = currentTasks.find((t) => t.id === taskToSave.id);
+        if (existing?.notificationId && existing.dueDate !== taskToSave.dueDate) {
+          cancelNotification(existing.notificationId).catch(() => {});
+        }
+      }
+
+      const { updatedTasks, savedTask } = saveTask(currentTasks, {
+        ...taskToSave,
+        notificationId,
+      });
+      savedTaskResult = savedTask;
+      return updatedTasks;
+    });
+
+    if (savedTaskResult) {
       eventBus.emit({
         type: isUpdate ? "TASK_UPDATED" : "TASK_CREATED",
-        entityId: savedTask.id,
+        entityId: savedTaskResult.id,
         source: "app",
         payload: {
-          title: savedTask.title,
-          listId: savedTask.listId,
-          dueDate: savedTask.dueDate,
-          recurrence: savedTask.recurrence,
+          title: savedTaskResult.title,
+          listId: savedTaskResult.listId,
+          dueDate: savedTaskResult.dueDate,
+          recurrence: savedTaskResult.recurrence,
         },
       });
     }
-  }, [tasks]);
+  }, []);
 
   const handleToggleSubtask = useCallback((taskId, subtaskIdx) => {
     setTasks((currentTasks) => {
