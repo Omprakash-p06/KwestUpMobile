@@ -39,4 +39,7 @@ Updated `README.md` comprehensively:
 ## 4. Verification Evidence
 - `npm run typecheck`: Passed with 0 errors (`tsc --noEmit`).
 - `npm run lint`: Passed with 0 errors (478 pre-existing warnings, 0 blocking errors).
-- `npm test`: Passed (30 test suites, 457 tests passing).
+- `npm test`: Passed with 0 errors (34 test suites, 496 tests passing).
+- `npm run test:property`: Passed with 0 errors (7 property invariant test suites via `fast-check`).
+- `npm run test:mutation:critical`: Passed with 87.54% overall mutation score, 93.36% covered score on `src/utils/taskMutations.js` via Stryker.
+- Native alignment: Android 15 (API 35), JDK 17, NDK `27.1.12297006`, CMake `3.22.1`, and 16 KB linker flags (`-Wl,-z,max-page-size=16384`) documented.

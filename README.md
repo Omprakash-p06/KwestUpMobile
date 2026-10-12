@@ -5,6 +5,7 @@
 [![React](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8%2F6.0-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Local AI](https://img.shields.io/badge/Local_AI-llama.rn_%2F_Qwen2.5-red?logo=artificial-intelligence)](https://github.com/mybigday/llama.rn)
+[![Tests](https://img.shields.io/badge/Tests-496%20passed-brightgreen?logo=jest)](https://jestjs.io/)
 [![Downloads](https://img.shields.io/github/downloads/Omprakash-p06/KwestUpMobile/total.svg?label=Total%20Downloads&color=blue)](https://github.com/Omprakash-p06/KwestUpMobile/releases)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -75,17 +76,17 @@ KwestUp Mobile includes 5 native Android home-screen widgets built with `react-n
 
 | Layer | Technologies & Libraries |
 |-------|--------------------------|
-| **Core Framework** | React Native `0.86.3`, Expo SDK 57 (`~57.0.0`), React `19.2.3` |
+| **Core Framework** | React Native `0.86.3` (New Architecture `newArchEnabled=true`), Expo SDK 57 (`~57.0.0`), React `19.2.3` |
 | **Languages** | TypeScript `~5.8.3` / `~6.0.3` (behavior, AI, commands, widgets) + JavaScript ES2021 (screens, components, context) |
 | **Navigation** | React Navigation v7 (`@react-navigation/native` `^7.5.0`, `@react-navigation/drawer` `^7.14.3`) |
 | **Gestures & Animations** | `react-native-reanimated` `4.5.1`, `react-native-worklets` `0.10.1`, `react-native-gesture-handler` `~2.32.0` |
 | **Domain Event Bus** | Singleton typed+wildcard pub/sub (`src/behavior/eventBus.ts`) with deep-frozen immutable events and a 100-event ring buffer |
-| **Local AI Engine** | `llama.rn` `0.12.4` running quantized `Qwen2.5-0.5B-Instruct-Q4_K_M.gguf` |
-| **State & Persistence** | Domain-isolated React Contexts + `@react-native-async-storage/async-storage` `2.2.0` (`v7.0` storage schema) + `expo-file-system/legacy` |
-| **Android Widgets** | `react-native-android-widget` `^0.16.1` with headless task handler in `widgets/widget-task-handler.tsx` |
+| **Local AI Engine** | `llama.rn` `0.12.4` running quantized `Qwen2.5-0.5B-Instruct-Q4_K_M.gguf` (~468 MB, CPU-only, 5-min idle context unload) |
+| **State & Persistence** | Domain-isolated React Contexts + `@react-native-async-storage/async-storage` `2.2.0` (`v7.0` storage schema with `mergeTasksByUpdatedAt` reconciliation) + `expo-file-system/legacy` |
+| **Android Widgets** | `react-native-android-widget` `^0.16.1` with headless task handler in `widgets/widget-task-handler.tsx` (5 widgets with priority arbitration) |
 | **OS Notifications** | `expo-notifications` `~57.0.22` with 5 Android notification channels (`src/services/notificationService.ts`) |
 | **UI Design System** | `react-native-paper` `^5.10.5` with curated palettes (Clean, Blue, Green, Purple, Dribbble) and AMOLED dark mode |
-| **Testing Harness** | Jest `29.7.0` with `jest-expo/android` preset (30 test suites, 457 tests passing) |
+| **Testing Harness** | Jest `29.7.0` with `jest-expo/android` preset (**34 test suites, 496 tests passing**), `fast-check` property tests, Stryker mutation testing |
 
 ---
 
@@ -94,7 +95,12 @@ KwestUp Mobile includes 5 native Android home-screen widgets built with `react-n
 ### 1. Prerequisites
 - **Node.js:** `>= 22.13.0` (Node 22 LTS recommended)
 - **npm:** `v10.0.0` or higher
-- **Android Development Environment:** Android SDK Platform 35, JDK 17, and Android Studio (or connected Android test device)
+- **Android Native Environment:**
+  - Android SDK Platform 35 (Android 15)
+  - JDK 17 (set via `JAVA_HOME`)
+  - Android NDK `27.1.12297006` (required for `llama.rn` C++ compilation)
+  - CMake `3.22.1`
+  - Android 15 16 KB page-size linker support (`-Wl,-z,max-page-size=16384`)
 
 ### 2. Clone and Install
 ```bash
@@ -119,19 +125,25 @@ npm run android
 
 ## 🧪 Testing & Quality Gates
 
-KwestUp enforces strict quality gates across TypeScript compilation, code style, and test coverage before changes are merged or deployed:
+KwestUp enforces strict quality gates across TypeScript compilation, code style, property invariants, and test coverage before changes are merged or deployed:
 
 ```bash
-# 1. Typecheck the TypeScript subsystem (strict mode)
+# 1. Typecheck the TypeScript subsystem (strict mode, 0 errors)
 npm run typecheck
 
-# 2. Lint JavaScript and React Native code
+# 2. Lint JavaScript and React Native code (0 errors)
 npm run lint
 
-# 3. Execute the Jest unit and integration test suite
+# 3. Execute the Jest unit and integration test suite (34 suites, 496 tests passing)
 npm test
 
-# 4. Run tests with coverage reporting
+# 4. Run property-based testing (fast-check invariant fuzzing across 100+ iterations)
+npm run test:property
+
+# 5. Run mutation testing on critical domain mutations (Stryker, >87% mutation score)
+npm run test:mutation:critical
+
+# 6. Run tests with coverage reporting
 npm run test:coverage
 ```
 
