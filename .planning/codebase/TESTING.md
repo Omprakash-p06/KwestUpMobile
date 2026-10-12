@@ -5,167 +5,129 @@
 ## Test Framework
 
 **Runner:**
-- Jest 29.7.0 with `jest-expo/android` preset
+- Jest 29.7.0 with `jest-expo/android` preset (Android-first: `preset: 'jest-expo/android'`)
 - Config: `jest.config.js`
-- Key config facts: `testMatch: ['**/__tests__/**/*.test.[jt]s?(x)']` (only `__tests__` dirs count); `setupFiles` chains the expo android preset plus `<rootDir>/__tests__/setup/jest.setup.js`; `moduleFileExtensions` resolves `android.js/ts/tsx` first; `transformIgnorePatterns` whitelists RN/Expo libs (`react-native`, `expo*`, `llama.rn`, `react-native-reanimated`, `react-native-paper`, etc.); `collectCoverageFrom: ['src/**/*.{js,jsx,ts,tsx}', '!src/**/*.styles.js']`
-- No global `coverageThreshold` — intentionally absent until coverage rises (documented in `jest.config.js:30-33`: ~28% lines / ~17% functions, target 70/90/95 tracked for future phases). Do not add a gate without raising coverage first.
 
 **Assertion Library:**
-- Built-in Jest `expect` (no chai/sinon). Extended matchers used: `toBe`, `toEqual`, `toContain`, `toMatch`, `toThrow`, `rejects.toThrow`, `toHaveBeenCalledWith`, `toHaveBeenCalledTimes`, `toHaveLength`, `toBeDefined/Null/Truthy`, `toBeInstanceOf`, `toBeGreaterThan`
+- Jest built-in `expect` (no Chai/Sinon). Extended matchers used: `toBe`, `toEqual`, `toContain`, `toMatch`, `toThrow`, `toBeDefined`, `toBeInstanceOf`, `toHaveBeenCalledWith`, `toHaveLength`, `toBeGreaterThan`
 
 **Run Commands:**
 ```bash
-npm test               # Run all tests (jest)
-npm run test:watch     # Watch mode (jest --watch)
-npm run test:coverage  # Coverage (jest --coverage)
+npm test              # Run all tests (jest)
+npm run test:watch    # Watch mode (jest --watch)
+npm run test:coverage # Coverage (jest --coverage)
+npx jest --ci --maxWorkers=2 --coverage   # CI invocation (.github/workflows/ci.yml:50)
+npm run lint          # ESLint gate — must pass before tests count as verified
+npm run typecheck     # tsc --noEmit — must pass before tests count as verified
 ```
 
 ## Test File Organization
 
 **Location:**
-- All tests live under `__tests__/` — never co-located with `src/`. Suites: `__tests__/unit/*.test.{js,ts}` (one file per module under test), `__tests__/setup/jest.setup.js` (global harness), `__tests__/setup/jest.setup.test.js` (harness self-test), `__tests__/phase12-widget-logic.test.js` (cross-module widget parity suite at root).
+- Separate top-level `__tests__/` tree, never colocated with `src/`. Jest only picks up this tree: `testMatch: ['**/__tests__/**/*.test.[jt]s?(x)']` in `jest.config.js:24`
+- Suites grouped by kind: `__tests__/unit/` (28 suites: services, utils, engines, contexts), `__tests__/setup/` (harness + its self-test), `__tests__/phase12-widget-logic.test.js` (widget-logic suite at root)
 
 **Naming:**
-- Mirror the module under test: `src/utils/dateUtils.js` → `__tests__/unit/dateUtils.test.js`; `src/components/ErrorBoundary.js` → `__tests__/unit/errorBoundary.test.js`; `src/utils/taskMutations.js` → `__tests__/unit/taskMutations.test.js`; TS modules keep `.test.ts` (`__tests__/unit/eventBus.test.ts`, `__tests__/unit/commandGateway.test.ts`, `__tests__/unit/behaviorCompiler.test.ts`)
-- Import with explicit relative paths: `import { ... } from '../../src/utils/dateUtils'` (JS), `from '../../src/behavior/eventBus'` (TS)
+- `<moduleName>.test.js` for plain-JS units: `__tests__/unit/logger.test.js`, `__tests__/unit/dateUtils.test.js`, `__tests__/unit/syncService.test.js`, `__tests__/unit/vaultAndFileStorage.test.js`, `__tests__/unit/generateId.test.js`
+- `<moduleName>.test.ts` for typed domains (enables `as any` negative-path casts): `__tests__/unit/commandGateway.test.ts`, `__tests__/unit/eventBus.test.ts`, `__tests__/unit/idempotencyStore.test.ts`, `__tests__/unit/behavioralPipelineE2E.test.ts`
+- `*.test.js(x)` only — `*.spec.*` files are ignored by `testMatch`
 
 **Structure:**
 ```
 __tests__/
-├── phase12-widget-logic.test.js   # cross-module widget parity
 ├── setup/
-│   ├── jest.setup.js              # global native mocks (auto-loaded)
-│   └── jest.setup.test.js         # harness self-test
-└── unit/
-    ├── dateUtils.test.js
-    ├── logger.test.js
-    ├── taskMutations.test.js
-    ├── taskContext.test.js
-    ├── syncService.test.js
-    ├── storageMigration.test.js
-    ├── vaultAndFileStorage.test.js
-    ├── exportImportService.test.js
-    ├── errorBoundary.test.js
-    ├── *.test.ts                  # behavior/AI/command suites
-    └── ...
+│   ├── jest.setup.js         # Global native/Expo mocks (loaded via setupFiles)
+│   └── jest.setup.test.js    # Self-test proving the harness works
+├── unit/
+│   ├── logger.test.js
+│   ├── dateUtils.test.js
+│   ├── generateId.test.js
+│   ├── syncService.test.js
+│   ├── vaultAndFileStorage.test.js
+│   ├── errorBoundary.test.js
+│   ├── commandGateway.test.ts
+│   └── ... (28 suites total)
+└── phase12-widget-logic.test.js
 ```
 
 ## Test Structure
 
 **Suite Organization:**
 ```javascript
+// Canonical shape — __tests__/unit/dateUtils.test.js:17-27
+import { getLocalDateString, parseLocalDate, /* ... */ } from '../../src/utils/dateUtils';
+
 describe('dateUtils', () => {
   describe('getLocalDateString', () => {
     it('returns today in YYYY-MM-DD format by default', () => {
       const today = getLocalDateString();
+      expect(typeof today).toBe('string');
       expect(/^\d{4}-\d{2}-\d{2}$/.test(today)).toBe(true);
     });
-    it('rejects invalid date strings and non-existent calendar dates', () => {
-      expect(getLocalDateString('2023-02-29')).toBe('');
-    });
   });
-  describe('parseLocalDate', () => { /* ... */ });
 });
 ```
-(`__tests__/unit/dateUtils.test.js:17-59`) — one top-level `describe` per module, nested `describe` per function, `it` sentences describe observable behavior, not implementation.
 
 **Patterns:**
-- Setup pattern: reset all shared state in `beforeEach` — this exact trio is the norm for storage/filesystem suites:
-```javascript
-beforeEach(async () => {
-  await AsyncStorage.clear();
-  if (FileSystem.__resetFS) {
-    FileSystem.__resetFS();
-  }
-  jest.clearAllMocks();
-});
-```
-(`__tests__/unit/vaultAndFileStorage.test.js:23-29`, identical in `exportImportService.test.js:41-47`; context suites add `eventBus.clearListeners(); eventBus.clearBuffer();` — see `__tests__/unit/taskContext.test.js:21-27`)
-- Deterministic-time pattern: define `fixedNow`/`fixedToday` constants and inject via the options bag the source supports — never mock `Date`:
-```javascript
-const fixedNow = "2026-09-27T12:00:00.000Z";
-const fixedToday = "2026-09-27";
-const { updatedTasks, toggledTask } = toggleTask(tasks, "task-1", {
-  now: fixedNow,
-  todayDate: fixedToday,
-});
-```
-(`__tests__/unit/taskMutations.test.js:14-27`)
-- Console-silencing pattern for noisy suites: capture originals, replace with `jest.fn()` in `beforeEach`, restore in `afterEach` (plus `__DEV__`/`NODE_ENV` save/restore when testing env gating):
-```javascript
-beforeEach(() => {
-  clearLogs();
-  originalConsoleError = console.error;
-  console.error = jest.fn();
-  loggerErrorSpy = jest.spyOn(logger, 'error');
-});
-afterEach(() => {
-  console.error = originalConsoleError;
-  loggerErrorSpy.mockRestore();
-});
-```
-(`__tests__/unit/errorBoundary.test.js:20-36`; fuller variant with `__DEV__`/`NODE_ENV` in `__tests__/unit/logger.test.js:20-42`)
-- Traceability-ID pattern: prefix test names with the requirement ID they verify (`TC-OBS-06`, `TC-EVT-01`, `WR-04`, `CR-01`) so failures map back to review findings:
-```javascript
-test('TC-OBS-06 & TC-OBS-07: Catches render exception and displays recovery UI ...', ...)
-test('CR-01: sensitive keys are redacted before buffering', ...)
-```
-(`__tests__/unit/errorBoundary.test.js:53`, `__tests__/unit/logger.test.js:181`)
+- Nest `describe` per module → per function/feature, `it`/`test` per behavior (both verbs are live; `it` dominates in newer suites, `test` in `logger`/`errorBoundary` suites). Prefix traceability IDs on spec-linked cases: `test('TC-OBS-06: Renders children normally...')`, `test('CR-02: debug/info neither emit nor buffer in production')` in `__tests__/unit/logger.test.js:81`, `__tests__/unit/errorBoundary.test.js:38`
+- Set up in `beforeEach`, always restore in `afterEach`/`afterAll`: save/restore `console.*`, `global.__DEV__`, `process.env.NODE_ENV` (`__tests__/unit/logger.test.js:20-42`); `AsyncStorage.clear()` + `FileSystem.__resetFS()` + `jest.clearAllMocks()` (`__tests__/unit/vaultAndFileStorage.test.js:23-29`); `clearCommandHandlers()` + `clearIdempotencyCache()` + `eventBus.clearListeners()` + `eventBus.clearBuffer()` (`__tests__/unit/commandGateway.test.ts:28-33`); save/restore `global.fetch` (`__tests__/unit/syncService.test.js:4-12`)
+- Isolate time with fake timers only where needed: `jest.useFakeTimers()` + `jest.advanceTimersByTime(3500)` + `jest.runOnlyPendingTimers()` + `jest.useRealTimers()` for toast timeouts in `__tests__/unit/errorBoundary.test.js:21-36,153-155`; `jest.spyOn(Date, 'now').mockReturnValue(...)` with `mockRestore()` in `finally` for ID/timestamp determinism in `__tests__/unit/generateId.test.js:25-35`
+- Assert snapshots immutably: `getRecentLogs()` returns frozen entries — tests prove outside mutation cannot corrupt the buffer (`__tests__/unit/logger.test.js:141-179`)
 
 ## Mocking
 
-**Framework:** Built-in `jest.mock` / `jest.fn` / `jest.spyOn` only. No sinon, no MSW — `global.fetch` is stubbed directly per test.
+**Framework:** Jest built-ins only (`jest.fn()`, `jest.mock()`, `jest.spyOn()`, `jest.useFakeTimers()`). No `__mocks__/` directories, no MSW, no Sinon.
 
 **Patterns:**
-- Prefer the global harness — `__tests__/setup/jest.setup.js` (auto-loaded via `setupFiles`, do not import it manually) already mocks: `@react-native-async-storage/async-storage` (official in-memory mock), `expo-file-system` (full in-memory `Map` FS exposing `__inMemoryFS`/`__resetFS` test hooks), `llama.rn`, `react-native-android-widget`, `expo-notifications`, `expo-haptics`, `expo-sharing`, `expo-document-picker`, `expo-camera`, `expo-clipboard`, `@expo/vector-icons` (renders `Text`), `react-native-reanimated/mock`:
 ```javascript
+// Global module mocks hoisted in __tests__/setup/jest.setup.js:9-11 — never re-declare per suite
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
-jest.mock('expo-file-system', () => ({ /* in-memory Map FS */ __resetFS: () => {...} }));
-jest.mock('expo-clipboard', () => ({
-  setStringAsync: jest.fn().mockResolvedValue(true),
-  getStringAsync: jest.fn().mockResolvedValue(''),
-}));
 ```
-(`__tests__/setup/jest.setup.js:9-11,28-117,190-195`)
-- Stub `fetch` per network test with chained one-shot responses (ping → sync) and restore the original afterward:
-```javascript
-const originalFetch = global.fetch;
-afterAll(() => { global.fetch = originalFetch; });
-// ...
-global.fetch = jest
-  .fn()
-  .mockResolvedValueOnce({ ok: true, status: 200, json: jest.fn().mockResolvedValue({ status: 'online' }) })
-  .mockResolvedValueOnce({ ok: true, status: 200, json: jest.fn().mockResolvedValue(mockSyncedResult) });
-```
-(`__tests__/unit/syncService.test.js:4-12,150-161`)
-- Spy on the logger instead of asserting console output: `jest.spyOn(logger, 'error')` then `expect(loggerErrorSpy).toHaveBeenCalledWith('Unhandled React Error:', 'Corrupt Note Tree', expect.any(String))` (`__tests__/unit/errorBoundary.test.js:25,76-80`); silence the spy implementation when the log itself is noise: `jest.spyOn(logger, 'error').mockImplementation(() => {})` (`__tests__/unit/eventBus.test.ts:21`)
-- Simulate failure paths with one-shot rejections: `Clipboard.setStringAsync.mockRejectedValueOnce(new Error('clipboard denied'))` + `Share.share = jest.fn().mockRejectedValueOnce(...)` (`__tests__/unit/errorBoundary.test.js:212,236-237`)
 
-```typescript
-// TS suites: type the spy explicitly
-let loggerErrorSpy: jest.SpyInstance;
-loggerErrorSpy = jest.spyOn(logger, 'error').mockImplementation(() => {});
+```javascript
+// Per-test fetch stub — __tests__/unit/syncService.test.js:90-94
+global.fetch = jest.fn().mockResolvedValue({
+  ok: true,
+  status: 200,
+  json: jest.fn().mockResolvedValue({ status: 'online' }),
+});
 ```
-(`__tests__/unit/eventBus.test.ts:15-22`)
+
+```javascript
+// Console suppression + logger spy — __tests__/unit/errorBoundary.test.js:20-27
+console.error = jest.fn(); // Suppress React error logging in tests
+loggerErrorSpy = jest.spyOn(logger, 'error');
+// ... afterEach: loggerErrorSpy.mockRestore();
+```
+
+```javascript
+// One-shot failure injection — __tests__/unit/errorBoundary.test.js:212
+Clipboard.setStringAsync.mockRejectedValueOnce(new Error('clipboard denied'));
+Share.share = jest.fn().mockResolvedValue({ action: 'sharedAction' });
+```
+
+- Centralize native mocks in `__tests__/setup/jest.setup.js` (wired via `setupFiles` in `jest.config.js:4-8`): in-memory `expo-file-system` virtual FS (`__inMemoryFS` Map + `__resetFS()`), `llama.rn` (`initLlama` → canned completion), `react-native-android-widget`, `expo-notifications` / `expo-haptics` / `expo-sharing` / `expo-document-picker` / `expo-camera` / `expo-clipboard`, `@expo/vector-icons` (renders `Text`), `react-native-reanimated/mock`
+- Reset via the harness helpers, not by re-mocking: call `FileSystem.__resetFS()` and `AsyncStorage.clear()` in `beforeEach` (`__tests__/unit/vaultAndFileStorage.test.js:23-29`); call `jest.clearAllMocks()` to reset call counts while keeping implementations
+- Mock timers and clocks, not sleeps: `jest.useFakeTimers()` for debounce/toast paths; `jest.spyOn(Date, 'now')` for collision/timestamp tests
 
 **What to Mock:**
-- All native/Expo modules (via the global harness — never import real native code in tests)
-- `global.fetch` for every `syncService` network path
-- `Clipboard`/`Share` for error-report flows; `console.*` only to silence React/Jest noise
-- `logger` methods when asserting telemetry emission without polluting the ring buffer
+- All native/Expo bindings (already mocked globally — just use them): `expo-file-system`, `expo-notifications`, `expo-haptics`, `expo-clipboard`, `expo-camera`, `llama.rn`, `react-native-android-widget`
+- Network (`global.fetch`) per test with canned `{ ok, status, json }` payloads — see `pingSyncServer` / `performSync` blocks in `__tests__/unit/syncService.test.js:88-217`
+- `console.*` when asserting emission/suppression, `Clipboard.setStringAsync` / `Share.share` for failure-fallback paths
 
 **What NOT to Mock:**
-- Do not mock the module under test or its pure collaborators (`dateUtils`, `taskMutations`, `eventBus`, real `AsyncStorage` mock semantics) — tests assert real behavior including storage round-trips and FS writes
-- Do not mock `Date` globally — inject `now`/`todayDate` via the options bag the source functions accept
-- Do not re-mock anything the harness already provides unless overriding a single method's resolved value for one test
+- The module under test and its pure helpers — import the real `src/utils/dateUtils`, `src/utils/generateId`, `src/utils/logger`; exercise real serialization, redaction, and FIFO eviction
+- The in-memory FS behavior — write through the real `saveNoteFile`/`readNoteFile` against the virtual FS and assert via `getInfoAsync` round-trips (`__tests__/unit/vaultAndFileStorage.test.js:31-88`)
+- Timer/ordering logic — use fake timers + `advanceTimersByTime` rather than mocking the handler
 
 ## Fixtures and Factories
 
 **Test Data:**
-- Define fixtures inline at the top of each suite — there is no shared factories directory. Keep payloads small but realistic:
 ```javascript
+// Inline consts at describe scope — __tests__/unit/syncService.test.js:14-28
+const validConfig = { ip: '192.168.1.50', port: 8080, token: 'test-secure-token-abc-123' };
 const sampleLocalData = {
   notes: [{ title: 'Sync Note', content: 'Sync Content' }],
   tasks: [{ id: 'task-1', title: 'Task to sync' }],
@@ -176,80 +138,94 @@ const sampleLocalData = {
   userName: 'Omprakash',
 };
 ```
-(`__tests__/unit/syncService.test.js:20-28`); crypto suites build a full `samplePayload` with `metadata/storage/vaults` (`__tests__/unit/exportImportService.test.js:13-39`); context suites pass `initialTasks`/`initialTaskLists` props into the real provider (`__tests__/unit/taskContext.test.js:30-48`)
-- Rebuild legacy wire formats inline when testing backward compatibility (legacy v1 AES envelope constructed with `crypto-js` directly in `__tests__/unit/exportImportService.test.js:92-102`)
+
+```typescript
+// Typed command fixtures with intentional invalid values — __tests__/unit/commandGateway.test.ts:57-74
+const shortKeyCmd: DispatchedCommand<'CREATE_IDENTITY'> = {
+  action: 'CREATE_IDENTITY',
+  idempotencyKey: 'abc', // < 4 chars
+  payload: { statement: 'I am a reader' },
+};
+```
+
+- No shared `fixtures/` or factory helpers — each suite declares its own inline consts (config objects, payload arrays, `ThrowingComponent` in `__tests__/unit/errorBoundary.test.js:9-14`). Loop invalid inputs inline: `for (const bad of [null, undefined, '', '   ', 'random-junk', ...])` in `__tests__/unit/dateUtils.test.js:90`
+- Loop-generated stress data for invariants: 10,000-ID collision set in `__tests__/unit/generateId.test.js:16-22`, 60-entry FIFO overflow in `__tests__/unit/logger.test.js:126-139`
 
 **Location:**
-- Fixtures live inside the test file that uses them (top-of-file `const`). Shared reset helpers live in the harness (`__resetFS`, `__inMemoryFS` on the mocked `expo-file-system`). Do not create a new `__tests__/fixtures/` directory — follow the existing inline pattern.
+- Inline in each `*.test.js(x)` file. The only shared fixture surface is the virtual FS seed (`/mock-docs/`, `/mock-cache/`) in `__tests__/setup/jest.setup.js:25-26`
 
 ## Coverage
 
-**Requirements:** None enforced (no `coverageThreshold` in `jest.config.js` — see note above). CI collects `--coverage` for tracking only.
+**Requirements:** Ratchet gate enforced — floor set just below measured coverage so it cannot silently regress (comment block in `jest.config.js:30-34`). Current thresholds in `jest.config.js:35-42`:
+
+```javascript
+coverageThreshold: {
+  global: { statements: 47, branches: 38, functions: 35, lines: 50 },
+}
+```
+
+- Collect from `src/**/*.{js,jsx,ts,tsx}` excluding `src/**/*.styles.js` (`collectCoverageFrom` in `jest.config.js:25-29`); raise toward §24 targets (70/90/95) as engine suites land — do not lower the numbers
+- CI runs `npx jest --ci --maxWorkers=2 --coverage` and uploads `coverage/` as an artifact (`.github/workflows/ci.yml:49-66`); a local `coverage/` directory is git-ignored output, not a source
 
 **View Coverage:**
 ```bash
-npm run test:coverage
+npm run test:coverage      # jest --coverage, text summary + coverage/ HTML
+npx jest --coverage --collectCoverageFrom='src/utils/logger.js'
 ```
-- Coverage collects from `src/**/*.{js,jsx,ts,tsx}` excluding `src/**/*.styles.js`. Note the gap: `src/theme/styles.js` and per-file `StyleSheet.create` blocks are excluded, so UI styling is intentionally out of coverage scope.
 
 ## Test Types
 
 **Unit Tests:**
-- Scope: pure engines and validators — every exported function gets happy-path + boundary + invalid-input cases. Exemplars: `__tests__/unit/dateUtils.test.js` (leap years, month/year rollovers, `Invalid Date`-never-today contract), `__tests__/unit/taskMutations.test.js` (recurrence spawning daily/weekly/monthly/progressive, list protection for `default_inbox`), `__tests__/unit/syncService.test.js` (config/payload validation matrices), `__tests__/unit/storageMigration.test.js` (version migration, cache key protection), `__tests__/unit/vaultAndFileStorage.test.js` + `__tests__/unit/exportImportService.test.js` (real AsyncStorage + in-memory FS round-trips)
-- Approach: import real module, call with fixed inputs, assert return shape and content; for storage suites, assert via re-reading `AsyncStorage`/`FileSystem` after the operation
+- Scope: pure utils, services, engines, validators, contexts — the entire `__tests__/unit/` tree (28 suites, ~457 tests). Assert return values, validation fragments, buffer/state transitions, and redaction invariants. Examples: `logger.test.js` (level gating, ring-buffer, PII redaction, babel config contract), `dateUtils.test.js` (local-timezone math, leap years, boundary rollovers), `generateId.test.js` (format regex, 10k-call uniqueness), `syncService.test.js` (config/payload validation, ping/sync flows), `vaultAndFileStorage.test.js` (vault CRUD + filename sanitization)
 
 **Integration Tests:**
-- Scope: provider + side-effect wiring — render the real `TaskProvider` with `react-test-renderer`, drive handlers through `act`, assert state + `eventBus` telemetry + `AsyncStorage` sync (`__tests__/unit/taskContext.test.js`, `__tests__/unit/habitContext.test.js`); service-level pipelines (`exportArchive` → `Sharing.shareAsync` called with `*.kwestup` URI + temp cleanup; `importArchive` → storage + note files restored — `__tests__/unit/exportImportService.test.js:127-180`); cross-module widget parity (`__tests__/phase12-widget-logic.test.js`, foreground `refreshTasksFromStorage` in `__tests__/unit/taskContext.test.js:119-152`)
-- Component pattern with `react-test-renderer` (not React Native Testing Library — it is not installed; do not add it without discussion):
-```javascript
-import renderer, { act } from 'react-test-renderer';
-let tree;
-act(() => {
-  tree = renderer.create(
-    <ErrorBoundary>
-      <ThrowingComponent shouldThrow={true} message="Corrupt Note Tree" />
-    </ErrorBoundary>
-  );
-});
-const textNodes = tree.root.findAllByType(Text);
-const combinedText = textNodes.map((n) => n.props.children).flat().join(' ');
-expect(combinedText).toContain('Something Went Wrong');
-```
-(`__tests__/unit/errorBoundary.test.js:3,55-71`); TS suites add `// @ts-ignore - react-test-renderer types not installed` on the import (`__tests__/unit/eventBus.test.ts:1-3`)
-- Timer pattern: wrap in `jest.useFakeTimers()` in `beforeEach`, flush with `act(() => { jest.runOnlyPendingTimers(); })` / `jest.advanceTimersByTime(3500)` and restore real timers in `afterEach` (`__tests__/unit/errorBoundary.test.js:21,29-36,153-156`)
+- Scope: multi-module command/behavior pipelines using real collaborators with mocked edges: `commandGateway.test.ts` (validator + executor + idempotency cache + eventBus, 591 lines), `commandIntegration.test.ts`, `behavioralPipelineE2E.test.ts`, `exportImportService.test.js`, `storageMigration.test.js`, `aiAssistant-smoke.test.js`. Pattern: clear all registries/buffers in `beforeEach`, dispatch typed commands, assert state + emitted events + idempotency dedupe
 
-**E2E Tests:** Not used — no Detox/Maestro/Appium config in repo. Device-level verification is manual. Do not add an E2E framework as part of a feature phase.
+**E2E Tests:**
+- Not used — no Detox/Maestro/Appium config detected. Device-level verification is manual via `expo run:android` / Expo dev client (`npm run android`, `npm start`). The closest coverage is `behavioralPipelineE2E.test.ts` (in-Jest pipeline test, not on-device) and `phase12-widget-logic.test.js` (headless widget logic)
 
 ## Common Patterns
 
 **Async Testing:**
 ```javascript
-await act(async () => {
-  renderer.create(
-    <TaskProvider initialTasks={initialTasks}>
-      <TestTaskConsumer />
-    </TaskProvider>
-  );
+// Await the real async API, assert the resolved value — __tests__/unit/vaultAndFileStorage.test.js:46-59
+it('creates a new vault with generated id, adds it to storage, and creates its folder', async () => {
+  const newVault = await createVault('Project Alpha');
+  expect(newVault.name).toBe('Project Alpha');
+  const vaults = await getVaults();
+  expect(vaults.length).toBe(1);
 });
+
+// Flush pending promises inside React act() — __tests__/unit/errorBoundary.test.js:132-134
 await act(async () => {
-  await contextValue.handleSaveTask({ title: "New Context Task" });
+  await instance.handleCopyReport();
 });
-expect(contextValue.tasks).toHaveLength(1);
+expect(Clipboard.setStringAsync).toHaveBeenCalledTimes(1);
 ```
-(`__tests__/unit/taskContext.test.js:35-48,83-90`) — always `await act(async ...)` around renders and async handler calls so state settles before assertions; plain (non-async) `act(() => {...})` suffices for sync render-only cases (`__tests__/unit/errorBoundary.test.js:41-46`).
 
 **Error Testing:**
 ```javascript
-// Sync validators: exact-message substring matching
+// Validator throws — match the message fragment — __tests__/unit/syncService.test.js:50-54
 expect(() => validateSyncConfig({ ...validConfig, port: 0 })).toThrow('out of bounds');
 expect(() => validateSyncPayload(null)).toThrow('Malformed server response');
-// Async rejection: rejects.toThrow, plus asserting no side effects happened
-global.fetch = jest.fn();
-await expect(performSync({ ip: 'invalid/path', port: 8080, token: 'tok' }, sampleLocalData)).rejects.toThrow('is malformed');
-expect(global.fetch).not.toHaveBeenCalled();
+
+// Async rejection injection — __tests__/unit/errorBoundary.test.js:235-253
+Clipboard.setStringAsync.mockRejectedValueOnce(new Error('clipboard denied'));
+Share.share = jest.fn().mockRejectedValueOnce(new Error('share denied'));
+// ... assert failure UI, not success toast:
+expect(instance.state.copiedToast).toBe(false);
+expect(instance.state.copyFailed).toBe(true);
+expect(combinedText).toContain('Copy failed — please screenshot this screen');
 ```
-(`__tests__/unit/syncService.test.js:50-54,75-79,126-132`); crypto suites assert the user-facing envelope message: `.rejects.toThrow('INVALID PASSPHRASE OR CORRUPTED ARCHIVE')` (`__tests__/unit/exportImportService.test.js:176-178`)
-- For PII-sensitive error paths, assert both redaction and preservation: `expect(copiedText).toContain('[Redacted]'); expect(copiedText).not.toContain('Secret note #42');` (`__tests__/unit/errorBoundary.test.js:141-144`)
+
+**Render/Component Testing:**
+- Use `react-test-renderer` + `act()` for `ErrorBoundary` flows (`__tests__/unit/errorBoundary.test.js`): `renderer.create(<ErrorBoundary>...)` inside `act`, query via `root.findByProps({ testID })` / `root.findAllByType(Text)`, drive instance methods (`handleRetry`, `toggleDetails`, `handleCopyReport`, `handleRestartPrompt`), assert `instance.state.*` transitions and `combinedText` copy contracts
+
+**Quality Gates (CI — `.github/workflows/ci.yml`):**
+1. `npm ci` → `npm run lint` (blocking; warnings tolerated, errors fail) → always generate `eslint-report.json` artifact
+2. `npm run typecheck` (blocking `tsc --noEmit`)
+3. `npx jest --ci --maxWorkers=2 --coverage` (blocking, incl. coverage ratchet) → upload `coverage/` artifact
+- Per `GEMINI.md` §3, all three must pass before any task counts as verified; Semgrep runs separately via `.github/workflows/semgrep.yml`
 
 ---
 

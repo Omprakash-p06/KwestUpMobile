@@ -6,101 +6,95 @@
 
 **Primary:**
 - JavaScript (ES2021) - Majority of app code: `App.js`, `src/screens/*.js`, `src/context/*.js`, `src/utils/*.js`, `src/navigation/*.js`, `src/components/*.js`
-- TypeScript (strict) - Typed core services and engines: `src/services/notificationService.ts`, `src/services/types.ts`, `src/behavior/*.ts`, `src/domains/**/*.ts`, `widgets/*.tsx`
-- TSX - Android home-screen widgets: `widgets/FocusTimerWidget.tsx`, `widgets/DailyTasksWidget.tsx`, `widgets/ImportantTasksWidget.tsx`, `widgets/TasksListWidget.tsx`, `widgets/HabitWidget.tsx`, `widgets/widget-task-handler.tsx`
+- TypeScript (~5.8.3, `strict: true`, `allowJs: true`, `checkJs: false`) - All new engine code: `src/behavior/*.ts`, `src/ai/*.ts`, `src/commands/*.ts`, `src/services/*.ts`, `widgets/*.tsx`
+- TSX - Home-screen widgets: `widgets/FocusTimerWidget.tsx`, `widgets/DailyTasksWidget.tsx`, `widgets/ImportantTasksWidget.tsx`, `widgets/TasksListWidget.tsx`, `widgets/HabitWidget.tsx`, `widgets/widget-task-handler.tsx`
 
 **Secondary:**
-- Java / Kotlin + Gradle (Android native shell) - `android/` (Expo prebuild output, `llama.rn` native module, `react-native-android-widget` hosts)
-- JSON - Config and data envelopes: `app.json`, `eas.json`, `package.json`, encrypted-backup envelope in `src/utils/exportService.js`
+- Java/Gradle + Kotlin (native Android shell) - `android/app/build.gradle`, `android/build.gradle`, patched `node_modules/llama.rn/android/build.gradle` via `patch-llama-gradle.js`
+- JSON/YAML config - `app.json`, `eas.json`, `tsconfig.json`, `.github/workflows/ci.yml`
 
 ## Runtime
 
 **Environment:**
-- Node.js `>=22.13` (declared in `package.json` engines; CI pins Node 22 via `actions/setup-node@v4` in `.github/workflows/ci.yml`)
-- Expo SDK `~57.0.0` (`package.json`; note `app.json` still stamps `"sdkVersion": "53.0.0"` — stale field, harmless)
-- React `19.2.3` + React Native `0.86.0` (Hermes via Expo default)
-- Metro bundler via `expo/metro-config` (`metro.config.js`)
+- Expo SDK `~57.0.0` on React Native `0.86.0` + React `19.2.3` (from `package.json`)
+- Node `>=22.13` required (`package.json` `engines`); observed dev runtime Node `22.19.0` + npm `11.4.2`
+- Metro bundler via `expo/metro-config` (`metro.config.js`); Babel via `babel-preset-expo` (`babel.config.js`); Hermes is the default RN runtime for release builds
 
 **Package Manager:**
-- npm (only manager configured)
-- Lockfile: present (`package-lock.json`, installed in CI with `npm ci`)
-- Registry auth file: `.npmrc` present at repo root (existence only — never read for secrets)
-- `postinstall`: `node patch-llama-gradle.js` — patches `node_modules/llama.rn/android/build.gradle` for Old Architecture JSI support (idempotent, see `patch-llama-gradle.js`)
+- npm (only manager in use)
+- Lockfile: `package-lock.json` present — install with `npm ci` (as `.github/workflows/ci.yml` does)
 
 ## Frameworks
 
 **Core:**
-- Expo `~57.0.0` + `expo-dev-client` `~5.2.4` - Managed workflow with custom dev client (`expo start`, `expo run:android`, `expo run:ios`)
-- React Navigation Drawer `^6.6.6` + Native `^6.1.9` - Drawer navigation (`src/navigation/AppNavigator.js`, `src/navigation/CustomDrawerContent.js`)
-- `react-native-paper` `^5.10.5` - Material provider wrapping the app (`App.js` → `<PaperProvider>`)
-- `react-native-gesture-handler` `~2.24.0` + `react-native-reanimated` `~3.17.4` - Gesture root + animations (`App.js`, `src/components/CustomSwitch.js`)
-- `react-native-safe-area-context` `5.4.0` + `react-native-screens` `~4.11.1` - Safe areas and native screens
-- `expo-font` `~13.3.2` + `@expo-google-fonts/{inter,hanken-grotesk,jetbrains-mono}` - Font loading via `useFonts` in `App.js`
+- Expo `~57.0.0` - App runtime, config plugins, EAS builds (`app.json`, `eas.json`)
+- React Navigation `^6.1.9` (`@react-navigation/native`) + `@react-navigation/drawer` `^6.6.6` - Drawer/stack navigation in `src/navigation/AppNavigator.js`, `src/navigation/CustomDrawerContent.js`
+- `react-native-paper` `^5.10.5` - Themed `PaperProvider` wrapper in `App.js`
+- `react-native-gesture-handler` `~2.24.0` + `react-native-reanimated` `~3.17.4` (Babel plugin must stay last in `babel.config.js`) - Gestures, drawer, timer/list animations
+- `react-native-screens` `~4.11.1` + `react-native-safe-area-context` `5.4.0` - Native screen container + safe areas (`App.js`)
+- `expo-font` `~13.3.2` + `@expo-google-fonts/inter`, `@expo-google-fonts/hanken-grotesk`, `@expo-google-fonts/jetbrains-mono` - `useFonts` loading in `App.js`
+- `expo-status-bar` `~2.2.3`, `expo-linear-gradient` `~14.1.5`, `@expo/vector-icons` `^14.0.0`, `react-native-modal` `^13.0.1`, `react-native-confetti-cannon` `^1.5.2`, `expo-haptics` `~14.1.4` - UI polish, dialogs, celebrations, haptics (`App.js`, `src/components/*.js`)
 
 **Testing:**
-- Jest `^29.7.0` + `jest-expo` `~57.0.0` (android preset) - Runner, config in `jest.config.js`
-- `babel-jest` `^29.7.0` + `@types/jest` `^29.5.14` - Transform and types
-- `__tests__/setup/jest.setup.js` - Shared setup file (appended to `jest-expo/android` preset files)
+- Jest `^29.7.0` + `jest-expo` `~57.0.0` + `@react-native/jest-preset` `0.86.3` - Runner, preset `jest-expo/android` in `jest.config.js`
+- `babel-jest` `^29.7.0` + `@types/jest` `^29.5.14` - Transform + types
+- Run: `npm test` (all), `npm run test:watch`, `npm run test:coverage`; CI runs `npx jest --ci --maxWorkers=2 --coverage` (see `.github/workflows/ci.yml`)
 
 **Build/Dev:**
-- `babel-preset-expo` - Base preset (`babel.config.js`); `react-native-reanimated/plugin` always last; `babel-plugin-transform-remove-console` strips `log/info/debug` (keeps `error`/`warn`) in production only; Babel cache keyed on `NODE_ENV`
-- TypeScript `~5.8.3` - `tsc --noEmit`; strict true, `allowJs: true`, `checkJs: false` (phased enablement noted in `tsconfig.json`)
-- ESLint `^9.39.4` (flat config in `eslint.config.js`) + `eslint-plugin-react`, `eslint-plugin-react-hooks`, `eslint-plugin-react-native`, `@babel/eslint-parser`
-- EAS CLI `>= 3.10.0` - Builds in `eas.json` (development internal APK + dev client, preview internal, production APK with `NODE_OPTIONS=--max-old-space-size=4096`)
-- `expo-build-properties` `~0.14.8` - iOS `useFrameworks: static` (required by `llama.rn` static linking)
+- EAS CLI `>= 3.10.0` (`eas.json`) + `expo-dev-client` `~5.2.4` - `development` (internal APK, dev client), `preview` (internal), `production` (APK + `NODE_OPTIONS=--max-old-space-size=4096`)
+- TypeScript `~5.8.3` (`tsconfig.json` extends `expo/tsconfig.base`) - `npm run typecheck` (`tsc --noEmit`)
+- ESLint `^9.39.4` flat config (`eslint.config.js`, legacy `.eslintrc.js` still present) + `eslint-plugin-react`, `eslint-plugin-react-hooks`, `eslint-plugin-react-native`, `@babel/eslint-parser` - `npm run lint`, `npm run lint:report`
+- `babel-plugin-transform-remove-console` - Strips `console.log/info/debug` in production only, keeps `error`/`warn` (`babel.config.js`)
+- `patch-llama-gradle.js` (runs on `postinstall`) - Patches `llama.rn` Android `build.gradle` for Old Architecture JSI support (idempotent, verified pattern)
+- `expo-build-properties` `~0.14.8` - iOS `useFrameworks: static` (required by `llama.rn`) in `app.json`
 
 ## Key Dependencies
 
 **Critical:**
-- `llama.rn` `0.12.4` - On-device LLM inference (Qwen2.5-0.5B-Instruct Q4_K_M GGUF, n_ctx 2048, CPU-only). Lifecycle in `src/utils/aiService.js` (`initLlama`, `releaseAllLlama`, idle-unload, AppState unload)
-- `@react-native-async-storage/async-storage` `2.1.2` - Primary KV store for all app state (`src/utils/storage.js`, `src/context/*.js`)
-- `expo-file-system` `~18.1.11` - Notes/vault markdown files (`src/utils/fileStorage.js`, `src/utils/vaultService.js`) + GGUF model download/verify (`src/utils/aiService.js`)
-- `expo-notifications` `~0.31.4` - All local reminders via `src/services/notificationService.ts` (5 Android channels, policy-gated scheduler)
-- `crypto-js` `^4.2.0` - SHA-256 model integrity (`src/utils/aiService.js`) + AES-256/PBKDF2 backup encryption (`src/utils/exportService.js`)
-- `react-native-android-widget` `^0.16.1` - 5 home-screen widgets declared in `app.json` plugins, rendered by `widgets/*.tsx`, updated from `App.js`
+- `llama.rn` `0.12.4` - On-device Qwen2.5-0.5B-Instruct Q4_K_M GGUF inference (~468 MB). Lifecycle in `src/utils/aiService.js`; heuristic fallbacks in `src/ai/*.ts`; Expo plugin entry in `app.json`
+- `@react-native-async-storage/async-storage` `2.1.2` - Primary KV store for all app state (keys namespaced `kwestup_*`, storage version `v7.0` in `src/utils/storage.js`)
+- `expo-file-system` `~18.1.11` - Vault markdown files under `FileSystem.documentDirectory`, model cache under `models/`; used in `src/utils/fileStorage.js`, `src/utils/vaultService.js`, `src/utils/exportService.js`, `src/utils/aiService.js`, `src/screens/SettingsScreen.js`
+- `crypto-js` `^4.2.0` - AES-256 + PBKDF2-HMAC-SHA256 backup encryption and SHA-256 model hashing in `src/utils/exportService.js`, `src/utils/aiService.js`
+- `expo-notifications` `~0.31.4` - Local notifications only (tasks, birthdays, billing, focus timer, behavioral cues). Unified API in `src/services/notificationService.ts`; legacy adapter in `src/utils/notifications.js`
 
 **Infrastructure:**
-- `expo-camera` `~16.1.11` - QR sync-code scanner (`src/components/QRScannerModal.js`)
-- `expo-document-picker` `~13.1.6` + `expo-sharing` `~13.1.5` - Vault `.md` import (`src/utils/vaultImport.js`) and encrypted-backup export/share (`src/utils/exportService.js`, `src/screens/SettingsScreen.js`)
-- `expo-clipboard` `~7.0.1` - Error-details copy in `src/components/ErrorBoundary.js`
-- `expo-haptics` `~14.1.4` - Success/error tactile feedback across screens and `App.js`
-- `expo-linear-gradient` `~14.1.5` - `LiquidGlassBackground` / `LiquidGlassCard` visuals
-- `@react-native-community/datetimepicker` `8.4.1` - Backing picker for `src/components/CustomDateTimePicker.js`
-- `react-native-modal` `^13.0.1` - App-level confirmation/name/telemetry dialogs in `App.js`
-- `react-native-confetti-cannon` `^1.5.2` - Focus-session celebration in `App.js`
-- `@expo/vector-icons` `^14.0.0` - Icon set
-- `expo-status-bar` `~2.2.3` - Themed status bar in `App.js`
-- `use-latest-callback` `^0.2.4` - Callback stability helper
+- `expo-camera` `~16.1.11` - QR sync-code scanning in `src/components/QRScannerModal.js` (permission string in `app.json`)
+- `expo-document-picker` `~13.1.6` + `expo-sharing` `~13.1.5` - Encrypted backup import/export in `src/utils/vaultImport.js`, `src/utils/exportService.js`, `src/screens/SettingsScreen.js`
+- `expo-clipboard` `~7.0.1` - Crash-log copy in `src/components/ErrorBoundary.js`
+- `@react-native-community/datetimepicker` `8.4.1` - Date/time input in `src/components/CustomDateTimePicker.js`
+- `react-native-android-widget` `^0.16.1` - Five home-screen widgets (`FocusTimer`, `DailyTasks`, `ImportantTasks`, `TasksList`, `HabitWidget` in `app.json` + `widgets/*.tsx`); task handler registered in `index.js` via `widgets/widget-task-handler.tsx`
+- `use-latest-callback` `^0.2.4` - Stable-callback helper for hooks
 
 ## Configuration
 
 **Environment:**
-- No `.env` files present; `.env*.local` is gitignored. No `EXPO_PUBLIC_*` vars and no `process.env` app config — only `NODE_ENV`/`__DEV__` branching in `src/utils/logger.js` and `src/utils/diagnostics.js`
-- Runtime config lives in `app.json` (`expo.extra.eas.projectId`, `owner: omprakash-p06`, Android `package: com.omprakashp06.kwestupmobile`, `versionCode: 7`) and version constants `APP_VERSION = "v3.5.0"` / `STORAGE_VERSION = "v7.0"` in `src/utils/storage.js`
-- Secrets location: none — there are no API keys, tokens, or cloud credentials in the repo. LAN sync token is user-scanned at runtime (QR camera), never stored in config
+- No `.env` files present (verified — no `EXPO_PUBLIC_*`, no `expo-constants` usage, no `process.env` app config beyond `NODE_ENV`/`__DEV__` guards in `src/utils/logger.js`, `src/utils/diagnostics.js`, `babel.config.js`)
+- `.npmrc` file present — note existence only, contents never read (may hold registry auth)
+- App identity in `app.json`: slug `kwestupmobile`, version `3.5.0`, Android package `com.omprakashp06.kwestupmobile` (`versionCode` 7), EAS `projectId` `9b029b06-5b07-4a1d-9999-a543a3ef1614`, owner `omprakash-p06`
+- Storage versioning in `src/utils/storage.js`: `APP_VERSION = "v3.5.0"`, `STORAGE_VERSION = "v7.0"`; all keys prefixed `kwestup_*`
 
 **Build:**
-- `app.json` - App identity, icons/splash, `llama.rn` + `expo-camera` + `expo-build-properties` + `react-native-android-widget` plugin config (5 widgets, 30-min `updatePeriodMillis`)
-- `eas.json` - Build profiles and submit placeholder
-- `babel.config.js` - Preset + env-conditional plugins
-- `metro.config.js` - Default Expo Metro config (no customization)
-- `tsconfig.json` - Extends `expo/tsconfig.base`, strict, includes `src/**/*`, `widgets/**/*`, `__tests__/**/*`, root configs
-- `jest.config.js` - `jest-expo/android` preset, custom setup file, `transformIgnorePatterns` covering RN/Expo/Reanimated/Paper/llama.rn/widget libs
-- `eslint.config.js` + `.eslintrc.js` (legacy, superseded by flat config) - Lint rules
-- `android/` - Prebuilt native project (git-tracked shell; `android/app/build/`, `.gradle/` gitignored)
-- `.npmrc` - Present (do not read contents)
+- `app.json` - Expo app identity, splash/icon, `llama.rn` + `expo-camera` + `expo-build-properties` + `react-native-android-widget` plugin configs
+- `eas.json` - Build profiles (`development`/`preview`/`production`) + `submit.production`
+- `tsconfig.json` - Extends `expo/tsconfig.base`, includes `src/**/*`, `widgets/**/*`, `__tests__/**/*`, root configs; `checkJs: false` by documented decision
+- `babel.config.js` - `babel-preset-expo` + conditional `transform-remove-console` + `react-native-reanimated/plugin` last
+- `metro.config.js` - Default `expo/metro-config` (no customization)
+- `jest.config.js` - Android preset, `transformIgnorePatterns` for RN/Expo/llama.rn/widget libs, `testMatch **/__tests__/**/*.test.[jt]s?(x)`, coverage floors statements 47 / branches 38 / functions 35 / lines 50
+- `eslint.config.js` - Flat config for `**/*.{js,jsx}` (TS files currently uncovered); `android/`, `ios/`, `coverage/` ignored
+- `android/` - Prebuilt native shell (`android/app/build.gradle`, `android/build.gradle`); do not hand-edit native code — change `app.json` + rebuild
 
 ## Platform Requirements
 
 **Development:**
-- Node 22+, npm, Expo CLI / EAS CLI `>= 3.10.0`
-- `npm ci` then `npx expo start` (Expo Go incompatible with `llama.rn` native code — use `expo run:android` / dev-client APK from the `development` profile)
-- Android SDK for local runs; large model download (~468 MB) needs stable Wi-Fi on first AI use
+- Node `>=22.13`, npm, Expo CLI / EAS CLI `>= 3.10.0`
+- `npm ci && npx expo start` for JS-only work; `npx expo run:android` / `npm run android` (or EAS `development` APK) for native modules (`llama.rn`, widgets, camera, notifications)
+- Android emulator or device (widgets + `llama.rn` are Android-first; iOS only declares `supportsTablet: true`)
+- ~600 MB free for GGUF model download at runtime (not bundled in the APK)
 
 **Production:**
-- Android-first target: internal-distribution APKs (`eas.json` builds `apk` for development and production); 5 Android widgets + notification channels are Android-gated in code (`Platform.OS === 'android'` checks in `App.js`, `src/services/notificationService.ts`)
-- iOS supported as tablet-capable managed target (`supportsTablet: true`, static frameworks) but widgets/notifications paths are Android-optimized
-- Deployment: EAS Build + GitHub Releases APK asset (consumed by in-app updater); no store-submit config beyond empty `eas.json` submit placeholder
+- EAS Build Android APK (`eas.json` `production` profile with 4 GB Node heap); distributed via GitHub Releases APK asset, not Play Store (`src/utils/diagnostics.js` `checkForUpdates`, `App.js` update prompt)
+- Fully offline-capable after install except: one-time ~468 MB model download from HuggingFace, LAN sync to a paired PC, and optional opt-in telemetry POST
+- No backend to deploy — local-first app; `api.kwestup.com/telemetry` is a stub endpoint, not a required service
 
 ---
 
