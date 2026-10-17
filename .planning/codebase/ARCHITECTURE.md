@@ -1,246 +1,311 @@
-<!-- refreshed: 2026-10-12 -->
+<!-- refreshed: 2026-10-18 -->
 # Architecture
 
-**Analysis Date:** 2026-10-12
+**Analysis Date:** 2026-10-18
 
 ## System Overview
 
+KwestUp Mobile is a **privacy-first, offline-first Expo / React Native app** with two coexisting architectural generations in one tree:
+
+1. **Legacy v3.5 core** — a single `App.js` god component that holds timer, theme, notes, birthdays and user state and prop-drills them into `AppNavigator.js`.
+2. **KwestUp 4.0 "Atomic Behavior Engine"** — an incrementally-migrating TypeScript layer (`src/behavior/`, `src/commands/`, `src/ai/`, `src/services/`, `src/domains/`) that adds a deterministic rule engine, domain event bus, habit state machine, command gateway with AI sandboxing, and a unified notification policy service.
+
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│                    Presentation Layer                        │
-├──────────────────┬──────────────────┬───────────────────────┤
-│  Screens (9)     │  Components (16) │  Navigation (Drawer)  │
-│  `src/screens/`  │`src/components/` │ `src/navigation/`     │
-└────────┬─────────┴────────┬─────────┴──────────┬────────────┘
-         │                  │                     │
-         ▼                  ▼                     ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    State / Context Layer                     │
-│  `src/context/` — Task, Vault, Billing, Birthday, Habit      │
-│  App.js root state (theme, timer, user, sync, notes mirror)  │
-└─────────────────────────────────────────────────────────────┘
-         │
-         ▼
-┌─────────────────────────────────────────────────────────────┐
-│              Domain Logic Layer (pure, testable)             │
-├──────────────┬───────────────┬──────────────┬───────────────┤
-│ Behavior     │ AI pipeline   │ Commands     │ Mutation      │
-│ `src/behavior/`│ `src/ai/`   │`src/commands/`│`src/utils/`   │
-└──────────────┴───────────────┴──────────────┴───────────────┘
-         │
-         ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Store / Output / External                                   │
-│  AsyncStorage (`kwestup_*` keys) + expo-file-system vaults   │
-│  `widgets/` headless handler + `src/services/` notifications│
-└─────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────┐
+│                         Platform Entry Points                          │
+│  index.js (registerRootComponent + registerWidgetTaskHandler)          │
+│  App.js (root component / legacy state owner)                          │
+│  widgets/widget-task-handler.tsx (headless Android widget JS context)  │
+└───────────────┬───────────────────────────────┬───────────────────────┘
+                │                               │
+                ▼                               ▼
+┌─────────────────────────────┐   ┌───────────────────────────────────────┐
+│   Navigation & UI Layer      │   │      Headless Widget Execution        │
+│  src/navigation/             │   │  widgets/*.tsx + widget-task-handler  │
+│   AppNavigator.js (Drawer)   │   │  (separate JS VM; AsyncStorage only)  │
+│  src/screens/*.js (9)        │   └───────────────┬───────────────────────┘
+│  src/components/*.js (16)    │                   │
+└───────────────┬─────────────┘                   │
+                │                                 │
+                ▼                                 ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│                State Providers (src/context/*.js)                      │
+│  TaskContext · VaultContext · BillingContext · BirthdayContext         │
+│  HabitContext (4.0)                                                    │
+└───────────────┬───────────────────────────────────────────────────────┘
+                │
+                ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│        4.0 Deterministic Engines & Services (TypeScript)               │
+│  behavior/ (eventBus, ruleEngine, habitEngine, recoveryEngine,         │
+│             rewardEngine, improvementEngine, cueEngine,                │
+│             interventionEngine)                                        │
+│  services/notificationService.ts   commands/ (validator, executor,     │
+│             aiSandbox, idempotencyStore, useCommandGateway)            │
+│  ai/ (intentParser, behaviorCompiler, frictionAnalyzer,                │
+│             weeklyReviewEngine, rulePacketRetriever)                   │
+│  Source of truth: rulebook/machine/*.json                              │
+└───────────────┬───────────────────────────────────────────────────────┘
+                │
+                ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│                          Persistence Layer                             │
+│  AsyncStorage (versioned keys, see src/utils/storage.js)               │
+│  expo-file-system `documentDirectory/Notes/Vaults/<id>/` (Markdown)    │
+│  On-device GGUF model: documentDirectory/models/*.gguf (llama.rn)      │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Component Responsibilities
 
 | Component | Responsibility | File |
 |-----------|----------------|------|
-| Root composition + boot | Owns app-level state (theme, timer, user, notes mirror, vault list), boot/migration orchestration, throttled persistence, widget push | `App.js` |
-| Expo entry | Registers root component + headless widget task handler | `index.js` |
-| Drawer navigation | 9-screen drawer, notification channel init, context→prop bridging, global TaskEditModal + WeeklyReviewModal + AIAssistant overlay | `src/navigation/AppNavigator.js` |
-| Task state | Sole writer of tasks/taskLists/dailyTasks keys; debounced write-through persistence, foreground refresh, all task mutations | `src/context/TaskContext.js` |
-| Habit state | Habit CRUD, midnight-rollover miss detection, recovery, rewards, behavior-event log (500 cap), isolated `kwestup_habits_*` keys | `src/context/HabitContext.js` |
-| Vault state | Vault list + active vault + active note (thin mirror; filesystem is source of truth) | `src/context/VaultContext.js` |
-| Billing state | Transactions/budgets/recurring bills, sole billing writer, bill lifecycle events | `src/context/BillingContext.js` |
-| Birthday state | Birthday CRUD + notification scheduling, birthday lifecycle events | `src/context/BirthdayContext.js` |
-| Event bus | Singleton typed+wildcard pub/sub, immutable frozen events, 100-event in-memory ring buffer | `src/behavior/eventBus.ts` |
-| Habit engines | Pure habit math: completion/streak (`habitEngine.ts`), cues (`cueEngine.ts`), rules (`ruleEngine.ts`), recovery (`recoveryEngine.ts`), rewards (`rewardEngine.ts`), improvement (`improvementEngine.ts`), intervention planning (`interventionEngine.ts`) | `src/behavior/` |
-| AI pipeline | Deterministic on-device intent → rule-packet → compiled plan → friction/weekly-review analysis | `src/ai/` |
-| Command gateway | Validated, idempotent, sandboxed habit command execution with telemetry | `src/commands/` |
-| Task mutation engine | Pure framework-agnostic task/list/subtask/recurrence transforms shared by app + widget | `src/utils/taskMutations.js` |
-| Notes store | Vault-parameterized markdown file CRUD + scanner over `Notes/Vaults/<id>/` | `src/utils/fileStorage.js` |
-| Vault store | Vault CRUD + active-vault tracking + one-time flat→vault migration | `src/utils/vaultService.js` |
-| Widget runtime | Headless WIDGET_CLICK handler + render path for 5 Android widgets | `widgets/widget-task-handler.tsx` |
-| Notification service | Channel init, permission, scheduling/cancel for birthdays, tasks, billing, system | `src/services/notificationService.ts` |
+| Root component | Boot init, legacy global state (timer/theme/notes/birthdays/user), provider tree, confirmation/name/telemetry modals, widget push effects | `App.js` |
+| Drawer navigator | 9 drawer routes, mounts `TaskEditModal`/`WeeklyReviewModal`/`AIAssistant`, resolves context-vs-prop fallbacks | `src/navigation/AppNavigator.js` |
+| Drawer UI | Sidebar nav, user avatar, theme cycle control | `src/navigation/CustomDrawerContent.js` |
+| Task domain | Sole mutation path for tasks/taskLists/dailyTasks; eager write-through persistence; emits domain events | `src/context/TaskContext.js` |
+| Vault domain | Vault list, active vault, notes filesystem loading/switching | `src/context/VaultContext.js` |
+| Billing domain | Transactions, budgets, recurring bills; persistence owner | `src/context/BillingContext.js` |
+| Birthday domain | Birthday CRUD + reminder scheduling/cancellation | `src/context/BirthdayContext.js` |
+| Habit domain (4.0) | Habits, identities, behavior events, rewards; isolated versioned storage; recovery state machine | `src/context/HabitContext.js` |
+| Pure task engine | Framework-agnostic task transforms, recurrence spawn, merges — shared by context and widget handler | `src/utils/taskMutations.js` |
+| Behavior rule engine | Loads `rulebook/machine/*.json`, evaluates `when`/`then` conditions, produces execution traces | `src/behavior/ruleEngine.ts` |
+| Domain event bus | Typed pub/sub singleton with 100-event ring buffer, deep-freeze isolation | `src/behavior/eventBus.ts` |
+| Habit engine | Habit validation, 2-minute minimum-action compilation, completion, progression | `src/behavior/habitEngine.ts` |
+| Recovery engine | "Never Miss Twice" transition + overload risk | `src/behavior/recoveryEngine.ts` |
+| Reward engine | Factual milestone rewards (no gamified XP) | `src/behavior/rewardEngine.ts` |
+| Improvement engine | Rolling consistency, streak, automaticity scoring | `src/behavior/improvementEngine.ts` |
+| Cue engine | Cue validation + habit-stack linking | `src/behavior/cueEngine.ts` |
+| Intervention engine | Arbitrates notification vs widget vs in-app surfaces; quiet hours, anti-spam | `src/behavior/interventionEngine.ts` |
+| Notification service | Android channels, behavioral policy (cap/gap/dedup/quiet), scheduling + history | `src/services/notificationService.ts` |
+| Command gateway | Type-safe dispatch, validation, idempotency, registration | `src/commands/commandExecutor.ts`, `src/commands/commandValidator.ts`, `src/commands/useCommandGateway.ts` |
+| AI sandbox | Sanitizes untrusted LLM output before command execution | `src/commands/aiSandbox.ts` |
+| On-device AI service | llama.rn context lifecycle, model download + SHA-256 verify, inference helpers | `src/utils/aiService.js` |
+| AI intent layer | Intent parsing, behavior compilation, friction analysis, weekly review | `src/ai/*.ts` |
+| Logger | Env-aware structured logging + 50-entry forensic ring buffer with PII redaction | `src/utils/logger.js` |
+| Error boundary | Root React error catcher with crash-report copy/share | `src/components/ErrorBoundary.js` |
 
 ## Pattern Overview
 
-**Overall:** Layered offline-first React Native (Expo) app with context-per-domain state, pure-function domain engines, and an event-bus telemetry backbone.
+**Overall:** Layered hybrid — **legacy centralized state + prop-drilling** progressively wrapped by a **provider/context domain model** and a **pure deterministic engine + command/event** core.
 
 **Key Characteristics:**
-- One React Context per domain owns its AsyncStorage keys; `App.js` owns only residual domains (theme/timer/user/birthdays-mirror/notes-mirror) and merges via read-modify-write so contexts never clobber each other.
-- All habit/task transforms are pure functions in `src/behavior/` and `src/utils/taskMutations.js` — contexts and the headless widget handler both call the same functions, then persist.
-- Cross-cutting telemetry flows through the `eventBus` singleton (`src/behavior/eventBus.ts`), never through direct cross-domain imports (`src/domains/README.md` rule).
-- 4.0 behavior subsystem (habits/interventions/AI/commands) is TypeScript with strict domain types; 3.x productivity subsystem (screens/contexts/utils) is JavaScript.
+- **Offline-first & local-only**: No cloud backend. Persistence is AsyncStorage + device filesystem. The only network peers are HuggingFace (model download) and LAN sync (`src/utils/syncService.js`).
+- **Determinism over AI autonomy**: Behavioral policy lives in machine-readable JSON (`rulebook/machine/*.json`) evaluated by `ruleEngine.ts`; the LLM only extracts intent (`rulebook/README.md` invariants 1–5).
+- **Pure engines shared across JS VMs**: `taskMutations.js`, `habitEngine.ts`, `interventionEngine.ts` are imported both by the foreground app and the headless widget handler.
+- **Single-writer ownership**: Each domain names exactly one persistence writer (comments in `App.js`, `TaskContext.js`, `HabitContext.js` document the race-elimination rules).
+- **Incremental TS migration**: New architecture code is TypeScript-first; screens/contexts remain `.js` with `checkJs: false` (`tsconfig.json`).
 
 ## Layers
 
-**Presentation:**
-- Purpose: Render screens, dialogs, overlays; collect user input; never persist directly
-- Location: `src/screens/`, `src/components/`, `src/navigation/`, `widgets/*.tsx` (render components)
-- Contains: 9 screens (`DashboardScreen`, `DailyTasksScreen`, `BirthdaysScreen`, `BillingScreen`, `TaskListScreen`, `NotesScreen`, `FocusTimerScreen`, `SettingsScreen`, `SearchScreen`), 16 shared components (`TaskCard`, `TaskEditModal`, `AIAssistant`, `WeeklyReviewModal`, `ErrorBoundary`, `LiquidGlass*`, `Custom*`, `QRScannerModal`, `TimerLockoutOverlay`), drawer navigator + custom drawer content, 5 widget render components
-- Depends on: Context layer (hooks like `useTasks`, `useVaults`, `useBilling`, `useBirthdays`, `useHabits`), theme objects, pure engines for display math
-- Used by: `App.js` composes providers + `NavigationContainer`; `widgets/widget-task-handler.tsx` renders widget components headlessly
+**Entry / Bootstrap Layer:**
+- Purpose: Register root + widget handler, run one-time init and migrations.
+- Location: `index.js`, `App.js` (`initializeApp`, `loadData`, `saveData`).
+- Contains: Font loading, storage migration, cache clearing, diagnostics.
+- Depends on: `src/utils/storage.js`, `src/utils/vaultService.js`, `src/utils/fileStorage.js`.
+- Used by: Nothing (root).
 
-**State / Context:**
-- Purpose: Own in-memory domain state, expose mutation actions, persist to AsyncStorage, emit domain events
-- Location: `src/context/`, plus residual state in `App.js`
-- Contains: `TaskProvider` (`src/context/TaskContext.js`), `HabitProvider` (`src/context/HabitContext.js`), `VaultProvider` (`src/context/VaultContext.js`), `BillingProvider` (`src/context/BillingContext.js`), `BirthdayProvider` (`src/context/BirthdayContext.js`)
-- Depends on: Pure engines (`src/utils/taskMutations.js`, `src/behavior/habitEngine.ts`, `src/behavior/recoveryEngine.ts`, `src/behavior/rewardEngine.ts`, `src/behavior/improvementEngine.ts`), `src/behavior/eventBus.ts`, storage utils
-- Used by: Screens via hooks; `AppNavigator` bridges context values to screen props with App.js-state fallbacks
+**Navigation / Presentation Layer:**
+- Purpose: Render drawer routes and screens.
+- Location: `src/navigation/`, `src/screens/`, `src/components/`.
+- Contains: 9 screens, 16 shared components, drawer content.
+- Depends on: Contexts and legacy props passed down from `App.js`.
+- Used by: End user.
 
-**Domain logic (pure engines):**
-- Purpose: Deterministic, side-effect-free business rules; fully unit-testable without React or storage
-- Location: `src/behavior/`, `src/ai/`, `src/commands/`, `src/utils/taskMutations.js`
-- Contains: Habit lifecycle (`completeHabit`, streak/evidence votes), cue evaluation, JSON rule-engine (`loadMachineRules`/`evaluateRules` over `rulebook/`), recovery, factual rewards, intervention planning + widget touchpoint selection, intent parsing → rule-packet retrieval → behavior compilation, friction diagnosis, weekly-review generation, command validation/execution/idempotency
-- Depends on: Domain types in `src/behavior/types.ts` and `src/commands/types.ts`, `rulebook/` JSON rules, date/id helpers
-- Used by: Contexts, `widgets/widget-task-handler.tsx`, `src/components/AIAssistant.js`, `src/components/WeeklyReviewModal.js`
+**State Provider Layer:**
+- Purpose: Own per-domain state + mutations.
+- Location: `src/context/`.
+- Contains: `TaskContext`, `VaultContext`, `BillingContext`, `BirthdayContext`, `HabitContext`.
+- Depends on: `src/utils/` persistence helpers, `src/services/`, `src/behavior/`.
+- Used by: Screens, `AppNavigator.js`, widget sync components.
 
-**Persistence / Services:**
-- Purpose: Durable storage and OS integration (notifications, filesystem, widgets, sync, AI model)
-- Location: `src/utils/storage.js`, `src/utils/fileStorage.js`, `src/utils/vaultService.js`, `src/utils/billingStorage.js`, `src/services/notificationService.ts`, `src/utils/aiService.js`, `src/utils/syncService.js`, `src/utils/exportService.js`
-- Contains: Versioned AsyncStorage keys (`kwestup_*`), markdown vault filesystem (`Notes/Vaults/<vaultId>/`), notification channels/scheduling, llama.rn model lifecycle, LAN sync, export/import
-- Depends on: `@react-native-async-storage/async-storage`, `expo-file-system`, `expo-notifications`, `llama.rn`
-- Used by: Contexts, `App.js` boot/load/save, widget handler (direct AsyncStorage reads/writes)
+**Domain Engine Layer (4.0):**
+- Purpose: Deterministic behavioral policy.
+- Location: `src/behavior/`, `src/commands/`, `src/ai/`, `src/services/`.
+- Contains: Pure engines, event bus, command gateway, notification policy, AI intent/compile.
+- Depends on: `rulebook/machine/*.json`, `src/utils/dateUtils.js`, `src/utils/logger.js`.
+- Used by: Contexts, widget handler, `AIAssistant`.
+
+**Utilities / Persistence Layer:**
+- Purpose: Storage, filesystem, date, crypto, diagnostics, export/import, LAN sync.
+- Location: `src/utils/`.
+- Contains: Storage migrations, vault/file storage, billing storage, notification helpers, export service, sync service, logger, ID generation.
+- Depends on: Expo native modules (`expo-file-system/legacy`, AsyncStorage).
+- Used by: All upper layers.
 
 ## Data Flow
 
-### Primary Request Path
+### Primary Request Path (App boot → Dashboard render)
 
-1. User interaction in screen/component → calls context action hook (`src/context/TaskContext.js:196`, `src/context/HabitContext.js`, `src/context/BillingContext.js`, `src/context/BirthdayContext.js`)
-2. Context action computes next state via pure engine outside the React updater (`src/utils/taskMutations.js`, `src/behavior/habitEngine.ts`) → `setState` with computed snapshot
-3. Context debounced write-through persists via read-modify-write merge to `kwestup_data_<STORAGE_VERSION>` (`src/context/TaskContext.js:78`) — never blind overwrite
-4. Context emits immutable domain event on `eventBus` (`src/context/TaskContext.js:222`, `src/context/HabitContext.js:337`) for telemetry/intervention subscribers
-5. App-level throttled effects push derived slices to Android widgets (`App.js:592`) or schedule/cancel notifications (`src/services/notificationService.ts`)
+1. `index.js` calls `registerRootComponent(App)` and `registerWidgetTaskHandler(widgetTaskHandler)` (`index.js:10-11`).
+2. `App.js` `initializeApp()` runs a `Promise.all` of version/user/vault/telemetry reads, then sets `isInitialized` and unblocks UI (`App.js:176-248`).
+3. Background init fires-and-forgets vault migration + version cache-clear, and dev-only diagnostics (`App.js:220-238`).
+4. `loadData()` loads `kwestup_data_${STORAGE_VERSION}`, timer key, theme keys, resets stale daily-task streaks, loads notes from filesystem (`App.js:261-430`).
+5. Providers mount: `TaskProvider` → `VaultProvider` → `BillingProvider` → `BirthdayProvider` → `HabitProvider` (`App.js:892-909`).
+6. `NavigationContainer` renders `AppNavigator`, which resolves `effectiveX = ctx?.x ?? propX` for each domain (`src/navigation/AppNavigator.js:84-112`).
+7. Drawer initially routes to `Dashboard` (`src/navigation/AppNavigator.js:186`, `224-237`).
 
-### Boot / Init Flow
+### Task Mutation & Persistence Path
 
-1. Expo registers root (`index.js:10`) → `App` mounts (`App.js:102`)
-2. `initializeApp` (`App.js:176`) reads version/username/vaults/active-vault/telemetry in parallel, inits vault folder (`src/utils/fileStorage.js:11`), fires fire-and-forget background migration + cache clear (`src/utils/vaultService.js:181`, `src/utils/storage.js:31`)
-3. `loadData` (`App.js:261`) runs storage-version migration (`src/utils/storage.js:74`), reads merged data + timer + theme keys, resets daily-task streaks, scans vault filesystem (`src/utils/fileStorage.js:165`), reschedules birthday notifications
-4. Providers hydrate from `initial*` props (`src/context/TaskContext.js:44`); `TaskContext` boot-guard prevents empty in-memory state from wiping real storage (`src/context/TaskContext.js:103`)
+1. UI calls a context handler, e.g. `toggleTaskComplete(id)` (`src/context/TaskContext.js:208-252`).
+2. Handler computes the new array through a pure engine in `src/utils/taskMutations.js` inside a functional `setTasks` updater.
+3. `eventBus.emit({ type: 'TASK_COMPLETED', ... })` publishes to subscribers + ring buffer (`src/context/TaskContext.js:238-251`).
+4. A 500 ms-debounced write-through effect read-modify-writes the merged snapshot into `kwestup_data_${STORAGE_VERSION}` so sibling domains aren't clobbered (`src/context/TaskContext.js:84-139`).
+5. AppState `active` triggers `refreshTasksFromStorage()` to converge with headless widget writes (`src/context/TaskContext.js:142-204`).
 
-### Widget (Headless) Flow
+### Habit Completion Path (foreground)
 
-1. OS invokes `widgetTaskHandler` (`widgets/widget-task-handler.tsx:90`) in a separate JS environment with `WIDGET_CLICK` / `WIDGET_ADDED` / `WIDGET_UPDATE` / `WIDGET_RESIZED`
-2. Handler reads AsyncStorage directly (`kwestup_data_<version>`, `HABITS_STORAGE_KEY`), applies the same pure engine (`toggleTask` from `src/utils/taskMutations.js:77`, `completeHabit` from `src/behavior/habitEngine.ts`), writes back immediately
-3. Handler emits `WIDGET_ACTION` + lifecycle events on its process-local `eventBus` and appends bounded behavior-event log (500 cap)
-4. Handler re-renders affected widgets via `safeRequestWidgetUpdate`; foreground `TaskContext`/`HabitContext` pick up changes on next `AppState: active` refresh (`src/context/TaskContext.js:131`, `App.js:437`)
+1. `HabitContext.completeHabit(id)` calls the pure `completeHabitEngine` (`src/behavior/habitEngine.ts:192`).
+2. If the habit was in `recovery`, `handleRecoveryCompletion` restores `active` (`src/behavior/recoveryEngine.ts:73`).
+3. `evaluateRewards` grants factual milestones (`src/behavior/rewardEngine.ts:22`).
+4. A `HABIT_COMPLETED` behavior event is appended (FIFO-capped at 500) and emitted on the bus (`src/context/HabitContext.js:400-485`).
+5. Debounced (400 ms) persistence writes isolated keys: `kwestup_habits_v1`, `kwestup_identities_v1`, `kwestup_behavior_events_v1`, `kwestup_rewards_v1` (`src/context/HabitContext.js:216-256`).
 
-### AI Command Flow
+### Headless Widget Action Path
 
-1. `AIAssistant` (`src/components/AIAssistant.js`) or note-screen extraction calls heuristic/intent parser (`src/ai/heuristicParser.ts`, `src/ai/intentParser.ts`) → rule packets (`src/ai/rulePacketRetriever.ts`) → compiled plan (`src/ai/behaviorCompiler.ts`)
-2. Plan becomes a `DispatchedCommand` validated by `validateCommand` (`src/commands/commandValidator.ts`), deduplicated by in-memory + durable idempotency cache (`src/commands/commandExecutor.ts:142`, `src/commands/idempotencyStore.ts`), dispatched to registered handlers (`src/commands/habitCommandHandlers.ts`)
-3. Outcome emits `COMMAND_EXECUTED` / `COMMAND_FAILED` on `eventBus` (`src/commands/commandExecutor.ts:248`); sandbox (`src/commands/aiSandbox.ts`) bounds what AI may execute
+1. Android wakes `widgetTaskHandler` in a **separate JS VM** from the main app (`widgets/widget-task-handler.tsx:27-29`).
+2. On `WIDGET_CLICK`, it reads/writes AsyncStorage directly and reuses pure engines (`toggleTask`, `completeHabit`, `evaluateRewards`, `selectWidgetTouchpoint`) (`widgets/widget-task-handler.tsx:128-401`).
+3. It emits local `eventBus` events (process-local ring buffer only) and calls `requestWidgetUpdate` to re-render sibling widgets (`widgets/widget-task-handler.tsx:374-395`).
+4. Synchronization back to the foreground is achieved through AsyncStorage contents, not shared memory.
 
-### Notes / Vault Flow
+### Notification Dispatch Path
 
-1. Vault CRUD via `src/utils/vaultService.js` (AsyncStorage `kwestup_vaults_<version>` + `Notes/Vaults/<id>/` directories); active vault tracked separately
-2. Note CRUD via `src/utils/fileStorage.js` markdown files (`<vault>/<folder>/<title>.md`); `getAllNotesFromFilesystem` scans one level deep and extracts `#hashtags`
-3. `VaultContext` (`src/context/VaultContext.js`) mirrors list/active/note only; `App.js:758` `handleSetActiveVault` persists + rescans; sync (`src/utils/syncService.js`, `App.js:765`) wipes and rewrites active-vault files from merged payload
+1. Callers build a `NotificationDispatchRequest` and call `scheduleNotification()` (`src/services/notificationService.ts:328`).
+2. `evaluateNotificationPolicy()` enforces: critical bypass → opt-out → quiet hours (defer) → recurring/non-behavior exemption → daily cap (3) → 90-min min gap → 30-min dedup (`src/services/notificationService.ts:233-321`).
+3. On approval `Notifications.scheduleNotificationAsync` fires; history is recorded **only after native success** (`src/services/notificationService.ts:367-378`).
+
+### AI Command Path
+
+1. `AIAssistant` calls `parseGlobalCommand` in `src/utils/aiService.js` (llama.rn).
+2. Untrusted model output is sanitized by `sanitizeAiPayload` and executed via `executeAiCommand` (`src/commands/aiSandbox.ts:101,118`).
+3. `useCommandGateway` registers default habit handlers and dispatches through `executeCommand` with idempotency keys (`src/commands/useCommandGateway.ts:30-77`, `src/commands/commandExecutor.ts:142`).
+4. `commandValidator.ts` enforces capability/schema; execution mutates only via registered handlers (never direct storage from AI).
 
 **State Management:**
-- Per-domain React Context is the single writer per key-range; no global store (no Redux/Zustand). Residual App.js state covers theme/timer/user/sync/notes-mirror. Cross-domain communication is events-only per `src/domains/README.md`. Foreground/background sync is via AsyncStorage reads on `AppState: active`, not via shared memory (widget runs headless).
+- Legacy global state in `App.js` (`useState` + throttled AsyncStorage writes).
+- Domain state in React Context providers.
+- Cross-domain signaling via singleton `eventBus` (`src/behavior/eventBus.ts:272`).
+- Persistence is read-modify-write on versioned AsyncStorage keys plus filesystem vaults.
 
 ## Key Abstractions
 
-**DomainEvent / BehaviorEvent:**
-- Purpose: Immutable telemetry + decoupling contract for every lifecycle transition
-- Examples: `src/behavior/types.ts`, `src/behavior/eventBus.ts`
-- Pattern: `DomainEventInput<T>` (id/timestamp optional) → `emit` deep-clones, deep-freezes, ring-buffers, then fans out to typed + wildcard listeners with per-listener error isolation
+**Domain Event (`BehaviorEvent` / `DomainEvent`):**
+- Purpose: Typed, immutable cross-domain telemetry.
+- Examples: `src/behavior/types.ts:167-192`, emitted in `src/context/TaskContext.js`, `src/context/HabitContext.js`, `widgets/widget-task-handler.tsx`.
+- Pattern: `{ id, type, entityId, timestamp, payload, source }`, deep-cloned + deep-frozen on emit.
 
-**Pure mutation engines:**
-- Purpose: Framework-agnostic transforms returning `{ updatedX, result }` tuples so callers stay thin
-- Examples: `src/utils/taskMutations.js` (`toggleTask`, `saveTask`, `completeTask`, `toggleSubtask`, `createTaskList`), `src/behavior/habitEngine.ts` (`completeHabit`), `src/behavior/recoveryEngine.ts`, `src/behavior/rewardEngine.ts`
-- Pattern: `(currentArray, id, options) => ({ updatedArray, affectedEntity })` — compute outside updater, `setState` with result
+**Machine Behavior Rule (`BehaviorRule`):**
+- Purpose: JSON-declared `when`/`then` deterministic constraints with priority + rule IDs.
+- Examples: `rulebook/machine/habitRules.json`, `recoveryRules.json`, `rewardRules.json`, `interventionRules.json`, `rules.json`; evaluated in `src/behavior/ruleEngine.ts`.
+- Pattern: dot-path condition matching (`evaluateCondition`) supporting arrays, `>=3`, `<0.80`, equality.
 
-**Context providers:**
-- Purpose: Own persistence + actions + event emission behind `useX()` hooks
-- Examples: `src/context/TaskContext.js`, `src/context/HabitContext.js`, `src/context/BillingContext.js`, `src/context/BirthdayContext.js`, `src/context/VaultContext.js`
-- Pattern: `createContext(null)` + `Provider({ initial* })` + syncing `useEffect` on prop change + debounced write-through + `useX()` accessor; `AppNavigator` adds prop-fallback bridging (`src/navigation/AppNavigator.js:84`)
+**Widget Touchpoint:**
+- Purpose: Selected single actionable surface for the home-screen widget.
+- Examples: `selectWidgetTouchpoint()` in `src/behavior/interventionEngine.ts:251-336`; consumed by `widgets/HabitWidget.tsx`.
+- Pattern: Priority hierarchy recovery → today_due → next_action → standby.
 
-**Compiled habit plan:**
-- Purpose: Deterministic AI output contract (identity/behavior/cue/intervention/recovery/reward + rulesApplied trace)
-- Examples: `src/ai/behaviorCompiler.ts`, `src/behavior/types.ts:234`, `src/ai/types.ts`
-- Pattern: `intent → rulePackets → CompiledHabitPlan` with rule-ID traceability
+**Command (`DispatchedCommand`):**
+- Purpose: Type-safe, validated, idempotent action envelope.
+- Examples: `src/commands/types.ts:13-123`, executed in `src/commands/commandExecutor.ts`.
+- Pattern: `{ action, payload, idempotencyKey, actor: 'ai'|'user'|'widget'|'engine', confirmed }`.
 
-**DispatchedCommand:**
-- Purpose: Idempotent, validated, actor-tagged habit mutation from any surface (AI/user/widget/engine)
-- Examples: `src/commands/types.ts:117`, `src/commands/commandExecutor.ts`, `src/commands/commandValidator.ts`, `src/commands/idempotencyStore.ts`, `src/commands/useCommandGateway.ts`
-- Pattern: `{ action, payload, idempotencyKey, actor }` → validate → dedup (200-entry LRU + 15-min TTL, durable fallback) → handler → `COMMAND_EXECUTED` event
+**Vault:**
+- Purpose: Isolated note namespace (AsyncStorage config + filesystem path).
+- Examples: `src/utils/vaultService.js` (`getVaultPath` → `documentDirectory/Notes/Vaults/<id>/`), `src/context/VaultContext.js`.
+- Pattern: Per-vault Markdown folders/files under sanitized directory names.
 
-**Widget touchpoint / Intervention:**
-- Purpose: Decide what the home-screen widget and notifications should show next
-- Examples: `src/behavior/interventionEngine.ts` (`selectWidgetTouchpoint`), `src/behavior/types.ts:75`, `widgets/HabitWidget.tsx`
-- Pattern: Pure selector over habits + machine rules → `{ type: recovery|today_due|next_action|standby, actionLabel, actionType }`
+**Storage Versioning:**
+- Purpose: Safe schema evolution without data loss.
+- Examples: `STORAGE_VERSION = "v7.0"`, `APP_VERSION = "v3.5.0"` in `src/utils/storage.js:4-5`; `migrateUserDataIfNeeded` migrates legacy `kwestup_data_v*` keys.
+- Pattern: all user data keys prefixed `kwestup_*_<version>`; `isUserDataKey` protects them from cache clears.
 
 ## Entry Points
 
-**Expo root:**
+**Native Root:**
 - Location: `index.js`
-- Triggers: Expo `registerRootComponent`
-- Responsibilities: Mount `App`, register headless `widgetTaskHandler` for `react-native-android-widget`
+- Triggers: Expo/Metro app launch + Android widget broadcast.
+- Responsibilities: Register `App` and `widgetTaskHandler`.
 
-**App root component:**
-- Location: `App.js:102`
-- Triggers: App cold start / foreground reload
-- Responsibilities: Font loading, boot/migration, data load/save orchestration, provider composition (`Task→Vault→Billing→Birthday→Habit`), timer engine, widget push effects, confirmation/name/telemetry modals, error boundary + theming shell
+**Application Root:**
+- Location: `App.js`
+- Triggers: `registerRootComponent(App)`.
+- Responsibilities: Boot init, provider tree, legacy domains, confirmation modals.
 
-**Drawer navigator:**
-- Location: `src/navigation/AppNavigator.js:32`
-- Triggers: Navigation state changes inside `NavigationContainer` (`App.js:911`)
-- Responsibilities: Route table (Dashboard/Daily/Birthdays/Billing/Tasks/Notes/Focus/Settings/Search), drawer chrome, notification channel init, global modals (`TaskEditModal`, `WeeklyReviewModal`), `AIAssistant` overlay (hidden on note-focus and Settings)
+**Headless Widget Handler:**
+- Location: `widgets/widget-task-handler.tsx`
+- Triggers: Android widget add/update/resize/click (separate JS VM).
+- Responsibilities: Render widgets, mutate storage, complete habits, emit local events.
 
-**Headless widget handler:**
-- Location: `widgets/widget-task-handler.tsx:90`
-- Triggers: Android OS widget lifecycle + click actions (`TOGGLE_TASK`, `COMPLETE_TASK`, `SWITCH_TAB`, `COMPLETE_HABIT`, `START_HABIT_ACTION`)
-- Responsibilities: Direct-storage read/mutate/write with pure engines, bounded event-log append, widget re-render; no React state access
-
-**AI assistant overlay:**
-- Location: `src/components/AIAssistant.js`
-- Triggers: Floating button on every route except note-editing and Settings (`src/navigation/AppNavigator.js:386`)
-- Responsibilities: On-device inference via `src/utils/aiService.js` (llama.rn), task/birthday/transaction extraction callbacks into contexts
+**Drawer Navigation Root:**
+- Location: `src/navigation/AppNavigator.js`
+- Triggers: `NavigationContainer` mount.
+- Responsibilities: Route registration (`Dashboard`, `Daily`, `Birthdays`, `Billing`, `Tasks`, `Notes`, `Focus`, `Settings`, `Search`), global modals.
 
 ## Architectural Constraints
 
-- **Threading:** Single-threaded React Native JS + one separate headless JS environment for widgets. No shared memory between them — AsyncStorage is the IPC channel. Never assume `eventBus` crosses the app/widget boundary (`widgets/widget-task-handler.tsx:27`).
-- **Global state:** Module-level singletons: `eventBus` (`src/behavior/eventBus.ts:272`), command handler registry + idempotency LRU (`src/commands/commandExecutor.ts:42`), `eventCounter` sequence (`src/behavior/eventBus.ts:12`). No other mutable module globals; engines are stateless.
-- **Circular imports:** `src/utils/fileStorage.js` ↔ `src/utils/vaultService.js` is intentionally broken with dynamic `await import("./vaultService")` inside active-vault wrappers (`src/utils/fileStorage.js:271`). Do not convert these to static imports. `AppNavigator` ↔ screens is one-directional (screens never import the navigator).
-- **Persistence merge rule:** Every writer must read-modify-write its key-range (`{ ...stored, ...mySlice }`). Blind `setItem` of a full object from stale state clobbers sibling domains — this caused W-01/W-02/W-03 races; `TaskContext` and `BillingContext` are now sole writers of their slices.
-- **TDZ ordering:** In `App.js`, the `AppState` foreground effect must stay below the `loadData` declaration or first render throws (`App.js:432`).
-- **Binder budget:** Widget pushes are throttled (5 s), staggered (250–500 ms), sliced (top-5/top-8), and gated on `appState === 'active'` (`App.js:592`). Do not add unthrottled `requestWidgetUpdate` calls.
+- **Threading:** Single JS thread for the app. Android widget handler runs in a **separate JavaScript runtime** (`widgets/widget-task-handler.tsx:27-29`) — no shared in-memory state; only AsyncStorage is shared.
+- **Global state:** Module-level singletons exist in `src/behavior/eventBus.ts` (`export const eventBus = new EventBus()`), `src/utils/logger.js` (`logBuffer`), `src/utils/aiService.js` (`_llamaContext`, `_initPromise`, `_idleTimer`, `_loadGeneration`).
+- **Storage keys are versioned**: any new persistent state should add its prefix to `isUserDataKey` in `src/utils/storage.js:8-28` or it will be wiped by `clearAllCaches`.
+- **AI cannot mutate storage directly**: all AI actions must route through `src/commands/aiSandbox.ts` → `commandExecutor.ts` (`rulebook/README.md` invariant 2).
+- **Cross-domain isolation rule**: `src/domains/README.md` mandates cross-domain communication via events, never direct imports.
+- **Babel env-cache**: `babel.config.js` keys its cache on `NODE_ENV` and strips `console.log/info/debug` in production (`babel.config.js:6-17`).
+- **Native patches**: `postinstall` runs `patch-llama-gradle.js` (`package.json:18`).
 
 ## Anti-Patterns
 
-### Blind full-object AsyncStorage overwrite
+### Prop-Drilling Through the Navigator
 
-**What happens:** Reading one domain slice and writing the whole `kwestup_data_*` object back, wiping fresher sibling-domain writes made in between.
-**Why it's wrong:** Causes lost tasks/billing/daily-tasks under concurrent saves (documented W-01/W-02/W-03).
-**Do this instead:** Read-modify-write merge limited to owned keys, as in `src/context/TaskContext.js:78` (`writeTaskSnapshot`) and `App.js:474`.
+**What happens:** `App.js` passes ~40 individual props into `AppNavigator` (`App.js:912-949`), which then re-resolves each as `ctx?.field ?? propField` (`src/navigation/AppNavigator.js:84-112`).
+**Why it's wrong:** Every new domain field requires edits in `App.js`, `AppNavigator` signature, and every screen — a large blast radius and a source of `undefined` fallbacks.
+**Do this instead:** Consume context directly inside screens (`useTasks()`, `useVaults()`); keep `AppNavigator` free of domain state. New domains should follow the `HabitContext` pattern rather than extending the prop list.
 
-### Duplicated hand-rolled mutation logic in components
+### Dual State Ownership Between App.js and Contexts
 
-**What happens:** Copying toggle/save/delete math into screens or `App.js` instead of calling the shared engine.
-**Why it's wrong:** Divergent recurrence/streak/notification behavior between app and widget paths.
-**Do this instead:** Call `src/utils/taskMutations.js` (tasks) or `src/behavior/habitEngine.ts` et al. (habits) from every caller — see `src/context/TaskContext.js:206` and `widgets/widget-task-handler.tsx:158`.
+**What happens:** `App.js` still owns timer, theme, notes and birthdays state while `TaskContext`/`VaultContext`/`BillingContext`/`BirthdayContext` own their domains. Several comments document past duplicate writers (e.g. `App.js:750-753`, `App.js:545-547`).
+**Why it's wrong:** Two writers on one storage key cause stale-write races and clobbering (the W-01/W-03/DEF-01 fixes).
+**Do this instead:** Keep a single writer per storage key; migrate remaining `App.js` domains (timer, notes, theme) into their own contexts.
 
-### Cross-domain direct imports
+### God Components / Screens
 
-**What happens:** Importing another domain's internals (e.g., habit code importing billing internals).
-**Why it's wrong:** Violates the `src/domains/README.md` isolation rule; creates cycles and untestable coupling.
-**Do this instead:** Communicate via `eventBus.emit`/`subscribe` with types from `src/behavior/types.ts`, as contexts do (`src/context/BillingContext.js:53`).
+**What happens:** `src/screens/NotesScreen.js` (2014 lines), `SettingsScreen.js` (1101), `AIAssistant.js` (1096) concentrate many responsibilities.
+**Why it's wrong:** Hard to test, review, and safely modify.
+**Do this instead:** Extract subcomponents and move logic into `src/utils/` or domain engines as already done for tasks (`taskMutations.js`) and habits (`habitEngine.ts`).
+
+### Optional-Chained Context With Silent Fallbacks
+
+**What happens:** `AppNavigator` uses `taskCtx?.handleSaveTask` and logs `console.warn` when missing (`src/navigation/AppNavigator.js:123-129, 391-399`).
+**Why it's wrong:** Missing providers fail silently at runtime instead of loudly at development time.
+**Do this instead:** Require the context (throw in the `useX` hook, as `useHabits` does in `src/context/HabitContext.js:632-638`) rather than fall back.
+
+### Mixed `.js` / `.ts` Without `checkJs`
+
+**What happens:** TypeScript is `strict: true` but `checkJs: false` (`tsconfig.json:18`), so ~1152 pre-existing JS errors are unchecked across screens/contexts.
+**Why it's wrong:** Type errors in `.js` files are invisible to `npm run typecheck`.
+**Do this instead:** Place new logic in `.ts` files under the 4.0 layer; migrate high-risk utilities to `.ts` incrementally.
 
 ## Error Handling
 
-**Strategy:** Localize failures: isolated listener/command execution, graceful boot degradation, silent persistence retries with logging.
+**Strategy:** Defensive — never crash, degrade gracefully, log safely.
 
 **Patterns:**
-- `ErrorBoundary` (`src/components/ErrorBoundary.js`) wraps the whole tree inside theming (`App.js:890`); boot `try/catch` still marks initialized so the app never hangs on splash (`App.js:243`).
-- `eventBus.emit` (`src/behavior/eventBus.ts:144`) snapshots listeners and catches sync throws + async rejections per listener via `logger.error`, never disrupting siblings or the emitter.
-- `executeCommand` (`src/commands/commandExecutor.ts:214`) isolates handler throws into `{ success: false, error }` + `COMMAND_FAILED` telemetry; missing-handler and validation failures return without throwing.
-- Storage/filesystem helpers return `{ success, error }` or safe defaults (`[]`/`""`) and log (`src/utils/fileStorage.js:33`, `src/utils/vaultService.js:41`).
+- Root React error catch + crash-report copy/share in `src/components/ErrorBoundary.js` (wraps the whole app in `App.js:890-1106`).
+- Try/catch with `logger.warn`/`logger.error` in every storage/service call (e.g. `src/utils/vaultService.js:56-59`, `src/services/notificationService.ts:166-169`).
+- Event-listener isolation: `eventBus.emit` catches sync throws and async rejections so one bad subscriber can't break dispatch (`src/behavior/eventBus.ts:179-220`).
+- Atomic rollback on partial native scheduling failure (`scheduleBirthdayReminders`, `src/services/notificationService.ts:595-605`).
+- Notification history pruned to 48 h and corrupt JSON resets to `[]` (`src/services/notificationService.ts:151-170`).
 
 ## Cross-Cutting Concerns
 
-**Logging:** Central `logger` (`src/utils/logger.js`) with debug/info/warn/error; used everywhere instead of raw `console`. Widget handler and engines log warn-only on hot paths.
-**Validation:** Schema + capability validation for commands (`src/commands/commandValidator.ts`); rule-engine `when/then` evaluation for habits/interventions (`src/behavior/ruleEngine.ts`); theme resolvers with allowlist fallback (`App.js:72`).
-**Authentication:** None — single-user offline-first app. LAN sync uses QR-shared config with no auth (`src/utils/syncService.js`, `src/components/QRScannerModal.js`); telemetry is explicit opt-in (`App.js:1030`).
+**Logging:** `src/utils/logger.js` — env-aware (`debug`/`info` silenced in production), 50-entry FIFO ring buffer, recursive PII redaction on `SENSITIVE_KEYS` regex, string truncation, WeakSet cycle guard.
+
+**Validation:** Schema/condition validation at the boundaries — `commandValidator.ts`, `evaluateCondition` in `ruleEngine.ts`, `validateSyncConfig` in `src/utils/syncService.js`, `validateHabitCreation` in `habitEngine.ts`.
+
+**Authentication:** No accounts. LAN sync uses a shared token validated in `src/utils/syncService.js:67-69`; backups use PBKDF2-HMAC-SHA256 (100k iterations) AES-256 envelopes in `src/utils/exportService.js:21-40`.
+
+**Date handling:** All calendar logic funnels through `src/utils/dateUtils.js` (`getLocalDateString`, `parseLocalDate`, etc.) to avoid UTC slicing bugs.
+
+**Privacy:** Rulebook invariant — zero cloud transmission of user content; telemetry is opt-in launch/platform counters only (`App.js:150-153`, `src/utils/diagnostics.js`).
 
 ---
 
-*Architecture analysis: 2026-10-12*
+*Architecture analysis: 2026-10-18*

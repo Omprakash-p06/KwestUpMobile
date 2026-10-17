@@ -1,186 +1,163 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-10-12
+**Analysis Date:** 2026-10-18
+
+## Language Split
+
+The codebase is intentionally bi-lingual and split by directory:
+
+| Area | Language | Files |
+|------|----------|-------|
+| UI, screens, components, context, theme | JavaScript (ES2021 + JSX) | `src/screens/*.js`, `src/components/*.js`, `src/context/*.js`, `src/navigation/*.js`, `src/theme/*.js` |
+| Domain engines, AI, commands, services, widget logic | TypeScript | `src/ai/*.ts`, `src/behavior/*.ts`, `src/commands/*.ts`, `src/services/*.ts`, `widgets/*.tsx` |
+| Utilities | Mixed (legacy JS + migrated TS) | `src/utils/*.js` |
+
+- TypeScript is `strict: true` with `noEmit: true` (`tsconfig.json`), but `checkJs: false` — JS files are not type-checked.
+- New domain/engine code belongs in TypeScript. New screens/components/contexts follow the existing JS pattern unless a migration is explicitly planned.
 
 ## Naming Patterns
 
 **Files:**
-- Use `camelCase.js` for utilities, services, and screens: `src/utils/dateUtils.js`, `src/utils/fileStorage.js`, `src/utils/syncService.js`, `src/utils/vaultService.js`, `src/utils/billingStorage.js`
-- Use `PascalCase.js` for React components (one component per file, matching the export name): `src/components/ErrorBoundary.js`, `src/components/CustomButton.js`, `src/components/TaskCard.js`, `src/components/AIAssistant.js`, `src/components/QRScannerModal.js`
-- Use `camelCase.ts` for typed domains with colocated `types.ts` contracts: `src/ai/intentParser.ts`, `src/ai/behaviorCompiler.ts`, `src/behavior/eventBus.ts`, `src/commands/commandExecutor.ts`, `src/commands/commandValidator.ts`, `src/commands/types.ts`, `src/behavior/types.ts`, `src/ai/types.ts`
-- Use `*.test.js` / `*.test.ts` for tests mirroring the module name: `__tests__/unit/logger.test.js`, `__tests__/unit/dateUtils.test.js`, `__tests__/unit/syncService.test.js`, `__tests__/unit/commandGateway.test.ts`
-- Use `UPPER_SNAKE` for exported constants: `MAX_LOG_BUFFER_SIZE` in `src/utils/logger.js`, `APP_VERSION` / `STORAGE_VERSION` in `src/utils/storage.js`, `MAX_IDEMPOTENCY_CACHE_SIZE` / `IDEMPOTENCY_TTL_MS` in `src/commands/commandExecutor.ts`
-- Use `kwestup_*` snake prefix for all AsyncStorage keys, never bare keys: `kwestup_data_*`, `kwestup_vaults_*`, `kwestup_activeVault_*`, `kwestup_billing_*` (see `src/utils/storage.js`)
+- Components, screens, contexts: `PascalCase.js` — `src/components/TaskCard.js`, `src/screens/DashboardScreen.js`, `src/context/TaskContext.js`.
+- Domain modules, utils, services: `camelCase.ts/js` — `src/behavior/eventBus.ts`, `src/utils/taskMutations.js`, `src/services/notificationService.ts`.
+- Widgets: `PascalCase.tsx` — `widgets/HabitWidget.tsx`.
+- Tests: `<subject>.test.ts(x)` / `<subject>.test.js` — `__tests__/unit/eventBus.test.ts`.
 
-**Functions:**
-- Use `camelCase` arrow-function consts for all exported utilities: `getLocalDateString`, `parseLocalDate`, `isSameLocalDay` in `src/utils/dateUtils.js`; `generateId` in `src/utils/generateId.js`; `saveNoteFile`, `readNoteFile` in `src/utils/fileStorage.js`
-- Use `get*` / `set*` / `ensure*` / `init*` / `validate*` / `perform*` verbs for storage and service operations: `getVaults`, `setActiveVaultId`, `ensureVaultsDir` in `src/utils/vaultService.js`; `validateSyncConfig`, `validateSyncPayload`, `pingSyncServer`, `performSync` in `src/utils/syncService.js`; `initNotesFolder` in `src/utils/fileStorage.js`
-- Use `handle*` for component event handlers: `handleRetry`, `handleCopyReport`, `handleRestartPrompt` in `src/components/ErrorBoundary.js`; `handlePress` in `src/components/CustomButton.js`
-- Use `is*` / `has*` boolean predicates returning strict `boolean`: `isDevelopment` in `src/utils/logger.js`, `isUserDataKey` in `src/utils/storage.js`, `isSameLocalDay` in `src/utils/dateUtils.js`
+**Functions and variables:**
+- `camelCase` for functions and variables: `toggleTask`, `generateId`, `writeTaskSnapshot`.
+- `PascalCase` for React components: `CustomButton`, `TaskProvider`, `HabitWidget`.
+- `use` prefix for hooks: `useTasks` (`src/context/TaskContext.js:441`), `useHabits` (`src/context/HabitContext.js:632`), `useDomainEvent` (`src/behavior/eventBus.ts:278`).
+- `handle` prefix for event handlers: `handlePress`, `handleSaveBirthday`, `handleAppStateChange`.
+- `UPPER_SNAKE_CASE` for module constants: `MAX_EVENT_BUFFER_SIZE`, `STORAGE_VERSION`, `IDEMPOTENCY_TTL_MS`, `MODEL_EXPECTED_SHA256`.
+- Boolean locals use `is`/`has` prefixes: `isOutlined`, `isDevelopment`, `tasksHydratedRef`.
 
-**Variables:**
-- Use `camelCase` for locals and state fields: `vaultPath`, `sanitizedTitle`, `folderPath` in `src/utils/fileStorage.js`; `hasError`, `errorInfo`, `showDetails`, `copiedToast` in `src/components/ErrorBoundary.js`
-- Prefix unused function args with underscore (enforced by lint): `argsIgnorePattern: '^_'` in `eslint.config.js` — e.g. `(_value)`, `(_index)`
-- Use emoji-prefixed log message strings for operational observability (debug/info/warn only, stripped in prod): `"🧹 STARTING COMPREHENSIVE CACHE CLEAR..."`, `"✅ CACHE CLEAR COMPLETED"` in `src/utils/storage.js`
-
-**Types:**
-- Use `PascalCase` `interface` / `type` with descriptive suffixes in TypeScript domains: `ExtractedIntent`, `IntentParserOptions`, `RulePacket`, `CompilationResult` in `src/ai/types.ts`; `DispatchedCommand<'CREATE_IDENTITY'>` in `src/commands/types.ts`
-- Use `UPPER_SNAKE` string-literal rule IDs for traceable validation failures: `'SYS_COMMAND_CAPABILITY_CHECK_001'` asserted in `__tests__/unit/commandGateway.test.ts`
-- Never parse or compare opaque IDs numerically — treat `generateId()` output as an opaque string (contract documented in `src/utils/generateId.js`)
+**Types (TypeScript):**
+- `PascalCase` interfaces and type aliases: `DomainEvent`, `DispatchedCommand`, `HabitFrequency`.
+- Union string literals rather than enums: `type HabitStatus = 'active' | 'paused' | 'archived' | 'recovery'` (`src/behavior/types.ts`).
+- Options objects are interfaces suffixed `Options`: `IntentParserOptions`, `CompilerOptions`, `WeeklyReviewOptions` (`src/ai/types.ts`).
+- Use `import type { ... }` for type-only imports (see `__tests__/unit/behavioralPipelineE2E.test.ts:35`).
 
 ## Code Style
 
 **Formatting:**
-- No Prettier or Biome config — formatting is by convention, not enforced by a formatter (no `.prettierrc`, `biome.json` detected)
-- Use 2-space indentation, single statement per line, trailing semicolons everywhere
-- Use double quotes for strings in `src/` (`"expo-file-system"`, `"KwestUp Diagnostics..."` in `src/components/ErrorBoundary.js`); single quotes are tolerated in `__tests__/` (`'vault-xyz'` in `__tests__/unit/vaultAndFileStorage.test.js`) — match the surrounding file, do not mix within a file
-- Keep lines under ~120 chars; break long JSX props one-per-line as in `src/components/CustomButton.js`
-- `ecmaVersion: 2021`, `sourceType: 'module'`, JSX enabled via `@babel/eslint-parser` with `babel.config.js` (see `eslint.config.js`, `.eslintrc.js`)
+- No Prettier config exists. Formatting is not mechanically enforced.
+- Semicolons are always used; 2-space indentation throughout.
+- Quote style is mixed by area: double quotes dominate screens/components/context/theme (`src/context/TaskContext.js`, `src/theme/colors.js`, `src/screens/DashboardScreen.js`); single quotes dominate TypeScript modules and most tests (`src/behavior/eventBus.ts`, `src/commands/commandExecutor.ts`, `__tests__/unit/eventBus.test.ts`). Follow the dominant style of the file you are editing.
+- Trailing commas are common in multi-line object/array literals.
+- Long files are acceptable (e.g. `App.js` ~44 KB, `src/services/notificationService.ts` 767 lines) but pure logic should be extracted into testable modules.
 
 **Linting:**
-- Use ESLint 9 flat config in `eslint.config.js` (authoritative); legacy `.eslintrc.js` is retained for editor fallback — keep both in sync when adding rules
-- Enabled plugins: `react` (recommended), `react-native`, `react-hooks`
-- Key rules to obey:
-  - `'react-hooks/rules-of-hooks': 'error'` — hooks only at top level
-  - `'react-hooks/exhaustive-deps': 'warn'` — fix missing deps
-  - `'react-native/no-inline-styles': 'warn'` and `'react-native/no-color-literals': 'warn'` — use `StyleSheet.create`, hoist colors to theme
-  - `'react-native/no-unused-styles': 'warn'` — delete dead style keys
-  - `'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }]` — prefix intentionally-unused args with `_`
-  - `'no-console': 'warn'` — never call raw `console.*` in `src/`; use `src/utils/logger.js` (only `src/utils/logger.js` itself carries `/* eslint-disable no-console */`)
-  - `'react/prop-types': 'off'`, `'react/react-in-jsx-scope': 'off'`, `'react-native/no-raw-text': 'off'`
-- Run `npm run lint` (errors fail CI) and `npm run typecheck` (`tsc --noEmit`, `strict: true`, `checkJs: false`) before every commit per `GEMINI.md` §3
+- Flat config: `eslint.config.js` (ESLint 9). A legacy `.eslintrc.js` also exists; the flat config is the active one.
+- Applies to `**/*.{js,jsx}` only; TypeScript is checked by `tsc`, not ESLint.
+- Key rules (`eslint.config.js`):
+  - `react-hooks/rules-of-hooks: error`
+  - `react-hooks/exhaustive-deps: warn`
+  - `react/prop-types: off` (no PropTypes used)
+  - `no-unused-vars: warn` with `argsIgnorePattern: '^_'`
+  - `no-console: warn` (phased escalation documented inline)
+  - `react-native/no-inline-styles: warn`
+  - `react-native/no-color-literals: warn`
+  - `react-native/no-unused-styles: warn`
+- Zero-error lint is a CI gate (`npm run lint`, `.github/workflows/ci.yml:36`). Warnings are tolerated.
 
-**Styling (React Native):**
-- Always define styles with `StyleSheet.create` at the bottom of the file, never inline objects in JSX: `const styles = StyleSheet.create({...})` in `src/components/CustomButton.js:68`, `src/components/ErrorBoundary.js:301`, `src/components/TaskCard.js:243`
-- Screens build a theme-aware `rawStyles` object then freeze it: `const styles = StyleSheet.create(rawStyles)` in `src/screens/TaskListScreen.js:804`, `src/screens/SettingsScreen.js:1101`, `src/screens/NotesScreen.js:2014`, `src/screens/BillingScreen.js:859`
-- Shared theme tokens live in `src/theme/styles.js` (`export const styles = StyleSheet.create(rawStyles)` at `src/theme/styles.js:895`); prefer theme values over hardcoded hex (the `no-color-literals` warn exists to push this direction)
-- Reanimated plugin must stay last in `babel.config.js` plugins array
+**Path Aliases:**
+- None. All imports are relative (`../../src/utils/logger`). Do not introduce aliases without updating Metro/Jest/tsconfig together.
 
 ## Import Organization
 
-**Order:**
-1. `react` / `react-native` core (`import React from "react"`, `import { View, Text, StyleSheet } from "react-native"`)
-2. Expo / React Navigation / third-party (`@expo/vector-icons`, `expo-clipboard`, `expo-file-system`, `@react-native-async-storage/async-storage`)
-3. Absolute-then-relative local modules, logger immediately after external deps (`import { logger } from "./logger"`, `import { getVaultPath } from "./vaultService"`)
-4. Type-only imports in `.ts` files after value imports (`import { CommandAction, DispatchedCommand } from '../commands/types'` in `src/ai/types.ts`)
+**Observed order (not lint-enforced):**
+1. React and React Native — `import React, { useState } from "react";`, `import { View, Text } from "react-native";`
+2. Third-party libraries — `expo-*`, `@react-navigation/*`, `@react-native-async-storage/async-storage`, `react-native-paper`.
+3. Local modules — components, contexts, services, utils, behavior.
+4. Types last (TypeScript) — often `import type { Habit } from '../../src/behavior/types';`.
 
-```javascript
-// Canonical header — src/utils/fileStorage.js:1-3
-import * as FileSystem from "expo-file-system";
-import { getVaultPath } from "./vaultService";
-import { logger } from "./logger";
-```
+Import local modules by their concrete file path, not through barrels. Only `src/ai/index.ts` and `src/commands/index.ts` exist as barrels; most code imports the source file directly.
 
-```javascript
-// Canonical component header — src/components/ErrorBoundary.js:1-16
-import React, { Component } from "react";
-import { View, Text, StyleSheet, ScrollView, Platform, Share, SafeAreaView, TouchableOpacity } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import * as Clipboard from "expo-clipboard";
-import { logger } from "../utils/logger";
-import { APP_VERSION, STORAGE_VERSION } from "../utils/storage";
-import { CustomButton } from "./CustomButton";
-```
+## Export Patterns
 
-**Path Aliases:**
-- None configured — always use explicit relative paths (`./logger`, `../utils/storage`, `../../src/utils/dateUtils`). Do not introduce `@/` aliases without updating `tsconfig.json`, `babel.config.js`, and `jest.config.js` together.
+- Components are **named exports of arrow functions**, with a matching default export only for the top-level boundary/context:
+  - `export const CustomButton = ({ ... }) => { ... }` (`src/components/CustomButton.js:6`)
+  - `export const DashboardScreen = ({ ... }) => { ... }` (`src/screens/DashboardScreen.js:94`)
+  - `export const ErrorBoundary = ...` + `export default ErrorBoundary` (`src/components/ErrorBoundary.js`)
+- Contexts export `Provider`, a `useX` hook, and the raw context as default — `src/context/TaskContext.js:441-446`.
+- Domain engines export named functions **and** a default object aggregating them (e.g. `src/behavior/eventBus.ts:299`, `src/context/HabitContext.js:640`).
+- Utilities export the function as named and default: `export const generateId` + `export default generateId` (`src/utils/generateId.js`).
 
 ## Error Handling
 
+**Strategy:** Fail safely at module boundaries; log and recover rather than crash; throw only for programmer/config errors.
+
 **Patterns:**
-- Wrap every async I/O boundary in `try/catch`, log via `logger.error`, and return a safe fallback — never let a storage/filesystem rejection propagate to the UI thread:
-
-```javascript
-// src/utils/fileStorage.js:33-60
-export const saveNoteFile = async (vaultId, folder, title, content) => {
+- `try/catch` around all persistence, filesystem, notification, and network operations. Log via `logger.error` and return a safe fallback:
+  ```js
   try {
-    // ... filesystem writes ...
-    return { success: true, filePath };
-  } catch (error) {
-    logger.error("❌ Failed to save note file:", error);
-    return { success: false, error };
+    await AsyncStorage.setItem(...);
+  } catch (err) {
+    logger.error("❌ Failed to persist tasks to storage:", err);
   }
-};
-```
-
-- Swallow-and-default for non-critical reads (folder init, cache clear): log and continue, return `false` or `''` rather than throwing — see `initNotesFolder` in `src/utils/fileStorage.js:11-22` and `clearAllCaches` in `src/utils/storage.js:30-71` (returns `true`/`false`)
-- Throw `new Error(...)` with a machine-matchable prefixed message only from pure validation functions, and assert on the fragment in tests:
-
-```javascript
-// src/utils/syncService.js:36-68 — each message starts with a category prefix
-throw new Error("Invalid sync configuration: config must be an object.");
-throw new Error(`Invalid sync configuration: port "${port}" is out of bounds (1-65535).`);
-throw new Error("Sync API error: Malformed server response. Expected JSON object.");
-```
-
-```javascript
-// __tests__/unit/syncService.test.js:44 — match the fragment, not the full string
-expect(() => validateSyncConfig({ ...validConfig, ip: '192.168.1.50/malicious' })).toThrow('is malformed');
-```
-
-- Never throw from React render paths — contain render crashes in `src/components/ErrorBoundary.js` (`getDerivedStateFromError` + `componentDidCatch` → `logger.error("Unhandled React Error:", ...)` at `src/components/ErrorBoundary.js:37-40`), then offer retry / copy-report / restart-prompt recovery actions
-- Provide degraded-path fallbacks for clipboard/share failures: clipboard → `Share.share` → failure UI, never a success toast on failure (see `handleCopyReport` in `src/components/ErrorBoundary.js:70+`, covered by `WR-04` tests in `__tests__/unit/errorBoundary.test.js`)
-- Serialize `Error` instances explicitly before buffering or displaying — `logger.js:50-59` converts to `{ name, message, stack, cause }`; `sanitizeEntry` in `src/utils/logger.js:86-107` stringifies non-string messages so `JSON.stringify` never throws
+  ```
+  (`src/context/TaskContext.js:84-105`)
+- Validation of command payloads returns a result object, not throws: `validateCommand()` → `{ valid, errors, rulesApplied }` (`src/commands/commandValidator.ts`, tested in `__tests__/unit/commandGateway.test.ts`).
+- Config/input validation throws descriptive errors: `validateSyncConfig` / `validateSyncPayload` throw (`src/utils/syncService.js`, tested in `__tests__/unit/syncService.test.js`).
+- Component render failures are caught by `src/components/ErrorBoundary.js`; it logs `"Unhandled React Error:"` and renders a recovery UI with Try Again / Copy Error Report.
+- User-facing failures use `Alert.alert(title, message)` in screens/components (`src/screens/NotesScreen.js`, `src/components/AIAssistant.js`).
+- EventBus isolates listener failures: sync throws and async rejections are caught and logged (`src/behavior/eventBus.ts:179-220`).
+- Never let a caught error be silently swallowed without at least a `logger.error`/`logger.warn`, unless the comment explains why (e.g. "If storage is unreadable, fall through").
 
 ## Logging
 
-**Framework:** `src/utils/logger.js` — the only sanctioned logging surface. Raw `console.*` is lint-warned and Babel-stripped in production.
+**Framework:** `src/utils/logger.js` — do NOT use raw `console.*` in app code.
 
-**Patterns:**
-- Import the named functions, not `console`: `import { logger } from "../utils/logger"` then call `logger.debug/info/warn/error` — see `src/utils/storage.js:2`, `src/utils/fileStorage.js:3`, `src/utils/vaultService.js:5`, `src/components/ErrorBoundary.js:14`
-- Respect level gating: `debug`/`info` emit AND buffer only when `isDevelopment()` (`__DEV__` or `NODE_ENV !== 'production'`); `warn`/`error` always buffer + passthrough — see `src/utils/logger.js:142-162`. Do not use `debug` for operational signal that must survive in production
-- Never log user content under raw keys — the `SENSITIVE_KEYS` regex in `src/utils/logger.js:37-38` redacts `content|body|note|title|text|message|passphrase|token|key|secret|password|habitTitle|cueText` to `'[Redacted]'` before buffering. Safe operational strings pass through verbatim
-- Keep the ring-buffer bounded: max 50 entries, FIFO eviction (`MAX_LOG_BUFFER_SIZE` in `src/utils/logger.js:13`); entries are deep-frozen at record time so consumers cannot mutate the live buffer via `getRecentLogs()` snapshots
-- Production bundles strip `console.log/info/debug` via `babel-plugin-transform-remove-console` (`exclude: ['error','warn']`) — see `babel.config.js`. Do **not** add `react-native-reanimated/plugin` (or `react-native-worklets/plugin`) manually: since Expo SDK 57, `babel-preset-expo` injects the worklets plugin itself. The old explicit entry was removed 2026-10-12 — see `.planning/debug/expo57-native-compat.md`
+- Import `{ logger }` and call `logger.debug/info/warn/error`.
+- `debug`/`info` are development-only and do not buffer in production; `warn`/`error` always buffer.
+- A 50-entry FIFO ring buffer supports crash forensics via `getRecentLogs()` / `clearLogs()`.
+- PII is key-based redacted (`content|body|note|title|text|message|passphrase|token|key|secret|password|habitTitle|cueText` → `[Redacted]`), strings truncated at 1000 chars, depth capped at 4, cycles guarded.
+- Pass structured details as additional arguments: `logger.error('EventBus listener error:', { error: message, eventType: event.type })`.
 
 ## Comments
 
-**When to Comment:**
-- Open every utility module with a block header stating ownership and the invariant it protects:
-
-```javascript
-// src/utils/dateUtils.js:1-6
-/**
- * Centralized Local Date Utility Engine
- * =====================================
- * Single authoritative source of date/time calculation for calendar dates.
- * Eliminates UTC slicing bugs by strictly operating on device-local calendar units.
- */
-```
-
-- Document strict input contracts on every exported function with `@param` / `@returns`, including the invalid-input behavior (`''` vs `Invalid Date` vs `throw`) — see `getLocalDateString` and `parseLocalDate` in `src/utils/dateUtils.js:8-86`
-- Tag cross-cutting decisions with stable IDs so tests and plans can cite them: `CR-01`/`CR-02` (correctness), `WR-01…WR-06` (weak-review follow-ups), `OBS-01`, `TC-OBS-06…` — e.g. `// CR-02 decision (documented): debug AND info are fully gated...` in `src/utils/logger.js:136-141`, `// WR-05: spec'd "Restart Application" tertiary action...` in `src/components/ErrorBoundary.js:60-62`
-- Explain WHY a workaround exists and what the proper fix is, not just WHAT: `// WR-01: cache keyed on NODE_ENV (not api.cache(true)) so a long-lived Metro/babel daemon never serves a config evaluated for the wrong env` in `babel.config.js:2-10`
-
-**JSDoc/TSDoc:**
-- Use JSDoc on all exported JS functions (`@param {type} name - description`, `@returns {type} description`) — enforced by convention, see `src/utils/fileStorage.js:7-32`, `src/utils/generateId.js:24-28`
-- Use TypeScript `interface` + inline `//` range comments for typed contracts (`customWeekdays?: number[]; // [0..6]`, `time?: string; // HH:mm format`, `confidence: number; // 0..1` in `src/ai/types.ts:13-28`)
-- Cite the rulebook source on domain types: `* Source: rulebook/ai/intent-parser.md, ...` header in `src/ai/types.ts:1-8`
+- Heavy explanatory comments are the norm, especially in TypeScript domain code and security-sensitive paths. Comments cite requirement/issue IDs and the codebase map:
+  - `WR-02`, `CR-01`, `OBS-01`, `SYS_IDEMPOTENT_COMMAND_001`, `[CMD-01]`.
+  - References to `.planning/codebase/CONCERNS.md`, `ARCHITECTURE.md`, `rulebook/…`.
+- Section banners use `====` underlines for file-level overviews (e.g. `__tests__/setup/jest.setup.js:1-6`).
+- JSDoc is used on utility/domain functions with `@param` and `@returns` — e.g. `src/utils/taskMutations.js:15-21`, `src/utils/generateId.js:24-27`. TypeScript files rely more on interfaces than JSDoc.
+- Inline comments explain *why* (design decisions, rejected alternatives, edge cases), not *what*. Preserve this style when modifying.
 
 ## Function Design
 
-**Size:** Keep functions single-purpose and under ~60 lines; extract sanitization, serialization, and validation helpers (`sanitizeEntry`, `serializeItem`, `deepFreeze`, `recordBreadcrumb` are module-private in `src/utils/logger.js`; `truncateString` caps strings at 1000 chars, arrays at 50 items).
+**Size:** Pure domain functions are preferred and kept small; React contexts/screens can be large, but all task transformations live in `src/utils/taskMutations.js` rather than inline in providers.
 
-**Parameters:** Accept plain positional args for ≤3 params (`saveNoteFile(vaultId, folder, title, content)` in `src/utils/fileStorage.js`); accept/return an options object for wider configs (`IntentParserOptions { forceHeuristic?, temperature?, contextPrompt?, timeoutMs? }` in `src/ai/types.ts:30-35`). Default defensively at the signature: `(input = new Date())`, `(vaultId || "default")`, `(folder || "Uncategorized")`.
+**Parameters:**
+- Options-object pattern for optional behavior: `toggleTask(tasks, taskId, options = {})` with `options.now` / `options.todayDate` injected for testability (`src/utils/taskMutations.js:83-85`).
+- Inject time/dates instead of reading the clock inside pure functions; defaults fall back to `new Date().toISOString()` / `getLocalDateString()`.
+- Callbacks are passed in rather than imported when testing needs them (e.g. `habitOperations` interface in command handlers).
 
-**Return Values:** Use one of three shapes consistently:
-- `{ success: true, filePath }` / `{ success: false, error }` result objects for fallible writes (`saveNoteFile` in `src/utils/fileStorage.js:56-59`)
-- `boolean` for health probes (`pingSyncServer`), `''` for invalid date strings, `Invalid Date` (never today) for invalid date parses — see strict contract in `src/utils/dateUtils.js:53-58`
-- `{ valid, errors, rulesApplied }` for validators (`validateCommand` asserted in `__tests__/unit/commandGateway.test.ts:47-54`)
+**Return Values:**
+- Pure transformations return new arrays/objects; they never mutate inputs (`completeTask`, `toggleSubtask`, `mergeTasksByUpdatedAt`).
+- Multi-result mutations return a named object: `{ updatedTasks, toggledTask, spawnedTask }`.
+- Async operations return booleans or result objects; failures are logged and indicated, not thrown, where callers must continue.
 
 ## Module Design
 
-**Exports:** Export named arrow-function consts for every public function AND a default bag object for namespace import compatibility. Both styles are live — prefer named imports in new code:
+**Exports:** Named for everything except contexts (default context object) and engine aggregates (default object).
 
-```javascript
-// src/utils/dateUtils.js:166-174 and src/utils/logger.js:183-194
-export const getRecentLogs = () => { return [...logBuffer]; };
-export const logger = { debug, info, warn, error, getRecentLogs, clearLogs, MAX_LOG_BUFFER_SIZE, isDevelopment };
-export default logger;
-```
+**Barrel Files:** Only `src/ai/index.ts` and `src/commands/index.ts`. Do not add barrels; import concrete modules.
 
-**Barrel Files:** Used sparingly — `src/ai/index.ts` re-exports the AI domain; `src/utils/*.js` modules are imported directly by path (`../../src/utils/logger`). Do not add new barrel files; import from the defining module so Jest `testMatch` and coverage attribution stay precise.
+**Domain isolation:** `src/domains/README.md` mandates that domains are isolated — cross-domain communication goes through `eventBus` events, never direct imports. Types live in `src/behavior/types.ts` and `src/commands/types.ts`.
+
+**State management:**
+- One React Context per domain (`TaskContext`, `HabitContext`, `BillingContext`, `BirthdayContext`, `VaultContext`), each with a `useX()` hook.
+- Persistence uses AsyncStorage keys of the form `kwestup_<domain>_v<version>`; writes are debounced and read-modify-write to avoid clobbering sibling domains.
+- IDs always come from `generateId()` (`src/utils/generateId.js`), never `Date.now()`/`Math.random()` directly.
+
+## TypeScript Conventions
+
+- `strict: true`, `noEmit: true`, `types: ["jest", "node"]` (`tsconfig.json`).
+- Prefer discriminated unions and mapped conditional types for command payloads (`src/commands/types.ts:26-70`).
+- `unknown` is preferred over `any` in catch blocks (`catch (err: unknown)`) — see `src/behavior/eventBus.ts`.
+- `any` appears in test files and some handler maps (`Map<CommandAction, CommandHandler<any>>`); avoid adding new `any` in domain code.
+- Include `src/**/*`, `widgets/**/*`, `__tests__/**/*` and root config JS in `tsconfig.json` includes.
 
 ---
 
-*Convention analysis: 2026-10-12*
+*Convention analysis: 2026-10-18*
