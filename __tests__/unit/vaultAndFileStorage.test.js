@@ -17,6 +17,9 @@ import {
   deleteNoteFile,
   deleteFolderFile,
   getAllNotesFromFilesystem,
+  sanitizeFolder,
+  sanitizeTitle,
+  resolveUniquePath,
 } from '../../src/utils/fileStorage';
 
 describe('vaultService & fileStorage Unit Tests', () => {
@@ -160,6 +163,46 @@ describe('vaultService & fileStorage Unit Tests', () => {
       expect(notes.length).toBe(3);
       expect(notes.map((n) => n.folder)).toContain('Ideas');
       expect(notes.map((n) => n.folder)).toContain('Tasks');
+    });
+
+    it('sanitizes folder and title against path traversal and illegal chars', () => {
+      expect(sanitizeFolder('../../etc/passwd')).toBe("______etc_passwd");
+      expect(sanitizeFolder('   ')).toBe("Uncategorized");
+      expect(sanitizeTitle('Note / With : Illegal <Chars>?')).toBe("Note___With___Illegal__Chars__");
+      expect(sanitizeTitle('   ')).toBe("Untitled Note");
+    });
+
+    it('resolves unique path by suffixing (1), (2) when file already exists', async () => {
+      const folderPath = `${FileSystem.documentDirectory}Notes/Vaults/unique-vault/`;
+      await FileSystem.makeDirectoryAsync(folderPath, { intermediates: true });
+
+      const path1 = await resolveUniquePath(folderPath, 'Note.md');
+      expect(path1).toBe(`${folderPath}Note.md`);
+      await FileSystem.writeAsStringAsync(path1, 'first');
+
+      const path2 = await resolveUniquePath(folderPath, 'Note.md');
+      expect(path2).toBe(`${folderPath}Note (1).md`);
+      await FileSystem.writeAsStringAsync(path2, 'second');
+
+      const path3 = await resolveUniquePath(folderPath, 'Note.md');
+      expect(path3).toBe(`${folderPath}Note (2).md`);
+    });
+
+    it('saveNoteFile with avoidCollision preserves existing file and writes with unique suffix', async () => {
+      const vaultId = 'collision-vault';
+      await initNotesFolder(vaultId);
+
+      const res1 = await saveNoteFile(vaultId, 'Work', 'Report', 'version 1');
+      expect(res1.success).toBe(true);
+
+      const res2 = await saveNoteFile(vaultId, 'Work', 'Report', 'version 2', { avoidCollision: true });
+      expect(res2.success).toBe(true);
+      expect(res2.filePath).toMatch(/Report \(1\)\.md$/);
+
+      const content1 = await FileSystem.readAsStringAsync(res1.filePath);
+      const content2 = await FileSystem.readAsStringAsync(res2.filePath);
+      expect(content1).toBe('version 1');
+      expect(content2).toBe('version 2');
     });
   });
 });

@@ -35,14 +35,15 @@ export const clearAllCaches = async () => {
     const allKeys = await AsyncStorage.getAllKeys();
     logger.debug("📋 Found AsyncStorage keys:", allKeys);
 
-    // Filter out active and legacy user data keys so they are protected from cache clear
+    // Filter out active and legacy user data keys so they are protected from cache clear;
+    // strictly match only KwestUp/sidebar cache and temporary keys.
     const kwestupKeys = allKeys.filter(
       (key) =>
-        (key.includes("kwestup") ||
-         key.includes("medical") ||
-         key.includes("clean") ||
-         key.includes("sidebar") ||
-         key.includes("cache")) &&
+        (key.startsWith("kwestup_") || key.startsWith("sidebar:")) &&
+        (key.includes("cache") ||
+         key.includes("temp") ||
+         key === "sidebar:state" ||
+         key === "kwestup_version_check") &&
         !isUserDataKey(key)
     );
 

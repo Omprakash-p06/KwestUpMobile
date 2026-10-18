@@ -128,76 +128,91 @@ export function validateCommand(
   }
 
   // 5. Payload Object Check
-  const payload = command.payload;
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+  const rawPayload = command.payload;
+  if (!rawPayload || typeof rawPayload !== 'object' || Array.isArray(rawPayload)) {
     errors.push('Command payload must be a non-null object');
     return { valid: false, errors, rulesApplied };
   }
+  const p = rawPayload as Record<string, unknown>;
 
   // 6. Action-Specific Parameter Validation
   switch (command.action) {
     case 'CREATE_HABIT': {
-      const p = payload as any;
-      if (p.identityId !== undefined && (typeof p.identityId !== 'string' || p.identityId.trim().length === 0 || p.identityId.length > 100)) {
+      const {
+        identityId,
+        title,
+        behavior,
+        minimumAction,
+        normalTarget,
+        stretchTarget,
+        frequency,
+        customSchedule,
+        cueType,
+        cueTime,
+        cueLocation,
+      } = p;
+      if (identityId !== undefined && (typeof identityId !== 'string' || identityId.trim().length === 0 || identityId.length > 100)) {
         errors.push('CREATE_HABIT: identityId must be a non-empty string up to 100 characters');
       }
-      if (typeof p.title !== 'string' || p.title.trim().length === 0 || p.title.length > 100) {
+      if (typeof title !== 'string' || title.trim().length === 0 || title.length > 100) {
         errors.push('CREATE_HABIT: title must be a non-empty string up to 100 characters');
       }
-      if (typeof p.behavior !== 'string' || p.behavior.trim().length === 0 || p.behavior.length > 200) {
+      if (typeof behavior !== 'string' || behavior.trim().length === 0 || behavior.length > 200) {
         errors.push('CREATE_HABIT: behavior must be a non-empty string up to 200 characters');
       }
-      if (typeof p.minimumAction !== 'string' || p.minimumAction.trim().length === 0 || p.minimumAction.length > 100) {
+      if (typeof minimumAction !== 'string' || minimumAction.trim().length === 0 || minimumAction.length > 100) {
         errors.push('CREATE_HABIT: minimumAction must be a non-empty string up to 100 characters');
       }
-      if (typeof p.normalTarget !== 'string' || p.normalTarget.trim().length === 0 || p.normalTarget.length > 100) {
+      if (typeof normalTarget !== 'string' || normalTarget.trim().length === 0 || normalTarget.length > 100) {
         errors.push('CREATE_HABIT: normalTarget must be a non-empty string up to 100 characters');
       }
-      if (p.stretchTarget !== undefined && (typeof p.stretchTarget !== 'string' || p.stretchTarget.length > 100)) {
+      if (stretchTarget !== undefined && (typeof stretchTarget !== 'string' || stretchTarget.length > 100)) {
         errors.push('CREATE_HABIT: stretchTarget must be a string up to 100 characters');
       }
-      if (!VALID_FREQUENCIES.includes(p.frequency)) {
+      if (typeof frequency !== 'string' || !(VALID_FREQUENCIES as readonly string[]).includes(frequency)) {
         errors.push(`CREATE_HABIT: frequency must be one of: ${VALID_FREQUENCIES.join(', ')}`);
       }
-      if (p.frequency === 'custom') {
-        const weekdays = p.customSchedule?.weekdays;
+      if (frequency === 'custom') {
+        const sched = customSchedule as Record<string, unknown> | undefined;
+        const weekdays = sched?.weekdays;
         if (!Array.isArray(weekdays) || weekdays.length === 0 || weekdays.length > 7) {
           errors.push('CREATE_HABIT: custom frequency requires customSchedule.weekdays array (1-7 items)');
         } else {
           const uniqueDays = new Set(weekdays);
-          const allValid = weekdays.every((d: any) => Number.isInteger(d) && d >= 0 && d <= 6);
+          const allValid = weekdays.every((d: unknown) => typeof d === 'number' && Number.isInteger(d) && d >= 0 && d <= 6);
           if (!allValid || uniqueDays.size !== weekdays.length) {
             errors.push('CREATE_HABIT: weekdays must contain unique integers between 0 (Sunday) and 6 (Saturday)');
           }
         }
       }
-      if (!VALID_CUE_TYPES.includes(p.cueType)) {
+      if (typeof cueType !== 'string' || !(VALID_CUE_TYPES as readonly string[]).includes(cueType)) {
         errors.push(`CREATE_HABIT: cueType must be one of: ${VALID_CUE_TYPES.join(', ')}`);
       }
-      if (p.cueTime !== undefined) {
-        if (typeof p.cueTime !== 'string' || !TIME_REGEX.test(p.cueTime)) {
+      if (cueTime !== undefined) {
+        if (typeof cueTime !== 'string' || !TIME_REGEX.test(cueTime)) {
           errors.push('CREATE_HABIT: cueTime must match 24-hour format HH:mm (e.g. 08:30, 20:00)');
         }
-      } else if (p.cueType === 'time') {
+      } else if (cueType === 'time') {
         errors.push('CREATE_HABIT: cueTime is required when cueType is "time"');
       }
-      if (p.cueLocation !== undefined && (typeof p.cueLocation !== 'string' || p.cueLocation.length > 100)) {
+      if (cueLocation !== undefined && (typeof cueLocation !== 'string' || cueLocation.length > 100)) {
         errors.push('CREATE_HABIT: cueLocation must be a string up to 100 characters');
       }
       break;
     }
 
     case 'UPDATE_HABIT': {
-      const p = payload as any;
-      if (typeof p.habitId !== 'string' || p.habitId.trim().length === 0) {
+      const habitId = p.habitId;
+      const updates = p.updates as Record<string, unknown> | undefined;
+      if (typeof habitId !== 'string' || habitId.trim().length === 0) {
         errors.push('UPDATE_HABIT: habitId must be a non-empty string');
       }
-      if (!p.updates || typeof p.updates !== 'object' || Array.isArray(p.updates)) {
+      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
         errors.push('UPDATE_HABIT: updates must be a non-null object');
       } else {
         // Enforce engine-owned state invariant
         for (const forbiddenKey of FORBIDDEN_UPDATE_KEYS) {
-          if (forbiddenKey in p.updates) {
+          if (forbiddenKey in updates) {
             errors.push(
               `UPDATE_HABIT: Field "${forbiddenKey}" is engine-owned and cannot be modified via command`
             );
@@ -205,30 +220,31 @@ export function validateCommand(
         }
 
         const allowedKeys = ['title', 'behavior', 'minimumAction', 'normalTarget', 'stretchTarget'];
-        for (const key of Object.keys(p.updates)) {
-          if (!allowedKeys.includes(key) && !FORBIDDEN_UPDATE_KEYS.includes(key as any)) {
+        for (const key of Object.keys(updates)) {
+          if (!allowedKeys.includes(key) && !(FORBIDDEN_UPDATE_KEYS as readonly string[]).includes(key)) {
             errors.push(`UPDATE_HABIT: Field "${key}" is not a permitted update field`);
           }
         }
 
-        const presentAllowed = Object.keys(p.updates).filter((k) => allowedKeys.includes(k));
+        const presentAllowed = Object.keys(updates).filter((k) => allowedKeys.includes(k));
         if (presentAllowed.length === 0) {
           errors.push('UPDATE_HABIT: updates must contain at least one modifiable field');
         }
 
-        if (p.updates.title !== undefined && (typeof p.updates.title !== 'string' || p.updates.title.trim().length === 0 || p.updates.title.length > 100)) {
+        const { title, behavior, minimumAction, normalTarget, stretchTarget } = updates;
+        if (title !== undefined && (typeof title !== 'string' || title.trim().length === 0 || title.length > 100)) {
           errors.push('UPDATE_HABIT: title must be a non-empty string up to 100 characters');
         }
-        if (p.updates.behavior !== undefined && (typeof p.updates.behavior !== 'string' || p.updates.behavior.trim().length === 0 || p.updates.behavior.length > 200)) {
+        if (behavior !== undefined && (typeof behavior !== 'string' || behavior.trim().length === 0 || behavior.length > 200)) {
           errors.push('UPDATE_HABIT: behavior must be a non-empty string up to 200 characters');
         }
-        if (p.updates.minimumAction !== undefined && (typeof p.updates.minimumAction !== 'string' || p.updates.minimumAction.trim().length === 0 || p.updates.minimumAction.length > 100)) {
+        if (minimumAction !== undefined && (typeof minimumAction !== 'string' || minimumAction.trim().length === 0 || minimumAction.length > 100)) {
           errors.push('UPDATE_HABIT: minimumAction must be a non-empty string up to 100 characters');
         }
-        if (p.updates.normalTarget !== undefined && (typeof p.updates.normalTarget !== 'string' || p.updates.normalTarget.trim().length === 0 || p.updates.normalTarget.length > 100)) {
+        if (normalTarget !== undefined && (typeof normalTarget !== 'string' || normalTarget.trim().length === 0 || normalTarget.length > 100)) {
           errors.push('UPDATE_HABIT: normalTarget must be a non-empty string up to 100 characters');
         }
-        if (p.updates.stretchTarget !== undefined && (typeof p.updates.stretchTarget !== 'string' || p.updates.stretchTarget.length > 100)) {
+        if (stretchTarget !== undefined && (typeof stretchTarget !== 'string' || stretchTarget.length > 100)) {
           errors.push('UPDATE_HABIT: stretchTarget must be a string up to 100 characters');
         }
       }
@@ -236,8 +252,8 @@ export function validateCommand(
     }
 
     case 'DELETE_HABIT': {
-      const p = payload as any;
-      if (typeof p.habitId !== 'string' || p.habitId.trim().length === 0) {
+      const habitId = p.habitId;
+      if (typeof habitId !== 'string' || habitId.trim().length === 0) {
         errors.push('DELETE_HABIT: habitId must be a non-empty string');
       }
       // AI actor destructive confirmation gate
@@ -248,56 +264,56 @@ export function validateCommand(
     }
 
     case 'LOG_HABIT': {
-      const p = payload as any;
-      if (typeof p.habitId !== 'string' || p.habitId.trim().length === 0) {
+      const { habitId, completedAt, durationMinutes, frictionCategory } = p;
+      if (typeof habitId !== 'string' || habitId.trim().length === 0) {
         errors.push('LOG_HABIT: habitId must be a non-empty string');
       }
-      if (typeof p.completedAt !== 'string' || isNaN(Date.parse(p.completedAt))) {
+      if (typeof completedAt !== 'string' || isNaN(Date.parse(completedAt))) {
         errors.push('LOG_HABIT: completedAt must be a valid ISO 8601 date timestamp');
       }
-      if (p.durationMinutes !== undefined && (typeof p.durationMinutes !== 'number' || p.durationMinutes < 0)) {
+      if (durationMinutes !== undefined && (typeof durationMinutes !== 'number' || durationMinutes < 0)) {
         errors.push('LOG_HABIT: durationMinutes must be a non-negative number');
       }
-      if (p.frictionCategory !== undefined && !VALID_FRICTION_CATEGORIES.includes(p.frictionCategory)) {
+      if (frictionCategory !== undefined && !(VALID_FRICTION_CATEGORIES as readonly unknown[]).includes(frictionCategory)) {
         errors.push(`LOG_HABIT: frictionCategory must be one of: ${VALID_FRICTION_CATEGORIES.join(', ')}`);
       }
       break;
     }
 
     case 'START_RECOVERY': {
-      const p = payload as any;
-      if (typeof p.habitId !== 'string' || p.habitId.trim().length === 0) {
+      const { habitId, reason } = p;
+      if (typeof habitId !== 'string' || habitId.trim().length === 0) {
         errors.push('START_RECOVERY: habitId must be a non-empty string');
       }
-      if (!VALID_FRICTION_CATEGORIES.includes(p.reason)) {
+      if (!(VALID_FRICTION_CATEGORIES as readonly unknown[]).includes(reason)) {
         errors.push(`START_RECOVERY: reason must be a valid FrictionCategory: ${VALID_FRICTION_CATEGORIES.join(', ')}`);
       }
       break;
     }
 
     case 'DISMISS_INTERVENTION': {
-      const p = payload as any;
-      if (typeof p.interventionId !== 'string' || p.interventionId.trim().length === 0) {
+      const { interventionId, reason } = p;
+      if (typeof interventionId !== 'string' || interventionId.trim().length === 0) {
         errors.push('DISMISS_INTERVENTION: interventionId must be a non-empty string');
       }
-      if (!VALID_DISMISS_REASONS.includes(p.reason)) {
+      if (!(VALID_DISMISS_REASONS as readonly unknown[]).includes(reason)) {
         errors.push(`DISMISS_INTERVENTION: reason must be one of: ${VALID_DISMISS_REASONS.join(', ')}`);
       }
       break;
     }
 
     case 'ADJUST_DIFFICULTY': {
-      const p = payload as any;
-      if (typeof p.habitId !== 'string' || p.habitId.trim().length === 0) {
+      const { habitId, direction, newMinimumAction } = p;
+      if (typeof habitId !== 'string' || habitId.trim().length === 0) {
         errors.push('ADJUST_DIFFICULTY: habitId must be a non-empty string');
       }
-      if (p.direction !== 'easier' && p.direction !== 'harder') {
+      if (direction !== 'easier' && direction !== 'harder') {
         errors.push('ADJUST_DIFFICULTY: direction must be "easier" or "harder"');
       }
       if (
-        typeof p.newMinimumAction !== 'string' ||
-        p.newMinimumAction.trim().length === 0 ||
-        p.newMinimumAction.length > 100
+        typeof newMinimumAction !== 'string' ||
+        newMinimumAction.trim().length === 0 ||
+        newMinimumAction.length > 100
       ) {
         errors.push('ADJUST_DIFFICULTY: newMinimumAction must be a non-empty string up to 100 characters');
       }
@@ -305,38 +321,38 @@ export function validateCommand(
     }
 
     case 'CREATE_IDENTITY': {
-      const p = payload as any;
-      if (typeof p.statement !== 'string' || p.statement.trim().length === 0 || p.statement.length > 200) {
+      const statement = p.statement;
+      if (typeof statement !== 'string' || statement.trim().length === 0 || statement.length > 200) {
         errors.push('CREATE_IDENTITY: statement must be a non-empty string up to 200 characters');
       }
       break;
     }
 
     case 'PAUSE_HABIT': {
-      const p = payload as any;
-      const effectiveActor = p.actor || actor;
-      if (typeof p.habitId !== 'string' || p.habitId.trim().length === 0) {
+      const { habitId, reason } = p;
+      const effectiveActor = (p.actor as CommandActor) || actor;
+      if (typeof habitId !== 'string' || habitId.trim().length === 0) {
         errors.push('PAUSE_HABIT: habitId must be a non-empty string');
       }
       if (effectiveActor !== 'user' && effectiveActor !== 'engine' && effectiveActor !== 'ai') {
         errors.push('PAUSE_HABIT: actor must be "user" or "engine"');
       }
-      if (typeof p.reason !== 'string' || p.reason.trim().length === 0 || p.reason.length > 200) {
+      if (typeof reason !== 'string' || reason.trim().length === 0 || reason.length > 200) {
         errors.push('PAUSE_HABIT: reason must be a non-empty string up to 200 characters');
       }
       break;
     }
 
     case 'ARCHIVE_HABIT': {
-      const p = payload as any;
-      const effectiveActor = p.actor || actor;
-      if (typeof p.habitId !== 'string' || p.habitId.trim().length === 0) {
+      const { habitId, reason } = p;
+      const effectiveActor = (p.actor as CommandActor) || actor;
+      if (typeof habitId !== 'string' || habitId.trim().length === 0) {
         errors.push('ARCHIVE_HABIT: habitId must be a non-empty string');
       }
       if (effectiveActor !== 'user' && effectiveActor !== 'engine' && effectiveActor !== 'ai') {
         errors.push('ARCHIVE_HABIT: actor must be "user" or "engine"');
       }
-      if (typeof p.reason !== 'string' || p.reason.trim().length === 0 || p.reason.length > 200) {
+      if (typeof reason !== 'string' || reason.trim().length === 0 || reason.length > 200) {
         errors.push('ARCHIVE_HABIT: reason must be a non-empty string up to 200 characters');
       }
       if ((actor === 'ai' || effectiveActor === 'ai') && !command.confirmed) {
@@ -346,15 +362,15 @@ export function validateCommand(
     }
 
     case 'RESUME_HABIT': {
-      const p = payload as any;
-      const effectiveActor = p.actor || actor;
-      if (typeof p.habitId !== 'string' || p.habitId.trim().length === 0) {
+      const { habitId, reason } = p;
+      const effectiveActor = (p.actor as CommandActor) || actor;
+      if (typeof habitId !== 'string' || habitId.trim().length === 0) {
         errors.push('RESUME_HABIT: habitId must be a non-empty string');
       }
       if (effectiveActor !== 'user' && effectiveActor !== 'engine' && effectiveActor !== 'ai') {
         errors.push('RESUME_HABIT: actor must be "user" or "engine"');
       }
-      if (typeof p.reason !== 'string' || p.reason.trim().length === 0 || p.reason.length > 200) {
+      if (typeof reason !== 'string' || reason.trim().length === 0 || reason.length > 200) {
         errors.push('RESUME_HABIT: reason must be a non-empty string up to 200 characters');
       }
       break;

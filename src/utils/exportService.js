@@ -67,7 +67,11 @@ export const decryptBackup = (encryptedText, passphrase) => {
     if (envelope && envelope.v === 2 && envelope.ciphertext && envelope.salt && envelope.iv) {
       const salt = CryptoJS.enc.Hex.parse(envelope.salt);
       const iv = CryptoJS.enc.Hex.parse(envelope.iv);
-      const iterations = envelope.iterations || 100000;
+      // Clamp iterations to safe boundaries [50,000, 600,000] to prevent DoS or trivial work factor
+      const rawIterations = Number(envelope.iterations);
+      const iterations = Number.isFinite(rawIterations)
+        ? Math.min(Math.max(rawIterations, 50000), 600000)
+        : 100000;
       const key = CryptoJS.PBKDF2(passphrase, salt, {
         keySize: 256 / 32,
         iterations,

@@ -2,6 +2,7 @@ import * as DocumentPicker from "expo-document-picker";
 import { generateId } from "./generateId";
 import * as FileSystem from "expo-file-system/legacy";
 import { createVault } from "./vaultService";
+import { resolveUniquePath } from "./fileStorage";
 import { logger } from "./logger";
 
 /**
@@ -81,24 +82,7 @@ export const importMDFilesAsVault = async (vaultName) => {
         .replace(/^\.+$/, "_")
         .slice(0, 128) || `note_${generateId()}_${(nameCounter += 1)}.md`;
 
-      let destPath = `${vaultBase}${safeName}`;
-      // Never overwrite on collision — append (1), (2), ... suffix
-      const info = await FileSystem.getInfoAsync(destPath);
-      if (info.exists) {
-        const dot = safeName.lastIndexOf('.');
-        const stem = dot >= 0 ? safeName.slice(0, dot) : safeName;
-        const ext = dot >= 0 ? safeName.slice(dot) : '.md';
-        let n = 1;
-        while (true) {
-          const candidate = `${vaultBase}${stem} (${n})${ext}`;
-          const cInfo = await FileSystem.getInfoAsync(candidate);
-          if (!cInfo.exists) {
-            destPath = candidate;
-            break;
-          }
-          n += 1;
-        }
-      }
+      const destPath = await resolveUniquePath(vaultBase, safeName);
       await FileSystem.writeAsStringAsync(destPath, content, {
         encoding: FileSystem.EncodingType.UTF8,
       });

@@ -40,10 +40,8 @@ module.exports = [
       'react-hooks/exhaustive-deps': 'warn',
       'react/prop-types': 'off',
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
-      // WR-09 partial: stays 'warn' until the ~100 pre-existing console
-      // statements are triaged. Escalating to 'error' now reds the gate
-      // (verified 2026-10-01). Phased enforcement tracked pre-Phase 22.
-      'no-console': 'warn',
+      // Console statements in app code are forbidden; use logger instead (which gates on __DEV__).
+      'no-console': 'error',
     },
   },
   {
@@ -60,6 +58,15 @@ module.exports = [
         afterAll: 'readonly',
         jest: 'readonly',
       },
+    },
+    rules: {
+      'no-console': 'off',
+    },
+  },
+  {
+    files: ['patch-llama-gradle.js', 'scripts/**/*.{js,cjs}'],
+    rules: {
+      'no-console': 'off',
     },
   },
 ];

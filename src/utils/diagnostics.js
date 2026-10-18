@@ -21,14 +21,18 @@ export const runNetworkDiagnostics = async () => {
   logger.debug("🌐 RUNNING NETWORK DIAGNOSTICS...");
 
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
     const response = await fetch("https://httpbin.org/json", {
       method: "GET",
+      signal: controller.signal,
       headers: {
         "Cache-Control": "no-cache, no-store, must-revalidate",
         Pragma: "no-cache",
         Expires: "0",
       },
     });
+    clearTimeout(timeoutId);
 
     if (response.ok) {
       logger.debug("✅ Network connectivity: OK");
@@ -43,12 +47,16 @@ export const runNetworkDiagnostics = async () => {
 
 // GITHUB RELEASES VERSION CHECK
 const cleanVersion = (ver) => {
-  return ver.replace(/^v/, "").trim();
+  return String(ver || "").replace(/^v/, "").trim();
 };
 
 const isNewerVersion = (current, latest) => {
-  const c = cleanVersion(current).split(".").map(Number);
-  const l = cleanVersion(latest).split(".").map(Number);
+  if (!latest) return false;
+  // Strip prerelease or metadata suffixes e.g. 3.5.0-rc1 -> 3.5.0
+  const cleanCurrent = cleanVersion(current).split("-")[0];
+  const cleanLatest = cleanVersion(latest).split("-")[0];
+  const c = cleanCurrent.split(".").map((num) => parseInt(num, 10) || 0);
+  const l = cleanLatest.split(".").map((num) => parseInt(num, 10) || 0);
   
   for (let i = 0; i < Math.max(c.length, l.length); i++) {
     const cv = c[i] || 0;
@@ -62,13 +70,17 @@ const isNewerVersion = (current, latest) => {
 export const checkForUpdates = async (onUpdateAvailable) => {
   logger.debug("🔄 Checking for updates via GitHub releases...");
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
     const response = await fetch("https://api.github.com/repos/Omprakash-p06/KwestUpMobile/releases/latest", {
       method: "GET",
+      signal: controller.signal,
       headers: {
         "Accept": "application/vnd.github.v3+json",
         "User-Agent": "KwestUp-Mobile"
       }
     });
+    clearTimeout(timeoutId);
 
     if (response.ok) {
       const data = await response.json();
@@ -129,8 +141,11 @@ export const sendTelemetryEvent = async (event, payload = {}) => {
     const isOptIn = await AsyncStorage.getItem("kwestup_telemetry_optin");
     if (isOptIn !== "true") return;
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
     await fetch("https://api.kwestup.com/telemetry", {
       method: "POST",
+      signal: controller.signal,
       headers: {
         "Content-Type": "application/json",
       },
@@ -142,6 +157,7 @@ export const sendTelemetryEvent = async (event, payload = {}) => {
         ...payload,
       }),
     });
+    clearTimeout(timeoutId);
     logger.debug("📊 Telemetry event sent:", event);
   } catch (err) {
     logger.debug("⚠️ Telemetry send skipped (offline/disabled):", err.message);

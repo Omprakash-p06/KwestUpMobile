@@ -14,6 +14,7 @@ import Modal from "react-native-modal";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { validateSyncConfig } from "../utils/syncService";
 
 export const QRScannerModal = ({ isVisible, onClose, onConnectionScanned, currentTheme }) => {
   const [permission, requestPermission] = useCameraPermissions();
@@ -41,12 +42,9 @@ export const QRScannerModal = ({ isVisible, onClose, onConnectionScanned, curren
     
     try {
       const payload = JSON.parse(data);
-      if (payload.ip && payload.port && payload.token) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        onConnectionScanned(payload);
-      } else {
-        throw new Error("Invalid payload schema");
-      }
+      const validated = validateSyncConfig(payload);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      onConnectionScanned(validated);
     } catch (e) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       alert("Invalid KwestUp QR Code payload detected. Please scan the QR Code served by the PC server.");
@@ -75,19 +73,17 @@ export const QRScannerModal = ({ isVisible, onClose, onConnectionScanned, curren
       return;
     }
 
-    // IP validation regex (simple check)
-    const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
-    if (!ipRegex.test(sanitizedIp) && sanitizedIp !== "localhost" && sanitizedIp !== "127.0.0.1") {
-      setFormError("Please enter a valid IP address (e.g. 192.168.1.15).");
-      return;
+    try {
+      const validated = validateSyncConfig({
+        ip: sanitizedIp,
+        port: parseInt(sanitizedPort, 10),
+        token: sanitizedToken,
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      onConnectionScanned(validated);
+    } catch (err) {
+      setFormError(err.message.replace(/^Invalid sync configuration:\s*/, ""));
     }
-
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    onConnectionScanned({
-      ip: sanitizedIp,
-      port: parseInt(sanitizedPort, 10),
-      token: sanitizedToken
-    });
   };
 
   return (

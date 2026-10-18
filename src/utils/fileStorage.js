@@ -24,6 +24,66 @@ export const initNotesFolder = async (vaultId) => {
   }
 };
 
+// ─── Sanitization & Path Helpers ─────────────────────────────────────────────
+
+/**
+ * Sanitizes a subfolder name to prevent directory traversal and illegal characters.
+ * @param {string} folder
+ * @returns {string}
+ */
+export const sanitizeFolder = (folder) => {
+  return (
+    (folder || "Uncategorized")
+      .trim()
+      .replace(/[/\\?%*:|"<>. ]/g, "_")
+      .replace(/[\x00-\x1f\x7f]/g, "_")
+      .replace(/^\.+$/, "_") || "Uncategorized"
+  );
+};
+
+/**
+ * Sanitizes a note title to form a safe, consistent filename stem.
+ * @param {string} title
+ * @returns {string}
+ */
+export const sanitizeTitle = (title) => {
+  return (
+    (title || "Untitled Note")
+      .trim()
+      .replace(/[/\\?%*:|"<>. ]/g, "_")
+      .replace(/[\x00-\x1f\x7f]/g, "_")
+      .replace(/^\.+$/, "_") || "Untitled Note"
+  );
+};
+
+/**
+ * Resolves a collision-free destination path inside folderPath by appending (1), (2), etc.
+ * @param {string} folderPath
+ * @param {string} filenameWithExt
+ * @returns {Promise<string>}
+ */
+export const resolveUniquePath = async (folderPath, filenameWithExt) => {
+  const normalizedFolder = folderPath.endsWith("/") ? folderPath : `${folderPath}/`;
+  let destPath = `${normalizedFolder}${filenameWithExt}`;
+  const info = await FileSystem.getInfoAsync(destPath);
+  if (!info.exists) {
+    return destPath;
+  }
+
+  const dot = filenameWithExt.lastIndexOf(".");
+  const stem = dot >= 0 ? filenameWithExt.slice(0, dot) : filenameWithExt;
+  const ext = dot >= 0 ? filenameWithExt.slice(dot) : ".md";
+  let n = 1;
+  while (true) {
+    const candidate = `${normalizedFolder}${stem} (${n})${ext}`;
+    const cInfo = await FileSystem.getInfoAsync(candidate);
+    if (!cInfo.exists) {
+      return candidate;
+    }
+    n += 1;
+  }
+};
+
 // ─── Core Vault-Parameterized File Operations ─────────────────────────────────
 
 /**
@@ -32,18 +92,14 @@ export const initNotesFolder = async (vaultId) => {
  * @param {string} folder  - Subfolder within the vault (e.g. "Work")
  * @param {string} title   - Note title (will be sanitized into a filename)
  * @param {string} content - Markdown content
+ * @param {Object} [options] - Optional settings ({ avoidCollision?: boolean })
  */
-export const saveNoteFile = async (vaultId, folder, title, content) => {
+export const saveNoteFile = async (vaultId, folder, title, content, options = {}) => {
   try {
     const vaultPath = getVaultPath(vaultId || "default");
 
-    // Sanitize folder and title
-    const sanitizedFolder =
-      (folder || "Uncategorized").trim().replace(/[/\\?%*:|"<>. ]/g, "_") ||
-      "Uncategorized";
-    const sanitizedTitle = (title || "Untitled Note")
-      .trim()
-      .replace(/[/\\?%*:|"<>. ]/g, "_");
+    const sanitizedFolder = sanitizeFolder(folder);
+    const sanitizedTitle = sanitizeTitle(title);
 
     const folderPath = `${vaultPath}${sanitizedFolder}/`;
 
@@ -53,7 +109,11 @@ export const saveNoteFile = async (vaultId, folder, title, content) => {
       await FileSystem.makeDirectoryAsync(folderPath, { intermediates: true });
     }
 
-    const filePath = `${folderPath}${sanitizedTitle}.md`;
+    let filePath = `${folderPath}${sanitizedTitle}.md`;
+    if (options && options.avoidCollision) {
+      filePath = await resolveUniquePath(folderPath, `${sanitizedTitle}.md`);
+    }
+
     await FileSystem.writeAsStringAsync(filePath, content || "", {
       encoding: FileSystem.EncodingType.UTF8,
     });
@@ -75,12 +135,8 @@ export const saveNoteFile = async (vaultId, folder, title, content) => {
 export const readNoteFile = async (vaultId, folder, title) => {
   try {
     const vaultPath = getVaultPath(vaultId || "default");
-    const sanitizedFolder =
-      (folder || "Uncategorized").trim().replace(/[/\\?%*:|"<>. ]/g, "_") ||
-      "Uncategorized";
-    const sanitizedTitle = (title || "Untitled Note")
-      .trim()
-      .replace(/[/\\?%*:|"<>. ]/g, "_");
+    const sanitizedFolder = sanitizeFolder(folder);
+    const sanitizedTitle = sanitizeTitle(title);
 
     const filePath = `${vaultPath}${sanitizedFolder}/${sanitizedTitle}.md`;
 
@@ -106,12 +162,8 @@ export const readNoteFile = async (vaultId, folder, title) => {
 export const deleteNoteFile = async (vaultId, folder, title) => {
   try {
     const vaultPath = getVaultPath(vaultId || "default");
-    const sanitizedFolder =
-      (folder || "Uncategorized").trim().replace(/[/\\?%*:|"<>. ]/g, "_") ||
-      "Uncategorized";
-    const sanitizedTitle = (title || "Untitled Note")
-      .trim()
-      .replace(/[/\\?%*:|"<>. ]/g, "_");
+    const sanitizedFolder = sanitizeFolder(folder);
+    const sanitizedTitle = sanitizeTitle(title);
 
     const filePath = `${vaultPath}${sanitizedFolder}/${sanitizedTitle}.md`;
 
@@ -146,9 +198,7 @@ export const deleteNoteFile = async (vaultId, folder, title) => {
 export const deleteFolderFile = async (vaultId, folder) => {
   try {
     const vaultPath = getVaultPath(vaultId || "default");
-    const sanitizedFolder =
-      (folder || "Uncategorized").trim().replace(/[/\\?%*:|"<>. ]/g, "_") ||
-      "Uncategorized";
+    const sanitizedFolder = sanitizeFolder(folder);
     if (sanitizedFolder === "Uncategorized") {
       return { success: false, error: "Cannot delete Uncategorized folder" };
     }
