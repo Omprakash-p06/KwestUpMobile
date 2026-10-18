@@ -6,6 +6,7 @@ import { LiquidGlassCard } from "../components/LiquidGlassCard";
 import { CustomTextInput } from "../components/CustomTextInput";
 import { injectFontFamily } from "../theme/styles";
 import { eventBus } from "../behavior/eventBus";
+import { logger } from "../utils/logger";
 
 export const FocusTimerScreen = ({
   currentTheme,
@@ -53,7 +54,7 @@ export const FocusTimerScreen = ({
 
   const startTimer = () => {
     if (!isTimerRunning && timerRemaining > 0) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch((e) => logger.debug("Haptics failed (non-fatal):", e));
       setIsTimerRunning(true);
       if (!sessionIdRef.current) {
         sessionIdRef.current = `focus_${Date.now()}`;
@@ -72,7 +73,7 @@ export const FocusTimerScreen = ({
   };
 
   const pauseTimer = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch((e) => logger.debug("Haptics failed (non-fatal):", e));
     setIsTimerRunning(false);
   };
 
@@ -80,7 +81,7 @@ export const FocusTimerScreen = ({
     showConfirmation(
       "Confirm reset of objective timer?",
       () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch((e) => logger.debug("Haptics failed (non-fatal):", e));
         sessionIdRef.current = null;
         setIsTimerRunning(false);
         setTimerRemaining(timerDuration);

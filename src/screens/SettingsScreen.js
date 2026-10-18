@@ -103,7 +103,7 @@ export const SettingsScreen = ({
       }
 
     } catch (err) {
-      console.error("❌ APK download/install failed:", err);
+      logger.error("❌ APK download/install failed:", err);
       setUpdateError(err.message);
       Alert.alert("Update Error", "Download failed: " + err.message);
     } finally {
@@ -131,7 +131,7 @@ export const SettingsScreen = ({
             () => {
               if (result.releaseUrl) {
                 Linking.openURL(result.releaseUrl).catch((err) =>
-                  console.error("Failed to open update URL:", err)
+                  logger.error("Failed to open update URL:", err)
                 );
               }
             },
@@ -185,7 +185,7 @@ export const SettingsScreen = ({
       try {
         const info = await FileSystem.getInfoAsync(MODEL_PATH);
         if (info.exists) setModelSize(info.size);
-      } catch {}
+      } catch (e) { logger.debug("FileSystem.getInfoAsync model size check failed (non-fatal):", e); }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showConfirmation("AI model downloaded successfully! Offline AI features are now enabled.", () => {});
     } catch (err) {
@@ -204,7 +204,7 @@ export const SettingsScreen = ({
       try {
         const info = await FileSystem.getInfoAsync(MODEL_PATH);
         if (info.exists) setModelSize(info.size);
-      } catch {}
+      } catch (e) { logger.debug("FileSystem.getInfoAsync model size check failed (non-fatal):", e); }
     } else {
       setModelSize(null);
     }

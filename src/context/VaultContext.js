@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { getVaults, getActiveVaultId, setActiveVaultId as persistActiveVaultId } from "../utils/vaultService";
 import { getAllNotesFromFilesystem } from "../utils/fileStorage";
+import { logger } from "../utils/logger";
 
 const VaultContext = createContext(null);
 
@@ -45,7 +46,7 @@ export const VaultProvider = ({
       setNotes(fsNotes);
       return fsNotes;
     } catch (err) {
-      console.error("❌ Failed to load vault notes:", err);
+      logger.error("❌ Failed to load vault notes:", err);
       return [];
     }
   }, [activeVaultId]);
@@ -57,9 +58,9 @@ export const VaultProvider = ({
       setActiveVaultId(newVaultId);
       setActiveNote(null);
       await loadVaultNotes(newVaultId);
-      console.log("🗂️ Active vault switched to:", newVaultId);
+      logger.info("🗂️ Active vault switched to:", { vaultId: newVaultId });
     } catch (err) {
-      console.error("❌ Failed to switch active vault:", err);
+      logger.error("❌ Failed to switch active vault:", err);
     }
   }, [loadVaultNotes]);
 
@@ -70,7 +71,7 @@ export const VaultProvider = ({
       const activeId = await getActiveVaultId();
       if (activeId) setActiveVaultId(activeId);
     } catch (err) {
-      console.error("❌ Failed to refresh vaults:", err);
+      logger.error("❌ Failed to refresh vaults:", err);
     }
   }, []);
 
@@ -93,6 +94,9 @@ export const VaultProvider = ({
 
 export const useVaults = () => {
   const context = useContext(VaultContext);
+  if (!context) {
+    throw new Error("useVaults must be used within a VaultProvider");
+  }
   return context;
 };
 

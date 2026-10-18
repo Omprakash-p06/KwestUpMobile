@@ -33,7 +33,7 @@ export const DailyTasksScreen = ({
 
   const addDailyTask = () => {
     if (newTaskName.trim()) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch((e) => logger.debug("Haptics failed (non-fatal):", e));
       const newDailyTask = {
         id: Date.now(),
         name: newTaskName.trim(),
@@ -85,7 +85,7 @@ export const DailyTasksScreen = ({
 
   // WR-09: Functional updater to avoid stale closure updates, guarded existence check
   const toggleDailyTaskComplete = (id) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch((e) => logger.debug("Haptics failed (non-fatal):", e));
     const target = dailyTasks.find((t) => t.id === id);
     if (!target) return;
 
@@ -149,7 +149,7 @@ export const DailyTasksScreen = ({
     showConfirmation(
       "Confirm deletion of objective from system?",
       () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch((e) => logger.debug("Haptics failed (non-fatal):", e));
         const exists = dailyTasks.some((t) => t.id === id);
         if (!exists) return;
 
@@ -162,7 +162,7 @@ export const DailyTasksScreen = ({
         setDailyTasks((prev) => {
           const taskToDelete = prev.find((t) => t.id === id);
           if (taskToDelete?.notificationId) {
-            cancelNotification(taskToDelete.notificationId).catch(() => {});
+            cancelNotification(taskToDelete.notificationId).catch((e) => logger.debug("cancelNotification on delete failed (non-fatal):", e));
           }
           return prev.filter((task) => task.id !== id);
         });

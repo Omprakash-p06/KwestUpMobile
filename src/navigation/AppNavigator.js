@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { logger } from "../utils/logger";
 import { generateId } from "../utils/generateId";
 import { useWindowDimensions, View } from "react-native";
 import { AIAssistant } from "../components/AIAssistant";
@@ -125,7 +126,7 @@ export const AppNavigator = ({
       taskCtx.handleSaveTask(taskData);
       return;
     }
-    console.warn("onTaskCreated: TaskContext unavailable — task not saved.");
+    logger.warn("onTaskCreated: TaskContext unavailable — task not saved.");
   };
 
   const onBirthdayCreated = async (birthdayData) => {
@@ -394,7 +395,7 @@ export const AppNavigator = ({
                 taskCtx.handleSaveTask({ title, listId: "default_inbox", completed: false });
               });
             } else {
-              console.warn("onTasksExtracted: TaskContext unavailable — tasks not saved.");
+              logger.warn("onTasksExtracted: TaskContext unavailable — tasks not saved.");
             }
           }}
           onTaskCreated={onTaskCreated}

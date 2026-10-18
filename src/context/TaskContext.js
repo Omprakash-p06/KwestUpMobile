@@ -331,7 +331,7 @@ export const TaskProvider = ({
       if (isUpdate && taskToSave.id) {
         const existing = currentTasks.find((t) => t.id === taskToSave.id);
         if (existing?.notificationId && existing.dueDate !== taskToSave.dueDate) {
-          cancelNotification(existing.notificationId).catch(() => {});
+          cancelNotification(existing.notificationId).catch((e) => logger.debug("cancelNotification on due-date change failed (non-fatal):", e));
         }
       }
 

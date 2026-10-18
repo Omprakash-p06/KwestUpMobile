@@ -741,7 +741,7 @@ export const NotesScreen = ({
                           if (showConfirmation) showConfirmation(`Imported "${vault.name}" with markdown files.`, () => {});
                         }
                       } catch (err) {
-                        console.error("Import failed:", err);
+                        logger.error("Import failed:", err);
                         if (showConfirmation) showConfirmation("Import failed. Please try again.", () => {});
                       } finally {
                         setIsImporting(false);
