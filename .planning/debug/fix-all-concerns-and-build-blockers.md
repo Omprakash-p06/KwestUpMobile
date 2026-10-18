@@ -1,6 +1,6 @@
 ---
 slug: fix-all-concerns-and-build-blockers
-status: in_progress
+status: resolved
 trigger: >
   Full codebase audit: identify all APK build blockers, broken/overriding functions, and
   CONCERNS.md items not yet fixed. Fix all source-level issues.
